@@ -23,7 +23,7 @@ const LandingNavbar = () => {
     <motion.nav
       className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
         scrolled
-          ? 'bg-black/72 backdrop-blur-xl backdrop-saturate-[1.8] border-b border-white/[0.06]'
+          ? 'bg-background/72 backdrop-blur-xl backdrop-saturate-[1.8] border-b border-border'
           : 'bg-transparent'
       }`}
       initial={{ y: -48 }}
