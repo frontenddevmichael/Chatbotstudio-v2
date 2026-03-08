@@ -5,6 +5,7 @@ import { useAuth } from '@/context/AuthContext';
 import SEO from '@/components/ui/SEO';
 import Spinner from '@/components/ui/Spinner';
 import { toast } from 'sonner';
+import logo from '@/assets/logo.png';
 
 const Signup = () => {
   const { user, loading, signUp } = useAuth();
