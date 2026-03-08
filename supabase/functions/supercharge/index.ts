@@ -19,7 +19,7 @@ serve(async (req) => {
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const anthropicKey = Deno.env.get("ANTHROPIC_API_KEY");
+    const lovableApiKey = Deno.env.get("LOVABLE_API_KEY");
     const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
 
     // Verify user
@@ -57,21 +57,19 @@ serve(async (req) => {
       await supabase.from("rate_limits").upsert({ identifier, endpoint: "supercharge", request_count: 1, window_start: new Date().toISOString() }, { onConflict: "identifier,endpoint" });
     }
 
-    if (!anthropicKey) {
+    if (!lovableApiKey) {
       return new Response(JSON.stringify({ error: "api_key_missing" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // Call Claude
-    const claudeResponse = await fetch("https://api.anthropic.com/v1/messages", {
+    // Call Lovable AI Gateway
+    const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "x-api-key": anthropicKey,
-        "anthropic-version": "2023-06-01",
+        Authorization: `Bearer ${lovableApiKey}`,
       },
       body: JSON.stringify({
-        model: "claude-sonnet-4-20250514",
-        max_tokens: 512,
+        model: "google/gemini-2.5-flash",
         messages: [{
           role: "user",
           content: `Given this FAQ — Question: '${faq.question}', Answer: '${faq.answer}'.
@@ -81,8 +79,20 @@ Return ONLY a valid JSON array of 8 strings. No explanation, no markdown, no cod
       }),
     });
 
-    const claudeData = await claudeResponse.json();
-    const text = claudeData.content?.[0]?.text || "[]";
+    if (!aiResponse.ok) {
+      if (aiResponse.status === 429) {
+        return new Response(JSON.stringify({ error: "rate_limit", message: "AI rate limit exceeded." }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+      if (aiResponse.status === 402) {
+        return new Response(JSON.stringify({ error: "payment_required", message: "AI credits exhausted." }), { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+      const errText = await aiResponse.text();
+      console.error("AI gateway error:", aiResponse.status, errText);
+      return new Response(JSON.stringify({ error: "ai_error" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    const aiData = await aiResponse.json();
+    const text = aiData.choices?.[0]?.message?.content || "[]";
 
     let variations: string[];
     try {
