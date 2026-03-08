@@ -16,7 +16,6 @@ const SettingsPage = () => {
   const usagePercent = profile?.message_limit
     ? Math.min(100, Math.round(((profile.monthly_message_count ?? 0) / profile.message_limit) * 100))
     : 0;
-  const usageColor = usagePercent > 90 ? 'text-destructive' : usagePercent > 60 ? 'text-warning' : 'text-success';
 
   const handleSave = async () => {
     if (!user) return;
@@ -36,44 +35,44 @@ const SettingsPage = () => {
   return (
     <PageWrapper>
       <SEO title="Settings" noIndex />
-      <h1 className="mb-6 font-display text-2xl font-bold text-foreground">Settings</h1>
+      <div className="max-w-[480px]">
+        <h1 className="text-[22px] font-semibold text-foreground mb-8">Settings</h1>
 
-      <div className="max-w-md space-y-6">
-        {/* Avatar */}
-        <div className="flex items-center gap-4">
-          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 text-2xl font-bold text-primary">
+        {/* Profile header */}
+        <div className="flex items-center gap-4 mb-8">
+          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[hsl(var(--color-surface-3))] text-xl font-semibold text-foreground">
             {initial}
           </div>
           <div>
-            <p className="font-display text-lg font-bold text-foreground">{profile?.full_name || 'Unnamed'}</p>
-            <p className="text-sm text-muted-foreground">{user?.email}</p>
+            <p className="text-[15px] font-medium text-foreground">{profile?.full_name || 'Unnamed'}</p>
+            <p className="text-[13px] text-muted-foreground">{user?.email}</p>
           </div>
         </div>
 
-        {/* Profile */}
-        <div className="glass-card rounded-lg p-4">
-          <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Profile</h3>
-          <div className="space-y-3">
+        {/* Profile form */}
+        <div className="rounded-[14px] border border-border bg-card p-5 mb-6" style={{ boxShadow: 'var(--shadow-sm)' }}>
+          <h3 className="text-[11px] font-medium tracking-[0.06em] uppercase text-muted-foreground mb-4">Profile</h3>
+          <div className="space-y-4">
             <div>
-              <label className="mb-1 block text-xs font-medium text-muted-foreground">Email</label>
+              <label className="mb-1.5 block text-[13px] font-medium text-muted-foreground">Email</label>
               <input
                 readOnly
                 value={user?.email || ''}
-                className="w-full rounded-md border border-border bg-muted/50 px-3 py-2 text-sm text-muted-foreground"
+                className="w-full rounded-[10px] border border-border bg-[hsl(var(--color-surface-3))] px-3 py-2 text-[14px] text-muted-foreground cursor-not-allowed"
               />
             </div>
             <div>
-              <label className="mb-1 block text-xs font-medium text-muted-foreground">Full Name</label>
+              <label className="mb-1.5 block text-[13px] font-medium text-muted-foreground">Full Name</label>
               <input
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
-                className="w-full rounded-md border border-border bg-muted/50 px-3 py-2 text-sm text-foreground focus:border-primary focus:outline-none"
+                className="w-full rounded-[10px] border border-border bg-[hsl(var(--color-surface-3))] px-3 py-2 text-[14px] text-foreground outline-none transition-colors focus:border-primary"
               />
             </div>
             <button
               onClick={handleSave}
               disabled={saving}
-              className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+              className="inline-flex items-center gap-2 rounded-[10px] bg-primary px-4 py-2 text-[13px] font-medium text-primary-foreground hover:bg-primary/90 active:scale-[0.97] disabled:opacity-50 transition-all"
             >
               {saving ? <Spinner /> : 'Save Changes'}
             </button>
@@ -81,17 +80,17 @@ const SettingsPage = () => {
         </div>
 
         {/* Plan */}
-        <div className="glass-card rounded-lg p-4">
-          <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Plan</h3>
-          <p className="font-display text-lg font-bold capitalize text-foreground">{profile?.plan || 'Free'}</p>
-          <div className="mt-3">
-            <div className="flex items-center justify-between text-xs">
+        <div className="rounded-[14px] border border-border bg-card p-5" style={{ boxShadow: 'var(--shadow-sm)' }}>
+          <h3 className="text-[11px] font-medium tracking-[0.06em] uppercase text-muted-foreground mb-4">Plan</h3>
+          <p className="text-[17px] font-semibold capitalize text-foreground">{profile?.plan || 'Free'}</p>
+          <div className="mt-4">
+            <div className="flex items-center justify-between text-[12px]">
               <span className="text-muted-foreground">Monthly Messages</span>
-              <span className={`font-mono font-medium ${usageColor}`}>
+              <span className="font-mono text-muted-foreground">
                 {profile?.monthly_message_count ?? 0} / {profile?.message_limit ?? 500}
               </span>
             </div>
-            <Progress value={usagePercent} className="mt-2 h-1.5 bg-muted" />
+            <Progress value={usagePercent} className="mt-2 h-1 bg-muted" />
           </div>
         </div>
       </div>
