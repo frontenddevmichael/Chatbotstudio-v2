@@ -54,7 +54,6 @@ const WidgetPage = () => {
     const text = sanitizeText(input);
     if (!text || loading || !chatbot) return;
 
-    // Rate limit: max messages per session
     if (msgCount >= MAX_MESSAGES_PER_SESSION) {
       setMessages(prev => [...prev, { role: 'assistant', content: "You've reached the message limit for this session. Please refresh to start a new conversation." }]);
       setInput('');
@@ -101,6 +100,7 @@ const WidgetPage = () => {
   };
 
   const primaryColor = chatbot?.primary_color || '#00d4ff';
+  const botEmoji = chatbot?.avatar_emoji || '🤖';
 
   if (initialLoad) {
     return (
@@ -130,18 +130,37 @@ const WidgetPage = () => {
         />
 
         {/* Header */}
-        <div className="flex items-center gap-3 border-b border-border px-4 py-3" style={{ borderBottomColor: `${primaryColor}22` }}>
-          <span className="text-2xl">{chatbot?.avatar_emoji || '🤖'}</span>
+        <div
+          className="flex items-center gap-3 border-b px-4 py-3"
+          style={{ borderBottomColor: `${primaryColor}22`, boxShadow: `0 1px 12px -4px ${primaryColor}15` }}
+        >
+          <div
+            className="flex h-9 w-9 items-center justify-center rounded-full text-lg"
+            style={{ background: `${primaryColor}15` }}
+          >
+            {botEmoji}
+          </div>
           <div>
             <p className="text-sm font-bold text-foreground">{chatbot?.name}</p>
-            <p className="text-[11px] text-muted-foreground">Online</p>
+            <div className="flex items-center gap-1.5">
+              <span className="relative inline-block h-1.5 w-1.5 rounded-full bg-success pulse-dot" />
+              <p className="text-[11px] text-muted-foreground">Online</p>
+            </div>
           </div>
         </div>
 
         {/* Messages */}
         <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-3">
           {messages.map((msg, i) => (
-            <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+            <div key={i} className={`message-in flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`} style={{ animationDelay: `${i * 50}ms` }}>
+              {msg.role === 'assistant' && (
+                <div
+                  className="mr-2 flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-sm"
+                  style={{ background: `${primaryColor}15` }}
+                >
+                  {botEmoji}
+                </div>
+              )}
               <div
                 className={`max-w-[80%] rounded-2xl px-4 py-2.5 text-sm ${
                   msg.role === 'user'
@@ -155,11 +174,20 @@ const WidgetPage = () => {
             </div>
           ))}
           {loading && (
-            <div className="flex justify-start">
-              <div className="flex gap-1 rounded-2xl border border-border bg-card px-4 py-3 rounded-bl-md">
-                <span className="h-2 w-2 animate-bounce rounded-full bg-muted-foreground" style={{ animationDelay: '0ms' }} />
-                <span className="h-2 w-2 animate-bounce rounded-full bg-muted-foreground" style={{ animationDelay: '150ms' }} />
-                <span className="h-2 w-2 animate-bounce rounded-full bg-muted-foreground" style={{ animationDelay: '300ms' }} />
+            <div className="message-in flex justify-start">
+              <div
+                className="mr-2 flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-sm"
+                style={{ background: `${primaryColor}15` }}
+              >
+                {botEmoji}
+              </div>
+              <div className="rounded-2xl border border-border bg-card px-4 py-3 rounded-bl-md">
+                <div className="flex gap-1">
+                  <span className="h-2 w-2 animate-bounce rounded-full bg-muted-foreground" style={{ animationDelay: '0ms' }} />
+                  <span className="h-2 w-2 animate-bounce rounded-full bg-muted-foreground" style={{ animationDelay: '150ms' }} />
+                  <span className="h-2 w-2 animate-bounce rounded-full bg-muted-foreground" style={{ animationDelay: '300ms' }} />
+                </div>
+                <p className="mt-1 text-[10px] text-muted-foreground">Typing...</p>
               </div>
             </div>
           )}
