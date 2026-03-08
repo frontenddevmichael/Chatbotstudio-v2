@@ -77,6 +77,7 @@ const App = () => (
                 </Routes>
               </Suspense>
               <CookieConsent />
+              <FloatingInstallButton />
             </BrowserRouter>
             </TooltipProvider>
           </ThemeProvider>
