@@ -5,11 +5,13 @@ import AdminLayout from '@/components/layout/AdminLayout';
 import SEO from '@/components/ui/SEO';
 import { toast } from 'sonner';
 import { Search } from 'lucide-react';
+import { useDebounce } from '@/hooks/useDebounce';
 
 const ChatbotManager = () => {
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const debouncedSearch = useDebounce(search, 300);
 
   const { data: chatbots, isLoading } = useQuery({
     queryKey: ['admin-chatbots'],
@@ -21,14 +23,14 @@ const ChatbotManager = () => {
 
   const filtered = useMemo(() => {
     let result = chatbots ?? [];
-    if (search) {
-      const q = search.toLowerCase();
+    if (debouncedSearch) {
+      const q = debouncedSearch.toLowerCase();
       result = result.filter((b: any) => b.name?.toLowerCase().includes(q));
     }
     if (statusFilter === 'active') result = result.filter((b: any) => b.is_active);
     if (statusFilter === 'inactive') result = result.filter((b: any) => !b.is_active);
     return result;
-  }, [chatbots, search, statusFilter]);
+  }, [chatbots, debouncedSearch, statusFilter]);
 
   const toggleActive = useMutation({
     mutationFn: async ({ id, is_active }: { id: string; is_active: boolean }) => {

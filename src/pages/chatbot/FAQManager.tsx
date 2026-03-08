@@ -1,12 +1,12 @@
 import { useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { useFAQs, useCreateFAQ, useDeleteFAQ, useSupercharge } from '@/hooks/useFAQs';
+import { useFAQs, useCreateFAQ, useUpdateFAQ, useDeleteFAQ, useSupercharge } from '@/hooks/useFAQs';
 import { useChatbot } from '@/hooks/useChatbot';
 import PageWrapper from '@/components/layout/PageWrapper';
 import SEO from '@/components/ui/SEO';
 import Spinner from '@/components/ui/Spinner';
 import { toast } from 'sonner';
-import { Trash2, Zap, Plus } from 'lucide-react';
+import { Trash2, Zap, Plus, Pencil, Check, X } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 
 const FAQManager = () => {
@@ -14,12 +14,16 @@ const FAQManager = () => {
   const { data: chatbot } = useChatbot(id!);
   const { data: faqs, isLoading } = useFAQs(id!);
   const createMutation = useCreateFAQ();
+  const updateMutation = useUpdateFAQ();
   const deleteMutation = useDeleteFAQ();
   const superchargeMutation = useSupercharge();
   const queryClient = useQueryClient();
   const [question, setQuestion] = useState('');
   const [answer, setAnswer] = useState('');
   const [superchargingId, setSuperchargingId] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editQuestion, setEditQuestion] = useState('');
+  const [editAnswer, setEditAnswer] = useState('');
 
   const handleAdd = async () => {
     if (!question.trim() || !answer.trim()) { toast.error('Fill in both fields'); return; }
@@ -30,6 +34,23 @@ const FAQManager = () => {
       toast.success('FAQ added');
     } catch {
       toast.error('Failed to add FAQ');
+    }
+  };
+
+  const handleStartEdit = (faq: { id: string; question: string; answer: string }) => {
+    setEditingId(faq.id);
+    setEditQuestion(faq.question);
+    setEditAnswer(faq.answer);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingId || !editQuestion.trim() || !editAnswer.trim()) { toast.error('Fill in both fields'); return; }
+    try {
+      await updateMutation.mutateAsync({ id: editingId, chatbot_id: id!, question: editQuestion, answer: editAnswer });
+      setEditingId(null);
+      toast.success('FAQ updated');
+    } catch {
+      toast.error('Failed to update FAQ');
     }
   };
 
@@ -96,8 +117,26 @@ const FAQManager = () => {
             <div key={faq.id} className="rounded-lg border border-border bg-card p-4">
               <div className="flex items-start justify-between gap-3">
                 <div className="flex-1">
-                  <p className="text-sm font-semibold text-foreground">{faq.question}</p>
-                  <p className="mt-1 text-sm text-muted-foreground">{faq.answer}</p>
+                  {editingId === faq.id ? (
+                    <div className="space-y-2">
+                      <input
+                        value={editQuestion}
+                        onChange={(e) => setEditQuestion(e.target.value)}
+                        className="w-full rounded-md border border-border bg-muted px-3 py-2 text-sm text-foreground focus:border-primary focus:outline-none"
+                      />
+                      <textarea
+                        value={editAnswer}
+                        onChange={(e) => setEditAnswer(e.target.value)}
+                        rows={2}
+                        className="w-full rounded-md border border-border bg-muted px-3 py-2 text-sm text-foreground focus:border-primary focus:outline-none"
+                      />
+                    </div>
+                  ) : (
+                    <>
+                      <p className="text-sm font-semibold text-foreground">{faq.question}</p>
+                      <p className="mt-1 text-sm text-muted-foreground">{faq.answer}</p>
+                    </>
+                  )}
                   {faq.variations?.length ? (
                     <div className="mt-2">
                       <span className="mb-1 inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">
@@ -112,26 +151,55 @@ const FAQManager = () => {
                   ) : null}
                 </div>
                 <div className="flex gap-1">
-                  <button
-                    onClick={() => handleSupercharge(faq.id)}
-                    disabled={superchargingId === faq.id}
-                    className={`rounded p-1.5 transition-colors ${
-                      superchargingId === faq.id ? 'animate-pulse-glow text-primary' : 'text-muted-foreground hover:bg-primary/10 hover:text-primary'
-                    }`}
-                    title="Supercharge with AI"
-                  >
-                    <Zap className="h-4 w-4" />
-                  </button>
-                  <button
-                    onClick={() => {
-                      deleteMutation.mutate({ id: faq.id, chatbot_id: id! }, {
-                        onSuccess: () => toast.success('FAQ deleted'),
-                      });
-                    }}
-                    className="rounded p-1.5 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
+                  {editingId === faq.id ? (
+                    <>
+                      <button
+                        onClick={handleSaveEdit}
+                        disabled={updateMutation.isPending}
+                        className="rounded p-1.5 text-success transition-colors hover:bg-success/10"
+                        title="Save"
+                      >
+                        {updateMutation.isPending ? <Spinner /> : <Check className="h-4 w-4" />}
+                      </button>
+                      <button
+                        onClick={() => setEditingId(null)}
+                        className="rounded p-1.5 text-muted-foreground transition-colors hover:bg-muted"
+                        title="Cancel"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <button
+                        onClick={() => handleStartEdit(faq)}
+                        className="rounded p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                        title="Edit FAQ"
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </button>
+                      <button
+                        onClick={() => handleSupercharge(faq.id)}
+                        disabled={superchargingId === faq.id}
+                        className={`rounded p-1.5 transition-colors ${
+                          superchargingId === faq.id ? 'animate-pulse-glow text-primary' : 'text-muted-foreground hover:bg-primary/10 hover:text-primary'
+                        }`}
+                        title="Supercharge with AI"
+                      >
+                        <Zap className="h-4 w-4" />
+                      </button>
+                      <button
+                        onClick={() => {
+                          deleteMutation.mutate({ id: faq.id, chatbot_id: id! }, {
+                            onSuccess: () => toast.success('FAQ deleted'),
+                          });
+                        }}
+                        className="rounded p-1.5 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </>
+                  )}
                 </div>
               </div>
             </div>

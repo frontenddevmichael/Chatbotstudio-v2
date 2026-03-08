@@ -38,6 +38,15 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: "chatbot_inactive" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
+    // Check chatbot owner's message limit
+    const { data: ownerProfile } = await supabase.from("profiles").select("monthly_message_count, message_limit").eq("id", chatbot.user_id).single();
+    if (ownerProfile && ownerProfile.monthly_message_count >= ownerProfile.message_limit) {
+      return new Response(
+        JSON.stringify({ error: "owner_limit_reached", message: "This chatbot's message limit has been reached. Please contact the business owner." }),
+        { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     // Rate limiting: 20 messages per session per hour
     const identifier = session_id.slice(0, 64);
     const oneHourAgo = new Date(Date.now() - 3600000).toISOString();
@@ -153,6 +162,15 @@ BEHAVIOR RULES:
     const responseText = aiData.choices?.[0]?.message?.content || "Sorry, I couldn't generate a response.";
     // Sanitize AI output: strip script tags
     const sanitizedResponse = responseText.replace(/<script[^>]*>.*?<\/script>/gi, "").replace(/<\/script>/gi, "");
+
+    // Increment owner's monthly_message_count (fire and forget)
+    if (ownerProfile) {
+      supabase
+        .from("profiles")
+        .update({ monthly_message_count: (ownerProfile.monthly_message_count || 0) + 1 })
+        .eq("id", chatbot.user_id)
+        .then(() => {});
+    }
 
     // Save conversation to Supabase (fire and forget)
     const { data: existingConvo } = await supabase
