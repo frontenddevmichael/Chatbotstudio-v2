@@ -10,7 +10,7 @@ import SkipToContent from "@/components/SkipToContent";
 import CookieConsent from "@/components/CookieConsent";
 import FloatingInstallButton from "@/components/pwa/FloatingInstallButton";
 import React, { Suspense } from "react";
-import PageSkeleton, { AuthSkeleton, BuilderSkeleton, LandingSkeleton, WidgetSkeleton } from "@/components/ui/PageSkeleton";
+import PageLoader from "@/components/ui/PageLoader";
 
 const Landing = React.lazy(() => import("./pages/landing/Landing"));
 const Login = React.lazy(() => import("./pages/auth/Login"));
