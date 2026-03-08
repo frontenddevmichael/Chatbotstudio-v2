@@ -3,7 +3,7 @@ import { Navigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import SEO from '@/components/ui/SEO';
 import ScrollProgress from './ScrollProgress';
-import CustomCursor from './CustomCursor';
+
 import LandingNavbar from './LandingNavbar';
 import HeroSection from './HeroSection';
 import TrustBar from './TrustBar';
@@ -47,7 +47,7 @@ const Landing = () => {
         description="Create intelligent AI chatbots for your business in minutes. No coding required. Train it on your FAQs, deploy anywhere, and let it handle customer questions 24/7. Free to start."
       />
       <ScrollProgress />
-      <CustomCursor />
+      
       <LandingNavbar />
       <HeroSection />
       <TrustBar />
