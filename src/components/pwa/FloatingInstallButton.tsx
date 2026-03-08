@@ -45,6 +45,23 @@ const FloatingInstallButton = () => {
     };
   }, [deferredPrompt, dismissed, isInstalled]);
 
+  // Bounce when scrolling past hero
+  useEffect(() => {
+    if (!deferredPrompt || dismissed || isInstalled) return;
+    const onScroll = () => {
+      if (hasBounced.current) return;
+      if (window.scrollY > window.innerHeight * 0.8) {
+        hasBounced.current = true;
+        controls.start({
+          y: [0, -12, 0, -6, 0],
+          transition: { duration: 0.6, ease: 'easeOut' },
+        });
+      }
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, [deferredPrompt, dismissed, isInstalled, controls]);
+
   const handleInstall = async () => {
     if (!deferredPrompt) return;
     await deferredPrompt.prompt();
