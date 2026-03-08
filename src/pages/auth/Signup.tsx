@@ -35,9 +35,9 @@ const Signup = () => {
       <SEO title="Get Started" description="Create your free AI chatbot in minutes." />
       <div className="w-full max-w-[380px]">
         <div className="mb-8 text-center">
-          <h1 className="text-[22px] font-semibold text-foreground">
+          <Link to="/" className="text-[22px] font-semibold text-foreground hover:opacity-80 transition-opacity">
             ChatBot<span className="text-primary"> Studio</span>
-          </h1>
+          </Link>
           <p className="mt-2 text-[13px] text-muted-foreground">Create your free account</p>
         </div>
 

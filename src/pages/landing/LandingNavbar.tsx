@@ -30,9 +30,12 @@ const LandingNavbar = () => {
       transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
     >
       <div className="max-w-6xl mx-auto px-6 h-12 flex items-center justify-between">
-        <Link to="/" className="text-[15px] font-semibold tracking-tight text-white/90">
+        <button
+          onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+          className="text-[15px] font-semibold tracking-tight text-white/90 hover:text-white transition-colors"
+        >
           ChatBot Studio
-        </Link>
+        </button>
 
         {/* Desktop */}
         <div className="hidden md:flex items-center gap-8">

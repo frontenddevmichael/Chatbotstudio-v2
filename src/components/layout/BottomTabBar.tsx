@@ -1,17 +1,25 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Bot, Plus, BarChart3, Settings } from 'lucide-react';
+import { LayoutDashboard, Bot, Plus, BarChart3, LogOut } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { useAuth } from '@/context/AuthContext';
+import { toast } from 'sonner';
 
 const tabs = [
   { to: '/dashboard', icon: LayoutDashboard, label: 'Home' },
   { to: '/chatbot', icon: Bot, label: 'Bots' },
   { to: '/builder/new', icon: Plus, label: 'Create', isCenter: true },
   { to: '/billing', icon: BarChart3, label: 'Billing' },
-  { to: '/settings', icon: Settings, label: 'Settings' },
+  { to: '#signout', icon: LogOut, label: 'Sign Out' },
 ];
 
 const BottomTabBar = () => {
   const { pathname } = useLocation();
+  const navigate = useNavigate();
+  const { signOut } = useAuth();
+
+  const handleSignOut = async () => {
+    try { await signOut(); navigate('/'); } catch { toast.error('Failed to sign out'); }
+  };
 
   return (
     <nav
@@ -31,6 +39,16 @@ const BottomTabBar = () => {
               </motion.div>
               <span className="mt-0.5 text-[10px] font-medium text-primary">{label}</span>
             </Link>
+          );
+        }
+        if (to === '#signout') {
+          return (
+            <button key={to} onClick={handleSignOut} className="flex flex-col items-center py-1 min-w-[48px]">
+              <motion.div whileTap={{ scale: 0.85 }}>
+                <Icon className="h-5 w-5 text-muted-foreground" />
+              </motion.div>
+              <span className="mt-0.5 text-[10px] font-medium text-muted-foreground">{label}</span>
+            </button>
           );
         }
         return (

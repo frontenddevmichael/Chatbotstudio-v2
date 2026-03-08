@@ -33,9 +33,9 @@ const Login = () => {
       <SEO title="Sign In" description="Sign in to ChatBot Studio" noIndex />
       <div className="w-full max-w-[380px]">
         <div className="mb-8 text-center">
-          <h1 className="text-[22px] font-semibold text-foreground">
+          <Link to="/" className="text-[22px] font-semibold text-foreground hover:opacity-80 transition-opacity">
             ChatBot<span className="text-primary"> Studio</span>
-          </h1>
+          </Link>
           <p className="mt-2 text-[13px] text-muted-foreground">Sign in to your account</p>
         </div>
 
