@@ -47,7 +47,7 @@ const Landing = () => {
         description="Create intelligent AI chatbots for your business in minutes. No coding required. Train it on your FAQs, deploy anywhere, and let it handle customer questions 24/7. Free to start."
       />
       <ScrollProgress />
-      <CustomCursor />
+      
       <LandingNavbar />
       <HeroSection />
       <TrustBar />
