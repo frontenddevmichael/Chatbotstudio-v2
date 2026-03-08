@@ -12,6 +12,8 @@ import PageSkeleton from "@/components/ui/PageSkeleton";
 const Landing = React.lazy(() => import("./pages/landing/Landing"));
 const Login = React.lazy(() => import("./pages/auth/Login"));
 const Signup = React.lazy(() => import("./pages/auth/Signup"));
+const ForgotPassword = React.lazy(() => import("./pages/auth/ForgotPassword"));
+const ResetPassword = React.lazy(() => import("./pages/auth/ResetPassword"));
 const Dashboard = React.lazy(() => import("./pages/dashboard/Dashboard"));
 const ChatbotBuilder = React.lazy(() => import("./pages/builder/ChatbotBuilder"));
 const ChatbotDetail = React.lazy(() => import("./pages/chatbot/ChatbotDetail"));
