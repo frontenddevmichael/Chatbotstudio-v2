@@ -105,3 +105,48 @@ export const useDeleteChatbot = () => {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['chatbots'] }),
   });
 };
+
+export const useDuplicateChatbot = () => {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+  return useMutation({
+    mutationFn: async (sourceId: string) => {
+      // Fetch source bot
+      const { data: source, error: fetchErr } = await supabase
+        .from('chatbots')
+        .select('*')
+        .eq('id', sourceId)
+        .single();
+      if (fetchErr || !source) throw fetchErr || new Error('Not found');
+
+      // Create duplicate
+      const { data: newBot, error: createErr } = await supabase
+        .from('chatbots')
+        .insert({
+          name: `${source.name} (Copy)`,
+          welcome_message: source.welcome_message,
+          tone: source.tone,
+          primary_color: source.primary_color,
+          avatar_emoji: source.avatar_emoji,
+          user_id: user!.id,
+        })
+        .select()
+        .single();
+      if (createErr || !newBot) throw createErr || new Error('Create failed');
+
+      // Copy FAQs
+      const { data: faqs } = await supabase
+        .from('faqs')
+        .select('question, answer, variations')
+        .eq('chatbot_id', sourceId);
+      if (faqs?.length) {
+        await supabase.from('faqs').insert(
+          faqs.map((f) => ({ ...f, chatbot_id: newBot.id }))
+        );
+      }
+
+      return newBot as Chatbot;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['chatbots'] }),
+  });
+};

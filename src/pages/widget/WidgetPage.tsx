@@ -1,10 +1,10 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { sanitizeHTML, sanitizeText } from '@/lib/sanitize';
 import SEO from '@/components/ui/SEO';
 import ErrorBoundary from '@/components/ui/ErrorBoundary';
-import { ArrowUp } from 'lucide-react';
+import { ArrowUp, RotateCcw } from 'lucide-react';
 import BotAvatar from '@/components/chatbot/BotAvatar';
 
 interface Message {
@@ -13,6 +13,11 @@ interface Message {
 }
 
 const MAX_MESSAGES_PER_SESSION = 20;
+const MAX_RETRIES = 3;
+
+function getSessionKey(token: string) {
+  return `widget_session_${token}`;
+}
 
 const WidgetPage = () => {
   const { embedToken } = useParams<{ embedToken: string }>();
@@ -26,6 +31,27 @@ const WidgetPage = () => {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [initialLoad, setInitialLoad] = useState(true);
 
+  // Restore session from sessionStorage
+  useEffect(() => {
+    if (!embedToken) return;
+    const saved = sessionStorage.getItem(getSessionKey(embedToken));
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (parsed.messages?.length) {
+          setMessages(parsed.messages);
+          setMsgCount(parsed.msgCount ?? 0);
+        }
+      } catch {}
+    }
+  }, [embedToken]);
+
+  // Persist session to sessionStorage
+  useEffect(() => {
+    if (!embedToken || messages.length === 0) return;
+    sessionStorage.setItem(getSessionKey(embedToken), JSON.stringify({ messages, msgCount }));
+  }, [messages, msgCount, embedToken]);
+
   useEffect(() => {
     const fetchChatbot = async () => {
       const { data } = await supabase
@@ -36,9 +62,8 @@ const WidgetPage = () => {
         .single();
       if (data) {
         setChatbot(data);
-        if (data.welcome_message) {
-          setMessages([{ role: 'assistant', content: data.welcome_message }]);
-        }
+        // Only set welcome message if no restored session
+        setMessages(prev => prev.length ? prev : (data.welcome_message ? [{ role: 'assistant', content: data.welcome_message }] : []));
       } else {
         setError('Chatbot not found or inactive');
       }
@@ -50,6 +75,26 @@ const WidgetPage = () => {
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
   }, [messages]);
+
+  const clearSession = () => {
+    if (embedToken) sessionStorage.removeItem(getSessionKey(embedToken));
+    setMessages(chatbot?.welcome_message ? [{ role: 'assistant', content: chatbot.welcome_message }] : []);
+    setMsgCount(0);
+  };
+
+  // Retry with exponential backoff
+  const invokeWithRetry = useCallback(async (body: any, retries = MAX_RETRIES): Promise<any> => {
+    for (let attempt = 0; attempt <= retries; attempt++) {
+      try {
+        const { data, error: fnError } = await supabase.functions.invoke('chat', { body });
+        if (fnError) throw fnError;
+        return data;
+      } catch (err) {
+        if (attempt === retries) throw err;
+        await new Promise(r => setTimeout(r, Math.pow(2, attempt) * 500));
+      }
+    }
+  }, []);
 
   const sendMessage = async () => {
     const text = sanitizeText(input);
@@ -69,10 +114,9 @@ const WidgetPage = () => {
     setMsgCount(prev => prev + 1);
 
     try {
-      const { data, error: fnError } = await supabase.functions.invoke('chat', {
-        body: { chatbot_id: chatbot.id, session_id: sessionId, messages: newMessages, new_message: text },
+      const data = await invokeWithRetry({
+        chatbot_id: chatbot.id, session_id: sessionId, messages: newMessages, new_message: text,
       });
-      if (fnError) throw fnError;
       if (data?.error === 'rate_limit') {
         setMessages([...newMessages, { role: 'assistant', content: "You've sent too many messages. Please wait a moment." }]);
       } else if (data?.response) {
@@ -129,13 +173,22 @@ const WidgetPage = () => {
           }}
         >
           <BotAvatar avatarEmoji={botAvatar} botName={botName} accentColor={primaryColor} size="sm" />
-          <div>
+          <div className="flex-1">
             <p className="text-[14px] font-semibold" style={{ color: 'rgba(255,255,255,0.92)' }}>{botName}</p>
             <div className="flex items-center gap-1.5">
               <span className="inline-block h-1.5 w-1.5 rounded-full bg-[#30d158]" />
               <p className="text-[11px]" style={{ color: 'rgba(255,255,255,0.38)' }}>Online</p>
             </div>
           </div>
+          {messages.length > 1 && (
+            <button
+              onClick={clearSession}
+              className="rounded-[6px] p-1.5 transition-colors hover:bg-[rgba(255,255,255,0.08)]"
+              title="Clear conversation"
+            >
+              <RotateCcw className="h-4 w-4" style={{ color: 'rgba(255,255,255,0.4)' }} />
+            </button>
+          )}
         </div>
 
         {/* Messages */}
