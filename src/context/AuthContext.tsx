@@ -76,8 +76,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const signOut = async () => {
-    const { error } = await supabase.auth.signOut();
-    if (error) throw error;
+    // Clear local state immediately so UI updates even if API call fails
+    setUser(null);
+    setSession(null);
+    setProfile(null);
+    setIsAdmin(false);
+    try {
+      await supabase.auth.signOut({ scope: 'local' });
+    } catch {
+      // Ignore errors — local state is already cleared
+    }
   };
 
   const refreshProfile = async () => {
