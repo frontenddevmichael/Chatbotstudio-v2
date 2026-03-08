@@ -30,7 +30,8 @@ const FAQManager = () => {
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
   const handleAdd = async () => {
-    if (!question.trim() || !answer.trim()) { toast.error('Fill in both fields'); return; }
+    const result = faqSchema.safeParse({ question, answer });
+    if (!result.success) { toast.error(result.error.errors[0].message); return; }
     try {
       await createMutation.mutateAsync({ chatbot_id: id!, question, answer });
       setQuestion(''); setAnswer('');
