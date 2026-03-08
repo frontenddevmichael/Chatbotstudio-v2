@@ -116,7 +116,7 @@ const WidgetPage = () => {
     return (
       <div className="flex h-screen items-center justify-center bg-background p-4">
         <div className="text-center">
-          <span className="mb-3 inline-block text-4xl">🤖</span>
+          <BotAvatar avatarEmoji="bot" botName="Bot" accentColor="#666" size="lg" className="mx-auto mb-3" />
           <p className="text-sm text-muted-foreground">{error}</p>
         </div>
       </div>
