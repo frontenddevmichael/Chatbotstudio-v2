@@ -1,1 +1,7 @@
 project_id = "lcnbcwpixeerkijnnuiz"
+
+[functions.chat]
+verify_jwt = false
+
+[functions.supercharge]
+verify_jwt = false

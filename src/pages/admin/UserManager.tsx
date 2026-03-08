@@ -5,11 +5,13 @@ import AdminLayout from '@/components/layout/AdminLayout';
 import SEO from '@/components/ui/SEO';
 import { toast } from 'sonner';
 import { Search } from 'lucide-react';
+import { useDebounce } from '@/hooks/useDebounce';
 
 const UserManager = () => {
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
   const [planFilter, setPlanFilter] = useState<string>('all');
+  const debouncedSearch = useDebounce(search, 300);
 
   const { data: users, isLoading } = useQuery({
     queryKey: ['admin-users'],
@@ -21,15 +23,15 @@ const UserManager = () => {
 
   const filtered = useMemo(() => {
     let result = users ?? [];
-    if (search) {
-      const q = search.toLowerCase();
+    if (debouncedSearch) {
+      const q = debouncedSearch.toLowerCase();
       result = result.filter((u: any) => u.full_name?.toLowerCase().includes(q) || u.id?.includes(q));
     }
     if (planFilter !== 'all') {
       result = result.filter((u: any) => u.plan === planFilter);
     }
     return result;
-  }, [users, search, planFilter]);
+  }, [users, debouncedSearch, planFilter]);
 
   const togglePlan = useMutation({
     mutationFn: async ({ id, plan }: { id: string; plan: string }) => {
