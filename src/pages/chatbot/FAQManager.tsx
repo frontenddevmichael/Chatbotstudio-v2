@@ -6,6 +6,7 @@ import PageWrapper from '@/components/layout/PageWrapper';
 import SEO from '@/components/ui/SEO';
 import Spinner from '@/components/ui/Spinner';
 import { toast } from 'sonner';
+import { faqSchema } from '@/lib/validations';
 import { Trash2, Zap, Plus, Pencil, Check, X, Search } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useQueryClient } from '@tanstack/react-query';
