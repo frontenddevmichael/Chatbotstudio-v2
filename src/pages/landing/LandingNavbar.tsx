@@ -43,6 +43,12 @@ const LandingNavbar = () => {
             Features
           </button>
           <button
+            onClick={() => scrollTo('developers')}
+            className="text-[13px] text-white/50 hover:text-white/90 transition-colors"
+          >
+            Developers
+          </button>
+          <button
             onClick={() => scrollTo('pricing')}
             className="text-[13px] text-white/50 hover:text-white/90 transition-colors"
           >
@@ -76,6 +82,7 @@ const LandingNavbar = () => {
           >
             <div className="flex flex-col gap-1 px-6 py-4">
               <button onClick={() => scrollTo('features')} className="text-left text-[15px] text-white/60 py-2">Features</button>
+              <button onClick={() => scrollTo('developers')} className="text-left text-[15px] text-white/60 py-2">Developers</button>
               <button onClick={() => scrollTo('pricing')} className="text-left text-[15px] text-white/60 py-2">Pricing</button>
               <Link to="/login" className="text-[15px] text-white/60 py-2" onClick={() => setMenuOpen(false)}>Sign In</Link>
               <Link to="/signup" onClick={() => setMenuOpen(false)}>

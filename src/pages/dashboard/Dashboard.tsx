@@ -9,6 +9,7 @@ import AdSidebar from '@/components/ads/AdSidebar';
 import UpgradeModal from '@/components/billing/UpgradeModal';
 import OnboardingChecklist from '@/components/onboarding/OnboardingChecklist';
 import HealthScore, { calculateHealthScore } from '@/components/chatbot/HealthScore';
+import InstallBanner from '@/components/pwa/InstallBanner';
 import { Progress } from '@/components/ui/progress';
 import { Plus, AlertTriangle, ChevronRight, MoreHorizontal, Trash2, Settings, Rocket, Copy } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
@@ -93,6 +94,9 @@ const Dashboard = () => {
               {chatbots?.length ? `${chatbots.length} chatbot${chatbots.length > 1 ? 's' : ''} running` : 'Create your first chatbot to get started'}
             </p>
           </motion.div>
+
+          {/* Install banner */}
+          <InstallBanner />
 
           {/* Onboarding */}
           <OnboardingChecklist ctx={onboardingCtx} />

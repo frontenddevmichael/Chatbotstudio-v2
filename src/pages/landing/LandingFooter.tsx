@@ -1,6 +1,11 @@
 import { Link } from 'react-router-dom';
 
-const PRODUCT = ['Features', 'Pricing', 'Demo', 'Changelog'];
+const PRODUCT = [
+  { label: 'Features', href: '#features' },
+  { label: 'Developers', href: '#developers' },
+  { label: 'Install App', href: '#install' },
+  { label: 'Pricing', href: '#pricing' },
+];
 const COMPANY = ['About', 'Blog', 'Careers', 'Contact'];
 const LEGAL = ['Privacy', 'Terms', 'Cookie Policy'];
 
@@ -23,8 +28,8 @@ const LandingFooter = () => (
           <h4 className="text-[11px] font-medium tracking-[0.1em] uppercase text-white/25 mb-4">Product</h4>
           <ul className="space-y-2.5">
             {PRODUCT.map(item => (
-              <li key={item}>
-                <span className="text-[13px] text-white/35 hover:text-white/70 transition-colors cursor-pointer">{item}</span>
+              <li key={item.label}>
+                <a href={item.href} className="text-[13px] text-white/35 hover:text-white/70 transition-colors cursor-pointer">{item.label}</a>
               </li>
             ))}
           </ul>
