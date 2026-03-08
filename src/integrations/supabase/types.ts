@@ -14,16 +14,297 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      ads: {
+        Row: {
+          created_at: string | null
+          cta_text: string | null
+          cta_url: string | null
+          description: string | null
+          id: string
+          image_url: string | null
+          is_active: boolean | null
+          placement: string | null
+          title: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          cta_text?: string | null
+          cta_url?: string | null
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          is_active?: boolean | null
+          placement?: string | null
+          title?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          cta_text?: string | null
+          cta_url?: string | null
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          is_active?: boolean | null
+          placement?: string | null
+          title?: string | null
+        }
+        Relationships: []
+      }
+      chatbots: {
+        Row: {
+          avatar_emoji: string | null
+          created_at: string | null
+          embed_token: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          primary_color: string | null
+          tone: string | null
+          total_conversations: number | null
+          user_id: string
+          welcome_message: string | null
+        }
+        Insert: {
+          avatar_emoji?: string | null
+          created_at?: string | null
+          embed_token?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          primary_color?: string | null
+          tone?: string | null
+          total_conversations?: number | null
+          user_id: string
+          welcome_message?: string | null
+        }
+        Update: {
+          avatar_emoji?: string | null
+          created_at?: string | null
+          embed_token?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          primary_color?: string | null
+          tone?: string | null
+          total_conversations?: number | null
+          user_id?: string
+          welcome_message?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chatbots_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      conversations: {
+        Row: {
+          chatbot_id: string
+          id: string
+          last_message_at: string | null
+          messages: Json | null
+          session_id: string | null
+          started_at: string | null
+        }
+        Insert: {
+          chatbot_id: string
+          id?: string
+          last_message_at?: string | null
+          messages?: Json | null
+          session_id?: string | null
+          started_at?: string | null
+        }
+        Update: {
+          chatbot_id?: string
+          id?: string
+          last_message_at?: string | null
+          messages?: Json | null
+          session_id?: string | null
+          started_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "conversations_chatbot_id_fkey"
+            columns: ["chatbot_id"]
+            isOneToOne: false
+            referencedRelation: "chatbots"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      faqs: {
+        Row: {
+          answer: string
+          chatbot_id: string
+          created_at: string | null
+          id: string
+          question: string
+          variations: string[] | null
+        }
+        Insert: {
+          answer: string
+          chatbot_id: string
+          created_at?: string | null
+          id?: string
+          question: string
+          variations?: string[] | null
+        }
+        Update: {
+          answer?: string
+          chatbot_id?: string
+          created_at?: string | null
+          id?: string
+          question?: string
+          variations?: string[] | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "faqs_chatbot_id_fkey"
+            columns: ["chatbot_id"]
+            isOneToOne: false
+            referencedRelation: "chatbots"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      platform_settings: {
+        Row: {
+          announcement_text: string | null
+          free_message_limit: number | null
+          id: number
+          maintenance_mode: boolean | null
+          premium_price_monthly: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          announcement_text?: string | null
+          free_message_limit?: number | null
+          id?: number
+          maintenance_mode?: boolean | null
+          premium_price_monthly?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          announcement_text?: string | null
+          free_message_limit?: number | null
+          id?: number
+          maintenance_mode?: boolean | null
+          premium_price_monthly?: number | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string | null
+          full_name: string | null
+          id: string
+          message_limit: number | null
+          monthly_message_count: number | null
+          plan: string | null
+          stripe_customer_id: string | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string | null
+          full_name?: string | null
+          id: string
+          message_limit?: number | null
+          monthly_message_count?: number | null
+          plan?: string | null
+          stripe_customer_id?: string | null
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string | null
+          full_name?: string | null
+          id?: string
+          message_limit?: number | null
+          monthly_message_count?: number | null
+          plan?: string | null
+          stripe_customer_id?: string | null
+        }
+        Relationships: []
+      }
+      rate_limits: {
+        Row: {
+          endpoint: string
+          id: string
+          identifier: string
+          request_count: number | null
+          window_start: string | null
+        }
+        Insert: {
+          endpoint: string
+          id?: string
+          identifier: string
+          request_count?: number | null
+          window_start?: string | null
+        }
+        Update: {
+          endpoint?: string
+          id?: string
+          identifier?: string
+          request_count?: number | null
+          window_start?: string | null
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
+      waitlist: {
+        Row: {
+          created_at: string | null
+          email: string
+          id: string
+        }
+        Insert: {
+          created_at?: string | null
+          email: string
+          id?: string
+        }
+        Update: {
+          created_at?: string | null
+          email?: string
+          id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "moderator" | "user"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +431,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "moderator", "user"],
+    },
   },
 } as const
