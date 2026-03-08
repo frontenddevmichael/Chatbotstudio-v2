@@ -71,7 +71,7 @@ const LandingNavbar = () => {
         </div>
 
         {/* Mobile */}
-        <button className="md:hidden text-white/70" onClick={() => setMenuOpen(!menuOpen)}>
+        <button className="md:hidden text-muted-foreground" onClick={() => setMenuOpen(!menuOpen)}>
           {menuOpen ? <X size={20} /> : <Menu size={20} />}
         </button>
       </div>
