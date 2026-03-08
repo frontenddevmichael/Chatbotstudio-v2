@@ -35,8 +35,9 @@ const App = () => (
     <HelmetProvider>
       <QueryClientProvider client={queryClient}>
         <AuthProvider>
-          <TooltipProvider>
-            <Toaster />
+          <ThemeProvider>
+            <TooltipProvider>
+              <Toaster />
             <BrowserRouter>
               <Suspense fallback={<PageSkeleton />}>
                 <Routes>
