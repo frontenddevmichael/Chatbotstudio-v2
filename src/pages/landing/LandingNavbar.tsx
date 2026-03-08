@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Menu, X } from 'lucide-react';
 import ThemeToggle from '@/components/ui/ThemeToggle';
+import logo from '@/assets/logo.png';
 
 const LandingNavbar = () => {
   const [scrolled, setScrolled] = useState(false);
