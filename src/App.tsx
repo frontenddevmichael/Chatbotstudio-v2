@@ -8,6 +8,7 @@ import ErrorBoundary from "@/components/ui/ErrorBoundary";
 import React, { Suspense } from "react";
 import PageSkeleton from "@/components/ui/PageSkeleton";
 
+const Landing = React.lazy(() => import("./pages/landing/Landing"));
 const Login = React.lazy(() => import("./pages/auth/Login"));
 const Signup = React.lazy(() => import("./pages/auth/Signup"));
 const Dashboard = React.lazy(() => import("./pages/dashboard/Dashboard"));
@@ -38,7 +39,7 @@ const App = () => (
             <BrowserRouter>
               <Suspense fallback={<PageSkeleton />}>
                 <Routes>
-                  <Route path="/" element={<Login />} />
+                  <Route path="/" element={<Landing />} />
                   <Route path="/login" element={<Login />} />
                   <Route path="/signup" element={<Signup />} />
                   <Route path="/dashboard" element={<ErrorBoundary><Dashboard /></ErrorBoundary>} />

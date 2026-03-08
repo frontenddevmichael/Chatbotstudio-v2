@@ -105,4 +105,30 @@
       filter: drop-shadow(0 0 12px hsl(190 100% 50% / 0.8));
     }
   }
+
+  @keyframes marquee {
+    from { transform: translateX(0); }
+    to { transform: translateX(-50%); }
+  }
+  @keyframes marquee-reverse {
+    from { transform: translateX(-50%); }
+    to { transform: translateX(0); }
+  }
+  .animate-marquee {
+    animation: marquee var(--marquee-duration, 30s) linear infinite;
+  }
+  .animate-marquee-reverse {
+    animation: marquee-reverse var(--marquee-duration, 30s) linear infinite;
+  }
+  @keyframes gradient-border-spin {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+  }
+  .animate-gradient-border {
+    background: linear-gradient(135deg, #00d4ff, #ffb547, #00d4ff, #ffb547);
+    background-size: 300% 300%;
+    animation: gradient-border-spin 4s ease infinite;
+    border-radius: inherit;
+  }
 }
