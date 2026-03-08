@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { sanitizeHTML, sanitizeText } from '@/lib/sanitize';
 import SEO from '@/components/ui/SEO';
 import ErrorBoundary from '@/components/ui/ErrorBoundary';
-import { Send } from 'lucide-react';
+import { ArrowUp } from 'lucide-react';
 import BotAvatar from '@/components/chatbot/BotAvatar';
 
 interface Message {
@@ -70,54 +70,45 @@ const WidgetPage = () => {
 
     try {
       const { data, error: fnError } = await supabase.functions.invoke('chat', {
-        body: {
-          chatbot_id: chatbot.id,
-          session_id: sessionId,
-          messages: newMessages,
-          new_message: text,
-        },
+        body: { chatbot_id: chatbot.id, session_id: sessionId, messages: newMessages, new_message: text },
       });
-
       if (fnError) throw fnError;
       if (data?.error === 'rate_limit') {
-        setMessages([...newMessages, { role: 'assistant', content: "You've sent too many messages. Please wait a moment and try again." }]);
+        setMessages([...newMessages, { role: 'assistant', content: "You've sent too many messages. Please wait a moment." }]);
       } else if (data?.response) {
         setMessages([...newMessages, { role: 'assistant', content: data.response }]);
-      } else if (data?.error) {
-        setMessages([...newMessages, { role: 'assistant', content: "Sorry, I'm having trouble responding right now. Please try again." }]);
+      } else {
+        setMessages([...newMessages, { role: 'assistant', content: "Sorry, I'm having trouble responding. Please try again." }]);
       }
     } catch {
-      setMessages([...newMessages, { role: 'assistant', content: "Sorry, I'm having trouble responding right now. Please try again." }]);
+      setMessages([...newMessages, { role: 'assistant', content: "Sorry, I'm having trouble responding. Please try again." }]);
     } finally {
       setLoading(false);
     }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      sendMessage();
-    }
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
   };
 
-  const primaryColor = chatbot?.primary_color || '#00d4ff';
+  const primaryColor = chatbot?.primary_color || '#0a84ff';
   const botAvatar = chatbot?.avatar_emoji || 'bot';
   const botName = chatbot?.name || 'Bot';
 
   if (initialLoad) {
     return (
-      <div className="flex h-screen items-center justify-center bg-background">
-        <div className="h-6 w-6 animate-spin rounded-full border-2 border-muted-foreground" style={{ borderTopColor: primaryColor }} />
+      <div className="flex h-screen items-center justify-center" style={{ background: '#000' }}>
+        <div className="h-5 w-5 animate-spin rounded-full border-2 border-[rgba(255,255,255,0.2)]" style={{ borderTopColor: primaryColor }} />
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="flex h-screen items-center justify-center bg-background p-4">
+      <div className="flex h-screen items-center justify-center p-4" style={{ background: '#000' }}>
         <div className="text-center">
           <BotAvatar avatarEmoji="bot" botName="Bot" accentColor="#666" size="lg" className="mx-auto mb-3" />
-          <p className="text-sm text-muted-foreground">{error}</p>
+          <p className="text-[13px]" style={{ color: 'rgba(255,255,255,0.6)' }}>{error}</p>
         </div>
       </div>
     );
@@ -125,23 +116,24 @@ const WidgetPage = () => {
 
   return (
     <ErrorBoundary>
-      <div className="flex h-screen flex-col bg-background">
-        <SEO
-          title={chatbot?.name || 'Chat'}
-          description={`Chat with ${chatbot?.name} — powered by ChatBot Studio`}
-        />
+      <div className="flex h-screen flex-col" style={{ background: '#000' }}>
+        <SEO title={botName} description={`Chat with ${botName}`} />
 
         {/* Header */}
         <div
-          className="flex items-center gap-3 border-b px-4 py-3"
-          style={{ borderBottomColor: `${primaryColor}22`, boxShadow: `0 1px 12px -4px ${primaryColor}15` }}
+          className="flex items-center gap-3 px-4 py-3"
+          style={{
+            background: 'rgba(0,0,0,0.85)',
+            backdropFilter: 'saturate(180%) blur(20px)',
+            borderBottom: '1px solid rgba(255,255,255,0.06)',
+          }}
         >
           <BotAvatar avatarEmoji={botAvatar} botName={botName} accentColor={primaryColor} size="sm" />
           <div>
-            <p className="text-sm font-bold text-foreground">{chatbot?.name}</p>
+            <p className="text-[14px] font-semibold" style={{ color: 'rgba(255,255,255,0.92)' }}>{botName}</p>
             <div className="flex items-center gap-1.5">
-              <span className="relative inline-block h-1.5 w-1.5 rounded-full bg-success pulse-dot" />
-              <p className="text-[11px] text-muted-foreground">Online</p>
+              <span className="inline-block h-1.5 w-1.5 rounded-full bg-[#30d158]" />
+              <p className="text-[11px]" style={{ color: 'rgba(255,255,255,0.38)' }}>Online</p>
             </div>
           </div>
         </div>
@@ -149,17 +141,17 @@ const WidgetPage = () => {
         {/* Messages */}
         <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-3">
           {messages.map((msg, i) => (
-            <div key={i} className={`message-in flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`} style={{ animationDelay: `${i * 50}ms` }}>
+            <div key={i} className={`message-in flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`} style={{ animationDelay: `${i * 40}ms` }}>
               {msg.role === 'assistant' && (
-                <BotAvatar avatarEmoji={botAvatar} botName={botName} accentColor={primaryColor} size="sm" className="mr-2 shrink-0" />
+                <BotAvatar avatarEmoji={botAvatar} botName={botName} accentColor={primaryColor} size="sm" className="mr-2 shrink-0 mt-0.5" />
               )}
               <div
-                className={`max-w-[80%] rounded-2xl px-4 py-2.5 text-sm ${
+                className="max-w-[80%] px-3.5 py-2.5 text-[15px] leading-relaxed"
+                style={
                   msg.role === 'user'
-                    ? 'text-primary-foreground rounded-br-md'
-                    : 'bg-card border border-border text-foreground rounded-bl-md'
-                }`}
-                style={msg.role === 'user' ? { backgroundColor: primaryColor } : undefined}
+                    ? { background: primaryColor, color: '#fff', borderRadius: '18px 18px 4px 18px' }
+                    : { background: 'hsl(0 0% 8%)', border: '1px solid rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.92)', borderRadius: '18px 18px 18px 4px' }
+                }
               >
                 <div dangerouslySetInnerHTML={{ __html: sanitizeHTML(msg.content) }} />
               </div>
@@ -168,42 +160,45 @@ const WidgetPage = () => {
           {loading && (
             <div className="message-in flex justify-start">
               <BotAvatar avatarEmoji={botAvatar} botName={botName} accentColor={primaryColor} size="sm" className="mr-2 shrink-0" />
-              <div className="rounded-2xl border border-border bg-card px-4 py-3 rounded-bl-md">
-                <div className="flex gap-1">
-                  <span className="h-2 w-2 animate-bounce rounded-full bg-muted-foreground" style={{ animationDelay: '0ms' }} />
-                  <span className="h-2 w-2 animate-bounce rounded-full bg-muted-foreground" style={{ animationDelay: '150ms' }} />
-                  <span className="h-2 w-2 animate-bounce rounded-full bg-muted-foreground" style={{ animationDelay: '300ms' }} />
+              <div className="px-4 py-3" style={{ background: 'hsl(0 0% 8%)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '18px 18px 18px 4px' }}>
+                <div className="flex gap-1.5">
+                  {[0, 1, 2].map(d => (
+                    <span key={d} className="h-[6px] w-[6px] rounded-full animate-bounce" style={{ background: 'rgba(255,255,255,0.3)', animationDelay: `${d * 150}ms` }} />
+                  ))}
                 </div>
-                <p className="mt-1 text-[10px] text-muted-foreground">Typing...</p>
               </div>
             </div>
           )}
         </div>
 
         {/* Input */}
-        <div className="border-t border-border p-3">
-          <div className="flex gap-2">
+        <div style={{ background: 'hsl(0 0% 4%)', borderTop: '1px solid rgba(255,255,255,0.06)' }} className="p-3">
+          <div className="flex items-center gap-2">
             <input
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder={msgCount >= MAX_MESSAGES_PER_SESSION ? 'Message limit reached' : 'Type a message...'}
+              placeholder={msgCount >= MAX_MESSAGES_PER_SESSION ? 'Message limit reached' : 'Message...'}
               maxLength={2000}
               disabled={msgCount >= MAX_MESSAGES_PER_SESSION}
-              className="flex-1 rounded-lg border border-border bg-card px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none disabled:opacity-50"
-              style={{ borderColor: input ? primaryColor : undefined }}
+              className="flex-1 rounded-full px-4 py-2 text-[15px] outline-none disabled:opacity-40"
+              style={{
+                background: 'hsl(0 0% 11%)',
+                border: '1px solid rgba(255,255,255,0.06)',
+                color: 'rgba(255,255,255,0.92)',
+              }}
             />
             <button
               onClick={sendMessage}
               disabled={loading || !input.trim() || msgCount >= MAX_MESSAGES_PER_SESSION}
-              className="flex h-10 w-10 items-center justify-center rounded-lg text-primary-foreground transition-colors disabled:opacity-30"
-              style={{ backgroundColor: primaryColor }}
+              className="flex h-8 w-8 items-center justify-center rounded-full text-white transition-all active:scale-90 disabled:opacity-25"
+              style={{ background: primaryColor }}
             >
-              <Send className="h-4 w-4" />
+              <ArrowUp className="h-4 w-4" />
             </button>
           </div>
-          <p className="mt-1 text-center text-[10px] text-muted-foreground">
-            Powered by <span className="font-semibold">ChatBot Studio</span>
+          <p className="mt-1.5 text-center text-[10px]" style={{ color: 'rgba(255,255,255,0.2)' }}>
+            Powered by <span className="font-medium">ChatBot Studio</span>
           </p>
         </div>
       </div>

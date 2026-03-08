@@ -4,16 +4,10 @@ import { useConversations } from '@/hooks/useConversations';
 import PageWrapper from '@/components/layout/PageWrapper';
 import SEO from '@/components/ui/SEO';
 import Spinner from '@/components/ui/Spinner';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { useState } from 'react';
-import { ChevronDown, ChevronUp, MessageSquare, BarChart3, Zap } from 'lucide-react';
+import { ChevronDown, ChevronUp, MessageSquare } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-
-const statColors = [
-  { bg: 'bg-primary/10', text: 'text-primary', icon: MessageSquare },
-  { bg: 'bg-success/10', text: 'text-success', icon: BarChart3 },
-  { bg: 'bg-warning/10', text: 'text-warning', icon: Zap },
-];
 
 const Analytics = () => {
   const { id } = useParams<{ id: string }>();
@@ -21,7 +15,7 @@ const Analytics = () => {
   const { data: conversations, isLoading } = useConversations(id!);
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
-  if (isLoading) return <PageWrapper><div className="flex justify-center py-20"><Spinner className="h-8 w-8" /></div></PageWrapper>;
+  if (isLoading) return <PageWrapper><div className="flex justify-center py-20"><Spinner className="h-6 w-6" /></div></PageWrapper>;
 
   const totalConvos = conversations?.length ?? 0;
   const totalMessages = conversations?.reduce((a, c) => a + (Array.isArray(c.messages) ? c.messages.length : 0), 0) ?? 0;
@@ -53,76 +47,59 @@ const Analytics = () => {
   const maxQuestionCount = topQuestions.length ? topQuestions[0][1] : 1;
 
   const stats = [
-    { label: 'Total Conversations', value: totalConvos },
-    { label: 'Total Messages', value: totalMessages },
-    { label: 'Avg Length', value: `${avgLength} msgs` },
+    { label: 'CONVERSATIONS', value: totalConvos },
+    { label: 'MESSAGES', value: totalMessages },
+    { label: 'AVG LENGTH', value: `${avgLength}` },
   ];
 
   return (
     <PageWrapper>
-      <SEO title={`Analytics - ${chatbot?.name || 'Chatbot'}`} noIndex />
-      <h1 className="mb-6 font-display text-2xl font-bold text-foreground">Analytics — {chatbot?.name}</h1>
+      <SEO title={`Analytics — ${chatbot?.name || 'Chatbot'}`} noIndex />
+      <h1 className="text-[22px] font-semibold text-foreground mb-6">Analytics — {chatbot?.name}</h1>
 
-      <div className="mb-6 grid grid-cols-3 gap-3">
-        {stats.map((s, i) => {
-          const c = statColors[i];
-          return (
-            <div key={s.label} className="glass-card glow-border rounded-lg p-4">
-              <div className="flex items-center gap-3">
-                <div className={`flex h-9 w-9 items-center justify-center rounded-lg ${c.bg}`}>
-                  <c.icon className={`h-4 w-4 ${c.text}`} />
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">{s.label}</p>
-                  <p className="font-display text-2xl font-bold text-foreground">{s.value}</p>
-                </div>
-              </div>
-            </div>
-          );
-        })}
+      {/* Stats */}
+      <div className="mb-6 flex items-center rounded-[14px] border border-border bg-card p-5" style={{ boxShadow: 'var(--shadow-sm)' }}>
+        {stats.map((s, i) => (
+          <div key={s.label} className="flex flex-1 flex-col items-center relative">
+            {i > 0 && <div className="absolute left-0 top-1/2 -translate-y-1/2 h-8 w-px bg-border" />}
+            <span className="font-serif text-[32px] italic leading-none text-foreground">{s.value}</span>
+            <span className="mt-1.5 text-[11px] font-medium tracking-[0.06em] text-muted-foreground">{s.label}</span>
+          </div>
+        ))}
       </div>
 
       {/* Chart */}
-      <div className="glass-card mb-6 rounded-lg p-4">
-        <h3 className="mb-4 text-sm font-semibold text-foreground">Conversations (Last 7 Days)</h3>
-        <ResponsiveContainer width="100%" height={200}>
+      <div className="mb-6 rounded-[14px] border border-border bg-card p-5" style={{ boxShadow: 'var(--shadow-sm)' }}>
+        <h3 className="mb-4 text-[13px] font-medium text-muted-foreground">Last 7 Days</h3>
+        <ResponsiveContainer width="100%" height={180}>
           <BarChart data={chartData}>
-            <defs>
-              <linearGradient id="barGradient" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="hsl(190 100% 50%)" stopOpacity={1} />
-                <stop offset="100%" stopColor="hsl(190 100% 50%)" stopOpacity={0.3} />
-              </linearGradient>
-            </defs>
-            <XAxis dataKey="day" tick={{ fill: 'hsl(240 10% 55%)', fontSize: 11 }} axisLine={false} tickLine={false} />
-            <YAxis tick={{ fill: 'hsl(240 10% 55%)', fontSize: 11 }} axisLine={false} tickLine={false} />
+            <XAxis dataKey="day" tick={{ fill: 'hsl(0 0% 38%)', fontSize: 11 }} axisLine={false} tickLine={false} />
+            <YAxis tick={{ fill: 'hsl(0 0% 38%)', fontSize: 11 }} axisLine={false} tickLine={false} />
             <Tooltip
               contentStyle={{
-                background: 'hsl(240 15% 8% / 0.9)',
-                backdropFilter: 'blur(12px)',
-                border: '1px solid hsl(240 15% 18% / 0.6)',
-                borderRadius: 8,
-                color: 'hsl(240 20% 96%)',
+                background: 'hsl(0 0% 8%)',
+                border: '1px solid rgba(255,255,255,0.1)',
+                borderRadius: 10,
+                color: 'rgba(255,255,255,0.92)',
+                fontSize: 13,
               }}
             />
-            <Bar dataKey="count" fill="url(#barGradient)" radius={[4, 4, 0, 0]} />
+            <Bar dataKey="count" fill="hsl(211 100% 52%)" radius={[4, 4, 0, 0]} />
           </BarChart>
         </ResponsiveContainer>
       </div>
 
       {/* Top questions */}
       {topQuestions.length > 0 && (
-        <div className="glass-card mb-6 rounded-lg p-4">
-          <h3 className="mb-3 text-sm font-semibold text-foreground">Top Questions</h3>
-          <div className="space-y-2.5">
+        <div className="mb-6 rounded-[14px] border border-border bg-card p-5" style={{ boxShadow: 'var(--shadow-sm)' }}>
+          <h3 className="mb-3 text-[13px] font-medium text-muted-foreground">Top Questions</h3>
+          <div className="space-y-2">
             {topQuestions.map(([q, count]) => (
               <div key={q} className="relative">
-                <div
-                  className="absolute inset-y-0 left-0 rounded bg-primary/5"
-                  style={{ width: `${(count / maxQuestionCount) * 100}%` }}
-                />
-                <div className="relative flex items-center justify-between px-2 py-1.5 text-sm">
+                <div className="absolute inset-y-0 left-0 rounded-[4px] bg-primary/5" style={{ width: `${(count / maxQuestionCount) * 100}%` }} />
+                <div className="relative flex items-center justify-between px-2.5 py-1.5 text-[13px]">
                   <span className="truncate text-muted-foreground">{q}</span>
-                  <span className="ml-2 shrink-0 rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">{count}</span>
+                  <span className="ml-2 shrink-0 rounded-[6px] bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary">{count}</span>
                 </div>
               </div>
             ))}
@@ -131,28 +108,28 @@ const Analytics = () => {
       )}
 
       {/* Recent conversations */}
-      <div className="glass-card rounded-lg p-4">
-        <h3 className="mb-3 text-sm font-semibold text-foreground">Recent Conversations</h3>
+      <div className="rounded-[14px] border border-border bg-card p-5" style={{ boxShadow: 'var(--shadow-sm)' }}>
+        <h3 className="mb-3 text-[13px] font-medium text-muted-foreground">Recent Conversations</h3>
         {!conversations?.length ? (
-          <p className="text-sm text-muted-foreground">No conversations yet</p>
+          <p className="text-[13px] text-muted-foreground">No conversations yet</p>
         ) : (
-          <div className="space-y-2">
+          <div className="space-y-1">
             {conversations.slice(0, 10).map((convo) => (
-              <div key={convo.id} className="rounded-md border border-border bg-muted/30 p-3">
+              <div key={convo.id} className="rounded-[10px] border border-border bg-[hsl(var(--color-surface-2))] overflow-hidden">
                 <button
                   onClick={() => setExpandedId(expandedId === convo.id ? null : convo.id)}
-                  className="flex w-full items-center justify-between text-left"
+                  className="flex w-full items-center justify-between p-3 text-left transition-colors hover:bg-[hsl(var(--color-surface-3))]"
                 >
                   <div className="flex items-center gap-2">
-                    <MessageSquare className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-xs text-muted-foreground">
+                    <MessageSquare className="h-3.5 w-3.5 text-muted-foreground" />
+                    <span className="text-[12px] text-muted-foreground">
                       {Array.isArray(convo.messages) ? convo.messages.length : 0} messages
                     </span>
-                    <span className="text-xs text-muted-foreground">
+                    <span className="text-[12px] text-muted-foreground/50">
                       {convo.started_at ? new Date(convo.started_at).toLocaleDateString() : ''}
                     </span>
                   </div>
-                  {expandedId === convo.id ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+                  {expandedId === convo.id ? <ChevronUp className="h-3.5 w-3.5 text-muted-foreground" /> : <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />}
                 </button>
                 <AnimatePresence>
                   {expandedId === convo.id && Array.isArray(convo.messages) && (
@@ -163,10 +140,12 @@ const Analytics = () => {
                       transition={{ duration: 0.2 }}
                       className="overflow-hidden"
                     >
-                      <div className="mt-3 space-y-2">
+                      <div className="border-t border-border p-3 space-y-1.5">
                         {convo.messages.map((msg: any, i: number) => (
-                          <div key={i} className={`rounded p-2 text-xs ${msg.role === 'user' ? 'bg-primary/5 text-foreground' : 'bg-card text-muted-foreground'}`}>
-                            <span className="font-semibold">{msg.role === 'user' ? 'User' : 'Bot'}: </span>
+                          <div key={i} className={`rounded-[6px] p-2 text-[12px] ${
+                            msg.role === 'user' ? 'bg-primary/5 text-foreground' : 'bg-[hsl(var(--color-surface-3))] text-muted-foreground'
+                          }`}>
+                            <span className="font-medium">{msg.role === 'user' ? 'User' : 'Bot'}: </span>
                             {String(msg.content).slice(0, 200)}
                           </div>
                         ))}

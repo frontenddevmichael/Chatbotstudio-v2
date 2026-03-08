@@ -12,7 +12,7 @@ const Signup = () => {
   const [password, setPassword] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
-  if (loading) return <div className="flex min-h-screen items-center justify-center bg-background"><Spinner className="h-8 w-8" /></div>;
+  if (loading) return <div className="flex min-h-screen items-center justify-center bg-background"><Spinner className="h-6 w-6" /></div>;
   if (user) return <Navigate to="/dashboard" replace />;
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -31,62 +31,61 @@ const Signup = () => {
   };
 
   return (
-    <div className="auth-mesh-bg scanline-overlay relative flex min-h-screen items-center justify-center px-4">
-      <SEO title="Get Started Free" description="Create your free AI chatbot in minutes. No coding required." />
-      <div className="glass-card w-full max-w-sm rounded-xl p-8">
+    <div className="flex min-h-screen items-center justify-center bg-background px-4">
+      <SEO title="Get Started" description="Create your free AI chatbot in minutes." />
+      <div className="w-full max-w-[380px]">
         <div className="mb-8 text-center">
-          <h1 className="font-display text-2xl font-bold text-foreground">
+          <h1 className="text-[22px] font-semibold text-foreground">
             ChatBot<span className="text-primary"> Studio</span>
           </h1>
-          <p className="mt-2 text-sm text-muted-foreground">Start building AI chatbots for free</p>
+          <p className="mt-2 text-[13px] text-muted-foreground">Create your free account</p>
         </div>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="mb-1 block text-sm font-medium text-foreground">Full Name</label>
-            <input
-              type="text"
-              value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
-              className="w-full rounded-md border border-border bg-muted/50 px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-              placeholder="John Doe"
-            />
-          </div>
-          <div>
-            <label className="mb-1 block text-sm font-medium text-foreground">Email</label>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full rounded-md border border-border bg-muted/50 px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-              placeholder="you@example.com"
-            />
-          </div>
-          <div>
-            <label className="mb-1 block text-sm font-medium text-foreground">Password</label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full rounded-md border border-border bg-muted/50 px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-              placeholder="••••••••"
-            />
-          </div>
-          <button
-            type="submit"
-            disabled={submitting}
-            className="flex w-full items-center justify-center gap-2 rounded-md bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition-all hover:bg-primary/90 disabled:opacity-50"
-          >
-            {submitting ? <Spinner /> : 'Create Account'}
-          </button>
-        </form>
-        <p className="mt-4 text-center text-sm text-muted-foreground">
+
+        <div className="rounded-[14px] border border-border bg-card p-6" style={{ boxShadow: 'var(--shadow-md)' }}>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label className="mb-1.5 block text-[13px] font-medium text-muted-foreground">Full Name</label>
+              <input
+                type="text"
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+                className="w-full rounded-[10px] border border-border bg-[hsl(var(--color-surface-3))] px-3 py-2 text-[15px] text-foreground placeholder:text-muted-foreground outline-none transition-colors focus:border-primary"
+                placeholder="John Doe"
+              />
+            </div>
+            <div>
+              <label className="mb-1.5 block text-[13px] font-medium text-muted-foreground">Email</label>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full rounded-[10px] border border-border bg-[hsl(var(--color-surface-3))] px-3 py-2 text-[15px] text-foreground placeholder:text-muted-foreground outline-none transition-colors focus:border-primary"
+                placeholder="you@example.com"
+              />
+            </div>
+            <div>
+              <label className="mb-1.5 block text-[13px] font-medium text-muted-foreground">Password</label>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full rounded-[10px] border border-border bg-[hsl(var(--color-surface-3))] px-3 py-2 text-[15px] text-foreground placeholder:text-muted-foreground outline-none transition-colors focus:border-primary"
+                placeholder="••••••••"
+              />
+            </div>
+            <button
+              type="submit"
+              disabled={submitting}
+              className="flex w-full items-center justify-center rounded-[10px] bg-primary px-4 py-2.5 text-[15px] font-medium text-primary-foreground transition-all hover:bg-primary/90 active:scale-[0.97] disabled:opacity-50"
+            >
+              {submitting ? <Spinner /> : 'Create Account'}
+            </button>
+          </form>
+        </div>
+
+        <p className="mt-4 text-center text-[13px] text-muted-foreground">
           Already have an account?{' '}
-          <Link to="/login" className="font-medium text-primary hover:underline">
-            Sign in
-          </Link>
-        </p>
-        <p className="mt-6 text-center text-[11px] text-muted-foreground/60">
-          Join 2,000+ businesses already building with AI
+          <Link to="/login" className="font-medium text-primary hover:underline">Sign in</Link>
         </p>
       </div>
     </div>
