@@ -172,12 +172,7 @@ const WidgetPage = () => {
           ))}
           {loading && (
             <div className="message-in flex justify-start">
-              <div
-                className="mr-2 flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-sm"
-                style={{ background: `${primaryColor}15` }}
-              >
-                {botEmoji}
-              </div>
+              <BotAvatar avatarEmoji={botAvatar} botName={botName} accentColor={primaryColor} size="sm" className="mr-2 shrink-0" />
               <div className="rounded-2xl border border-border bg-card px-4 py-3 rounded-bl-md">
                 <div className="flex gap-1">
                   <span className="h-2 w-2 animate-bounce rounded-full bg-muted-foreground" style={{ animationDelay: '0ms' }} />
