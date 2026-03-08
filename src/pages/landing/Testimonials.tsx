@@ -24,17 +24,17 @@ const Testimonials = () => {
   const [ref, inView] = useInView({ triggerOnce: true, threshold: 0.15 });
 
   return (
-    <section ref={ref} className="py-24 md:py-32 bg-black px-6">
+    <section ref={ref} className="py-24 md:py-32 bg-background px-6">
       <div className="max-w-5xl mx-auto">
         <motion.p
-          className="text-[11px] font-medium tracking-[0.15em] uppercase text-[#0a84ff] text-center mb-4"
+          className="text-[11px] font-medium tracking-[0.15em] uppercase text-primary text-center mb-4"
           initial={{ opacity: 0 }}
           animate={inView ? { opacity: 1 } : {}}
         >
           Testimonials
         </motion.p>
         <motion.h2
-          className="font-serif text-[36px] sm:text-[44px] font-normal text-white/90 text-center mb-16"
+          className="font-serif text-[36px] sm:text-[44px] font-normal text-foreground/90 text-center mb-16"
           initial={{ opacity: 0, y: 24 }}
           animate={inView ? { opacity: 1, y: 0 } : {}}
         >
@@ -45,7 +45,7 @@ const Testimonials = () => {
           {TESTIMONIALS.map((t, i) => (
             <motion.div
               key={i}
-              className="relative bg-[#0a0a0a] border border-white/[0.06] rounded-[14px] p-6"
+              className="relative bg-card border border-border rounded-[14px] p-6"
               initial={{ opacity: 0, y: 20 }}
               animate={inView ? { opacity: 1, y: 0 } : {}}
               transition={{ duration: 0.4, delay: 0.2 + i * 0.1 }}
@@ -56,11 +56,11 @@ const Testimonials = () => {
                 ))}
               </div>
 
-              <p className="text-[14px] text-white/55 leading-relaxed mb-6">"{t.quote}"</p>
+              <p className="text-[14px] text-muted-foreground leading-relaxed mb-6">"{t.quote}"</p>
 
               <div>
-                <div className="text-[14px] font-medium text-white/80">{t.name}</div>
-                <div className="text-[12px] text-white/30">{t.role}</div>
+                <div className="text-[14px] font-medium text-foreground/80">{t.name}</div>
+                <div className="text-[12px] text-muted-foreground/60">{t.role}</div>
               </div>
             </motion.div>
           ))}

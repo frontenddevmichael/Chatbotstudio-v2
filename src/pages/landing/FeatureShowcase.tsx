@@ -65,17 +65,17 @@ const TabContent = ({ tab }: { tab: typeof TABS[0] }) => {
   if (tab.id === 'conversations') {
     return (
       <div className="grid grid-cols-2 gap-3">
-        <div className="rounded-[10px] border border-white/[0.06] bg-black p-4">
-          <div className="text-[11px] font-mono text-[#0a84ff] mb-2">Layer 1 — Knowledge</div>
-          <div className="text-[13px] text-white/60 bg-white/[0.03] rounded-md p-2">
-            <span className="text-white/30">Q:</span> "What are your hours?"<br />
-            <span className="text-[#0a84ff]">→</span> Mon–Sat 9am–6pm
+        <div className="rounded-[10px] border border-border bg-background p-4">
+          <div className="text-[11px] font-mono text-primary mb-2">Layer 1 — Knowledge</div>
+          <div className="text-[13px] text-muted-foreground bg-muted/40 rounded-md p-2">
+            <span className="text-muted-foreground/60">Q:</span> "What are your hours?"<br />
+            <span className="text-primary">→</span> Mon–Sat 9am–6pm
           </div>
         </div>
-        <div className="rounded-[10px] border border-white/[0.06] bg-black p-4">
+        <div className="rounded-[10px] border border-border bg-background p-4">
           <div className="text-[11px] font-mono text-[#ff9f0a] mb-2">Layer 2 — General AI</div>
-          <div className="text-[13px] text-white/60 bg-white/[0.03] rounded-md p-2">
-            <span className="text-white/30">Q:</span> "Write a return policy"<br />
+          <div className="text-[13px] text-muted-foreground bg-muted/40 rounded-md p-2">
+            <span className="text-muted-foreground/60">Q:</span> "Write a return policy"<br />
             <span className="text-[#ff9f0a]">→</span> Generates complete policy
           </div>
         </div>
@@ -84,10 +84,10 @@ const TabContent = ({ tab }: { tab: typeof TABS[0] }) => {
   }
   if (tab.id === 'deploy') {
     return (
-      <div className="rounded-[10px] border border-white/[0.06] bg-black p-4 font-mono text-[13px]">
-        <div className="text-white/25 mb-1">{'<!-- Add to your website -->'}</div>
-        <div className="text-[#0a84ff]">{'<script src="chatbot-studio.js"'}</div>
-        <div className="text-[#0a84ff] pl-4">{'data-token="your-token" />'}</div>
+      <div className="rounded-[10px] border border-border bg-background p-4 font-mono text-[13px]">
+        <div className="text-muted-foreground/50 mb-1">{'<!-- Add to your website -->'}</div>
+        <div className="text-primary">{'<script src="chatbot-studio.js"'}</div>
+        <div className="text-primary pl-4">{'data-token="your-token" />'}</div>
       </div>
     );
   }
@@ -99,9 +99,9 @@ const TabContent = ({ tab }: { tab: typeof TABS[0] }) => {
           { label: 'Conversations', val: '89' },
           { label: 'Satisfaction', val: '94%' },
         ].map(s => (
-          <div key={s.label} className="rounded-[10px] border border-white/[0.06] bg-black p-3 text-center">
-            <div className="font-serif text-[22px] text-white/90">{s.val}</div>
-            <div className="text-[11px] text-white/30 mt-1">{s.label}</div>
+          <div key={s.label} className="rounded-[10px] border border-border bg-background p-3 text-center">
+            <div className="font-serif text-[22px] text-foreground/90">{s.val}</div>
+            <div className="text-[11px] text-muted-foreground/60 mt-1">{s.label}</div>
           </div>
         ))}
       </div>
@@ -109,12 +109,12 @@ const TabContent = ({ tab }: { tab: typeof TABS[0] }) => {
   }
   if (tab.id === 'admin') {
     return (
-      <div className="rounded-[10px] border border-white/[0.06] bg-black overflow-hidden">
-        <div className="grid grid-cols-4 text-[11px] font-medium tracking-[0.04em] uppercase text-white/25 p-3 border-b border-white/[0.06]">
+      <div className="rounded-[10px] border border-border bg-background overflow-hidden">
+        <div className="grid grid-cols-4 text-[11px] font-medium tracking-[0.04em] uppercase text-muted-foreground/50 p-3 border-b border-border">
           <span>User</span><span>Plan</span><span>Bots</span><span>Status</span>
         </div>
         {[['Sarah K.', 'Premium', '3', 'Active'], ['Mike J.', 'Free', '1', 'Active'], ['Lisa T.', 'Premium', '7', 'Active']].map((row, i) => (
-          <div key={i} className="grid grid-cols-4 text-[13px] p-3 border-b border-white/[0.03] text-white/55">
+          <div key={i} className="grid grid-cols-4 text-[13px] p-3 border-b border-border/40 text-muted-foreground">
             <span>{row[0]}</span><span>{row[1]}</span><span>{row[2]}</span>
             <span className="text-[#30d158]">{row[3]}</span>
           </div>
@@ -125,8 +125,8 @@ const TabContent = ({ tab }: { tab: typeof TABS[0] }) => {
   // supercharge
   return (
     <div className="space-y-3">
-      <div className="rounded-[10px] border border-white/[0.06] bg-black p-3 text-[13px] text-white/55">
-        <span className="text-white/25">Original:</span> "What are your opening hours?"
+      <div className="rounded-[10px] border border-border bg-background p-3 text-[13px] text-muted-foreground">
+        <span className="text-muted-foreground/50">Original:</span> "What are your opening hours?"
       </div>
       <div className="grid grid-cols-2 gap-2">
         {['When do you open?', 'What time do you close?', 'Are you open on weekends?', 'Business hours?'].map((v, i) => (
@@ -144,24 +144,24 @@ const FeatureShowcase = () => {
   const [ref, inView] = useInView({ triggerOnce: true, threshold: 0.15 });
 
   return (
-    <section ref={ref} id="features" className="py-24 md:py-32 bg-black px-6">
+    <section ref={ref} id="features" className="py-24 md:py-32 bg-background px-6">
       <div className="max-w-6xl mx-auto">
         <motion.p
-          className="text-[11px] font-medium tracking-[0.15em] uppercase text-[#0a84ff] text-center mb-4"
+          className="text-[11px] font-medium tracking-[0.15em] uppercase text-primary text-center mb-4"
           initial={{ opacity: 0 }}
           animate={inView ? { opacity: 1 } : {}}
         >
           Features
         </motion.p>
         <motion.h2
-          className="font-serif text-[36px] sm:text-[44px] font-normal text-white/90 text-center mb-4"
+          className="font-serif text-[36px] sm:text-[44px] font-normal text-foreground/90 text-center mb-4"
           initial={{ opacity: 0, y: 24 }}
           animate={inView ? { opacity: 1, y: 0 } : {}}
         >
           Everything your chatbot needs
         </motion.h2>
         <motion.p
-          className="text-[15px] text-white/40 text-center mb-16 max-w-md mx-auto"
+          className="text-[15px] text-muted-foreground text-center mb-16 max-w-md mx-auto"
           initial={{ opacity: 0 }}
           animate={inView ? { opacity: 1 } : {}}
           transition={{ delay: 0.15 }}
@@ -179,23 +179,23 @@ const FeatureShowcase = () => {
                   key={tab.id}
                   onClick={() => setActive(i)}
                   className={`w-full text-left px-3 py-2.5 rounded-[8px] flex items-center gap-2.5 transition-all relative ${
-                    active === i ? 'bg-white/[0.05] text-white/90' : 'text-white/40 hover:text-white/60'
+                    active === i ? 'bg-muted/60 text-foreground/90' : 'text-muted-foreground hover:text-foreground/60'
                   }`}
                 >
                   {active === i && (
                     <motion.div
                       layoutId="activeFeatureTab"
-                      className="absolute left-0 top-1/2 -translate-y-1/2 w-[2px] h-4 bg-[#0a84ff] rounded-full"
+                      className="absolute left-0 top-1/2 -translate-y-1/2 w-[2px] h-4 bg-primary rounded-full"
                     />
                   )}
-                  <Icon size={16} className={active === i ? 'text-[#0a84ff]' : ''} />
+                  <Icon size={16} className={active === i ? 'text-primary' : ''} />
                   <span className="text-[13px] font-medium">{tab.title}</span>
                 </button>
               );
             })}
           </div>
 
-          <div className="bg-[#0a0a0a] border border-white/[0.06] rounded-[14px] p-8 min-h-[300px]">
+          <div className="bg-card border border-border rounded-[14px] p-8 min-h-[300px]">
             <AnimatePresence mode="wait">
               <motion.div
                 key={active}
@@ -204,11 +204,11 @@ const FeatureShowcase = () => {
                 exit={{ opacity: 0, x: -12 }}
                 transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
               >
-                <h3 className="font-serif text-[22px] text-white/90 mb-2">{TABS[active].headline}</h3>
+                <h3 className="font-serif text-[22px] text-foreground/90 mb-2">{TABS[active].headline}</h3>
                 <ul className="space-y-2 mb-6">
                   {TABS[active].points.map((p, i) => (
-                    <li key={i} className="text-[13px] text-white/45 flex items-start gap-2">
-                      <span className="text-[#0a84ff] mt-0.5 text-[11px]">✓</span> {p}
+                    <li key={i} className="text-[13px] text-muted-foreground flex items-start gap-2">
+                      <span className="text-primary mt-0.5 text-[11px]">✓</span> {p}
                     </li>
                   ))}
                 </ul>
@@ -224,13 +224,13 @@ const FeatureShowcase = () => {
             const Icon = tab.icon;
             const isOpen = active === i;
             return (
-              <div key={tab.id} className="border border-white/[0.06] rounded-[10px] overflow-hidden">
+              <div key={tab.id} className="border border-border rounded-[10px] overflow-hidden">
                 <button
                   onClick={() => setActive(i)}
-                  className="w-full px-4 py-3 flex items-center gap-3 text-left bg-[#0a0a0a]"
+                  className="w-full px-4 py-3 flex items-center gap-3 text-left bg-card"
                 >
-                  <Icon size={16} className={isOpen ? 'text-[#0a84ff]' : 'text-white/30'} />
-                  <span className={`text-[13px] font-medium ${isOpen ? 'text-white/90' : 'text-white/45'}`}>{tab.title}</span>
+                  <Icon size={16} className={isOpen ? 'text-primary' : 'text-muted-foreground/60'} />
+                  <span className={`text-[13px] font-medium ${isOpen ? 'text-foreground/90' : 'text-muted-foreground'}`}>{tab.title}</span>
                 </button>
                 <AnimatePresence>
                   {isOpen && (
@@ -241,11 +241,11 @@ const FeatureShowcase = () => {
                       transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
                       className="overflow-hidden"
                     >
-                      <div className="p-4 bg-black">
-                        <h4 className="font-serif text-[17px] text-white/85 mb-2">{tab.headline}</h4>
+                      <div className="p-4 bg-background">
+                        <h4 className="font-serif text-[17px] text-foreground/85 mb-2">{tab.headline}</h4>
                         <ul className="space-y-1.5 mb-4">
                           {tab.points.map((p, j) => (
-                            <li key={j} className="text-[13px] text-white/40">✓ {p}</li>
+                            <li key={j} className="text-[13px] text-muted-foreground">✓ {p}</li>
                           ))}
                         </ul>
                         <TabContent tab={tab} />

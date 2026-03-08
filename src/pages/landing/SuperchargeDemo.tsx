@@ -40,18 +40,18 @@ const SuperchargeDemo = () => {
   }, [fired, fire]);
 
   return (
-    <section ref={ref} className="py-24 md:py-32 bg-black px-6">
+    <section ref={ref} className="py-24 md:py-32 bg-background px-6">
       {inView && !fired && <AutoFire onFire={handleView} />}
       <div className="max-w-4xl mx-auto text-center">
         <motion.h2
-          className="font-serif text-[36px] sm:text-[44px] font-normal text-white/90 mb-4"
+          className="font-serif text-[36px] sm:text-[44px] font-normal text-foreground/90 mb-4"
           initial={{ opacity: 0, y: 24 }}
           animate={inView ? { opacity: 1, y: 0 } : {}}
         >
           One question. <span className="italic text-[#ff9f0a]">Eight ways to ask it.</span>
         </motion.h2>
         <motion.p
-          className="text-[15px] text-white/40 mb-12 max-w-md mx-auto"
+          className="text-[15px] text-muted-foreground mb-12 max-w-md mx-auto"
           initial={{ opacity: 0 }}
           animate={inView ? { opacity: 1 } : {}}
           transition={{ delay: 0.15 }}
@@ -61,13 +61,13 @@ const SuperchargeDemo = () => {
 
         {/* Original FAQ */}
         <motion.div
-          className="inline-block rounded-[10px] border border-white/[0.08] bg-[#0a0a0a] px-6 py-4 mb-8"
+          className="inline-block rounded-[10px] border border-border bg-card px-6 py-4 mb-8"
           initial={{ opacity: 0, scale: 0.97 }}
           animate={inView ? { opacity: 1, scale: 1 } : {}}
           transition={{ delay: 0.2 }}
         >
-          <div className="text-[11px] font-mono text-white/25 mb-1">Original FAQ</div>
-          <div className="text-[15px] text-white/80 font-medium">"What are your opening hours?"</div>
+          <div className="text-[11px] font-mono text-muted-foreground/50 mb-1">Original FAQ</div>
+          <div className="text-[15px] text-foreground/80 font-medium">"What are your opening hours?"</div>
         </motion.div>
 
         {/* Fire button */}
@@ -103,7 +103,7 @@ const SuperchargeDemo = () => {
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="font-mono text-[13px] text-white/30"
+            className="font-mono text-[13px] text-muted-foreground/60"
           >
             <span className="text-[#ff9f0a] font-semibold">{count}</span> variations generated
           </motion.div>

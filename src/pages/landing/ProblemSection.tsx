@@ -11,20 +11,20 @@ const ProblemSection = () => {
   const [ref, inView] = useInView({ triggerOnce: true, threshold: 0.15 });
 
   return (
-    <section ref={ref} className="py-24 md:py-32 bg-black px-6">
+    <section ref={ref} className="py-24 md:py-32 bg-background px-6">
       <div className="max-w-6xl mx-auto">
         <div className="grid md:grid-cols-2 gap-12 md:gap-20 mb-16">
           <motion.h2
-            className="font-serif text-[36px] sm:text-[44px] lg:text-[52px] font-normal text-white/90 leading-[1.05]"
+            className="font-serif text-[36px] sm:text-[44px] lg:text-[52px] font-normal text-foreground/90 leading-[1.05]"
             initial={{ opacity: 0, y: 24 }}
             animate={inView ? { opacity: 1, y: 0 } : {}}
             transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
           >
             Your customers have questions.{' '}
-            <span className="text-white/30">Right now. At 2am.</span>
+            <span className="text-muted-foreground/60">Right now. At 2am.</span>
           </motion.h2>
           <motion.p
-            className="text-[15px] text-white/45 leading-relaxed self-end"
+            className="text-[15px] text-muted-foreground leading-relaxed self-end"
             initial={{ opacity: 0, y: 24 }}
             animate={inView ? { opacity: 1, y: 0 } : {}}
             transition={{ duration: 0.5, delay: 0.15 }}
@@ -39,22 +39,22 @@ const ProblemSection = () => {
           {PAINS.map((pain, i) => (
             <motion.div
               key={i}
-              className="p-6 rounded-[14px] bg-[#0a0a0a] border border-white/[0.06]"
+              className="p-6 rounded-[14px] bg-card border border-border"
               initial={{ opacity: 0, y: 16 }}
               animate={inView ? { opacity: 1, y: 0 } : {}}
               transition={{ duration: 0.4, delay: 0.25 + i * 0.08 }}
             >
-              <div className="w-7 h-7 rounded-full bg-[#ff453a]/10 flex items-center justify-center mb-4">
-                <span className="text-[#ff453a] text-[11px] font-bold">✕</span>
+              <div className="w-7 h-7 rounded-full bg-destructive/10 flex items-center justify-center mb-4">
+                <span className="text-destructive text-[11px] font-bold">✕</span>
               </div>
-              <h4 className="text-[15px] font-semibold text-white/85 mb-2">{pain.title}</h4>
-              <p className="text-[13px] text-white/35 leading-relaxed">{pain.desc}</p>
+              <h4 className="text-[15px] font-semibold text-foreground/85 mb-2">{pain.title}</h4>
+              <p className="text-[13px] text-muted-foreground/70 leading-relaxed">{pain.desc}</p>
             </motion.div>
           ))}
         </div>
 
         <motion.p
-          className="text-[15px] font-medium text-[#0a84ff]"
+          className="text-[15px] font-medium text-primary"
           initial={{ opacity: 0, x: -12 }}
           animate={inView ? { opacity: 1, x: 0 } : {}}
           transition={{ duration: 0.4, delay: 0.5 }}
