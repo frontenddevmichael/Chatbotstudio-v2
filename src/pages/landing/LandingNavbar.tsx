@@ -42,28 +42,29 @@ const LandingNavbar = () => {
         <div className="hidden md:flex items-center gap-8">
           <button
             onClick={() => scrollTo('features')}
-            className="text-[13px] text-white/50 hover:text-white/90 transition-colors"
+            className="text-[13px] text-muted-foreground hover:text-foreground transition-colors"
           >
             Features
           </button>
           <button
             onClick={() => scrollTo('developers')}
-            className="text-[13px] text-white/50 hover:text-white/90 transition-colors"
+            className="text-[13px] text-muted-foreground hover:text-foreground transition-colors"
           >
             Developers
           </button>
           <button
             onClick={() => scrollTo('pricing')}
-            className="text-[13px] text-white/50 hover:text-white/90 transition-colors"
+            className="text-[13px] text-muted-foreground hover:text-foreground transition-colors"
           >
             Pricing
           </button>
-          <Link to="/login" className="text-[13px] text-white/50 hover:text-white/90 transition-colors">
+          <ThemeToggle />
+          <Link to="/login" className="text-[13px] text-muted-foreground hover:text-foreground transition-colors">
             Sign In
           </Link>
           <Link
             to="/signup"
-            className="h-8 px-4 inline-flex items-center rounded-[8px] bg-[#0a84ff] text-white text-[13px] font-medium hover:bg-[#409cff] transition-colors"
+            className="h-8 px-4 inline-flex items-center rounded-[8px] bg-primary text-primary-foreground text-[13px] font-medium hover:bg-primary/90 transition-colors"
           >
             Get Started
           </Link>
