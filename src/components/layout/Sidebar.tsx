@@ -1,9 +1,10 @@
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { Progress } from '@/components/ui/progress';
 import {
-  LayoutDashboard, Bot, CreditCard, Settings, Shield, Menu, X,
+  LayoutDashboard, Bot, CreditCard, Settings, Shield, Menu, X, LogOut,
 } from 'lucide-react';
+import { toast } from 'sonner';
 import { useState } from 'react';
 import { useDevice } from '@/hooks/useDevice';
 
