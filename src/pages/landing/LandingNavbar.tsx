@@ -34,9 +34,10 @@ const LandingNavbar = () => {
       <div className="max-w-6xl mx-auto px-6 h-12 flex items-center justify-between">
         <button
           onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-          className="text-[15px] font-semibold tracking-tight text-foreground/90 hover:text-foreground transition-colors"
+          className="flex items-center gap-2 hover:opacity-80 transition-opacity"
         >
-          ChatBot Studio
+          <img src={logo} alt="ChatBot Studio" className="h-7 w-7" />
+          <span className="text-[15px] font-semibold tracking-tight text-foreground/90">ChatBot Studio</span>
         </button>
 
         {/* Desktop */}

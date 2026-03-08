@@ -39,8 +39,9 @@ const Login = () => {
           Back to home
         </Link>
         <div className="mb-8 text-center">
-          <Link to="/" className="text-[22px] font-semibold text-foreground hover:opacity-80 transition-opacity">
-            ChatBot<span className="text-primary"> Studio</span>
+          <Link to="/" className="inline-flex items-center gap-2 hover:opacity-80 transition-opacity">
+            <img src={logo} alt="ChatBot Studio" className="h-8 w-8" />
+            <span className="text-[22px] font-semibold text-foreground">ChatBot<span className="text-primary"> Studio</span></span>
           </Link>
           <p className="mt-2 text-[13px] text-muted-foreground">Sign in to your account</p>
         </div>

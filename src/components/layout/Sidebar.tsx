@@ -42,8 +42,9 @@ const Sidebar = () => {
     <div className="flex h-full flex-col">
       {/* Logo */}
       <div className={`py-5 ${isTablet ? 'px-0 flex justify-center' : 'px-4'}`}>
-        <Link to="/dashboard" className="text-[15px] font-semibold text-foreground" onClick={() => setOpen(false)}>
-          {isTablet ? <span className="text-primary text-lg">CS</span> : <>ChatBot<span className="text-primary"> Studio</span></>}
+        <Link to="/dashboard" className="flex items-center gap-2 text-foreground hover:opacity-80 transition-opacity" onClick={() => setOpen(false)}>
+          <img src={sidebarLogo} alt="ChatBot Studio" className={isTablet ? 'h-7 w-7' : 'h-6 w-6'} />
+          {!isTablet && <span className="text-[15px] font-semibold">ChatBot<span className="text-primary"> Studio</span></span>}
         </Link>
       </div>
 
