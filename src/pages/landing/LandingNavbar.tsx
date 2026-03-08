@@ -43,6 +43,12 @@ const LandingNavbar = () => {
             Features
           </button>
           <button
+            onClick={() => scrollTo('developers')}
+            className="text-[13px] text-white/50 hover:text-white/90 transition-colors"
+          >
+            Developers
+          </button>
+          <button
             onClick={() => scrollTo('pricing')}
             className="text-[13px] text-white/50 hover:text-white/90 transition-colors"
           >
