@@ -68,18 +68,29 @@ const ChatbotBuilder = () => {
   const saveDraft = async (): Promise<string | null> => {
     try {
       const avatarValue = avatarType === 'initials' ? 'initials' : avatarEmoji;
+      const payload = {
+        name: sanitizeText(name) || 'Untitled Bot',
+        welcome_message: sanitizeText(welcomeMessage),
+        avatar_emoji: avatarValue,
+        tone,
+        primary_color: primaryColor,
+      };
       if (botId) {
-        const result = await updateMutation.mutateAsync({ id: botId, name: sanitizeText(name) || 'Untitled Bot', welcome_message: sanitizeText(welcomeMessage), avatar_emoji: avatarValue, tone, primary_color: primaryColor });
+        const result = await updateMutation.mutateAsync({ id: botId, ...payload });
         if (result.embed_token) setEmbedToken(result.embed_token);
         return botId;
       } else {
         if (!canCreateChatbot(profile, 0)) { toast.error('Upgrade to create more chatbots'); return null; }
-        const result = await createMutation.mutateAsync({ name: sanitizeText(name) || 'Untitled Bot', welcome_message: sanitizeText(welcomeMessage), avatar_emoji: avatarValue, tone, primary_color: primaryColor });
+        const result = await createMutation.mutateAsync(payload);
         setBotId(result.id);
         if (result.embed_token) setEmbedToken(result.embed_token);
         return result.id;
       }
-    } catch { toast.error('Failed to save'); return null; }
+    } catch (err: any) {
+      console.error('saveDraft failed:', err);
+      toast.error(err?.message || 'Failed to save chatbot');
+      return null;
+    }
   };
 
   const handleNext = async () => {
@@ -301,7 +312,7 @@ const ChatbotBuilder = () => {
               disabled={createMutation.isPending || updateMutation.isPending}
               className="rounded-[10px] bg-primary px-5 py-2 text-[13px] font-medium text-primary-foreground hover:bg-primary/90 active:scale-[0.97] disabled:opacity-50 transition-all"
             >
-              {createMutation.isPending || updateMutation.isPending ? <Spinner /> : 'Continue'}
+              {(createMutation.isPending || updateMutation.isPending || createFAQMutation.isPending) ? <Spinner className="h-4 w-4" /> : 'Continue'}
             </button>
           </div>
         )}

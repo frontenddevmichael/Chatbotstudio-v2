@@ -56,13 +56,16 @@ export const useCreateChatbot = () => {
   const { user } = useAuth();
   return useMutation({
     mutationFn: async (data: Partial<Chatbot>) => {
+      if (!user) throw new Error('Not authenticated');
       const { data: result, error } = await supabase
         .from('chatbots')
         .insert({
-          ...data,
-          name: sanitizeText(data.name || 'Untitled Bot'),
-          welcome_message: sanitizeText(data.welcome_message || ''),
-          user_id: user!.id,
+          name: data.name || 'Untitled Bot',
+          welcome_message: data.welcome_message ?? null,
+          avatar_emoji: data.avatar_emoji ?? null,
+          tone: data.tone ?? null,
+          primary_color: data.primary_color ?? null,
+          user_id: user.id,
         })
         .select()
         .single();
