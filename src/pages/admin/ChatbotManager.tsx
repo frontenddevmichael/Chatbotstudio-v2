@@ -16,7 +16,7 @@ const ChatbotManager = () => {
   const { data: chatbots, isLoading } = useQuery({
     queryKey: ['admin-chatbots'],
     queryFn: async () => {
-      const { data } = await supabase.from('chatbots').select('*').order('created_at', { ascending: false });
+      const { data } = await supabase.from('chatbots').select('*').order('created_at', { ascending: false }).limit(500);
       return data ?? [];
     },
   });

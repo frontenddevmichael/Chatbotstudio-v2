@@ -10,6 +10,7 @@ import { toast } from 'sonner';
 import { ChevronLeft, Smile, Briefcase, Coffee, Crown, Sparkles, Copy, ExternalLink, Trash2, Upload } from 'lucide-react';
 import { canCreateChatbot } from '@/lib/plans';
 import { sanitizeText } from '@/lib/sanitize';
+import { chatbotNameSchema } from '@/lib/validations';
 import ReactConfetti from 'react-confetti';
 import AvatarPicker from '@/components/chatbot/AvatarPicker';
 import BotAvatar from '@/components/chatbot/BotAvatar';
@@ -82,7 +83,10 @@ const ChatbotBuilder = () => {
   };
 
   const handleNext = async () => {
-    if (step === 1 && !name.trim()) { toast.error('Give your chatbot a name'); return; }
+    if (step === 1) {
+      const nameResult = chatbotNameSchema.safeParse(name);
+      if (!nameResult.success) { toast.error(nameResult.error.errors[0].message); return; }
+    }
     const savedId = await saveDraft();
     if (!savedId) return;
     if (step === 3) {

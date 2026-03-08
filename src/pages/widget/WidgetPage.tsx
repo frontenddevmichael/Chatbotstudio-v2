@@ -54,19 +54,18 @@ const WidgetPage = () => {
 
   useEffect(() => {
     const fetchChatbot = async () => {
-      const { data } = await supabase
-        .from('chatbots')
-        .select('*')
-        .eq('embed_token', embedToken)
-        .eq('is_active', true)
-        .single();
-      if (data) {
-        setChatbot(data);
-        // Only set welcome message if no restored session
-        setMessages(prev => prev.length ? prev : (data.welcome_message ? [{ role: 'assistant', content: data.welcome_message }] : []));
-      } else {
+      // Use secure RPC function instead of direct table query
+      const { data, error: rpcError } = await supabase.rpc('get_chatbot_by_embed_token', {
+        token: embedToken,
+      });
+      if (rpcError || !data?.length) {
         setError('Chatbot not found or inactive');
+        setInitialLoad(false);
+        return;
       }
+      const bot = data[0];
+      setChatbot(bot);
+      setMessages(prev => prev.length ? prev : (bot.welcome_message ? [{ role: 'assistant', content: bot.welcome_message }] : []));
       setInitialLoad(false);
     };
     fetchChatbot();

@@ -295,6 +295,19 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_chatbot_by_embed_token: {
+        Args: { token: string }
+        Returns: {
+          avatar_emoji: string
+          embed_token: string
+          id: string
+          is_active: boolean
+          name: string
+          primary_color: string
+          tone: string
+          welcome_message: string
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -302,6 +315,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_admin: { Args: never; Returns: boolean }
     }
     Enums: {
       app_role: "admin" | "moderator" | "user"

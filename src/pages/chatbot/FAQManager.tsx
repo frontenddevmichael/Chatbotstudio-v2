@@ -6,6 +6,7 @@ import PageWrapper from '@/components/layout/PageWrapper';
 import SEO from '@/components/ui/SEO';
 import Spinner from '@/components/ui/Spinner';
 import { toast } from 'sonner';
+import { faqSchema } from '@/lib/validations';
 import { Trash2, Zap, Plus, Pencil, Check, X, Search } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useQueryClient } from '@tanstack/react-query';
@@ -29,7 +30,8 @@ const FAQManager = () => {
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
   const handleAdd = async () => {
-    if (!question.trim() || !answer.trim()) { toast.error('Fill in both fields'); return; }
+    const result = faqSchema.safeParse({ question, answer });
+    if (!result.success) { toast.error(result.error.errors[0].message); return; }
     try {
       await createMutation.mutateAsync({ chatbot_id: id!, question, answer });
       setQuestion(''); setAnswer('');
@@ -42,7 +44,8 @@ const FAQManager = () => {
   };
 
   const handleSaveEdit = async () => {
-    if (!editingId || !editQuestion.trim() || !editAnswer.trim()) { toast.error('Fill in both fields'); return; }
+    const result = faqSchema.safeParse({ question: editQuestion, answer: editAnswer });
+    if (!editingId || !result.success) { toast.error(result.success === false ? result.error.errors[0].message : 'Fill in both fields'); return; }
     try {
       await updateMutation.mutateAsync({ id: editingId, chatbot_id: id!, question: editQuestion, answer: editAnswer });
       setEditingId(null);
