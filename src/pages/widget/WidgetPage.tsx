@@ -156,12 +156,7 @@ const WidgetPage = () => {
           {messages.map((msg, i) => (
             <div key={i} className={`message-in flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`} style={{ animationDelay: `${i * 50}ms` }}>
               {msg.role === 'assistant' && (
-                <div
-                  className="mr-2 flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-sm"
-                  style={{ background: `${primaryColor}15` }}
-                >
-                  {botEmoji}
-                </div>
+                <BotAvatar avatarEmoji={botAvatar} botName={botName} accentColor={primaryColor} size="sm" className="mr-2 shrink-0" />
               )}
               <div
                 className={`max-w-[80%] rounded-2xl px-4 py-2.5 text-sm ${
