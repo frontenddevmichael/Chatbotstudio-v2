@@ -3,12 +3,15 @@ import { useParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { sanitizeHTML, sanitizeText } from '@/lib/sanitize';
 import SEO from '@/components/ui/SEO';
+import ErrorBoundary from '@/components/ui/ErrorBoundary';
 import { Send } from 'lucide-react';
 
 interface Message {
   role: 'user' | 'assistant';
   content: string;
 }
+
+const MAX_MESSAGES_PER_SESSION = 20;
 
 const WidgetPage = () => {
   const { embedToken } = useParams<{ embedToken: string }>();
@@ -18,6 +21,7 @@ const WidgetPage = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [sessionId] = useState(() => crypto.randomUUID());
+  const [msgCount, setMsgCount] = useState(0);
   const scrollRef = useRef<HTMLDivElement>(null);
   const [initialLoad, setInitialLoad] = useState(true);
 
@@ -50,11 +54,19 @@ const WidgetPage = () => {
     const text = sanitizeText(input);
     if (!text || loading || !chatbot) return;
 
+    // Rate limit: max messages per session
+    if (msgCount >= MAX_MESSAGES_PER_SESSION) {
+      setMessages(prev => [...prev, { role: 'assistant', content: "You've reached the message limit for this session. Please refresh to start a new conversation." }]);
+      setInput('');
+      return;
+    }
+
     const userMsg: Message = { role: 'user', content: text };
     const newMessages = [...messages, userMsg];
     setMessages(newMessages);
     setInput('');
     setLoading(true);
+    setMsgCount(prev => prev + 1);
 
     try {
       const { data, error: fnError } = await supabase.functions.invoke('chat', {
@@ -110,74 +122,77 @@ const WidgetPage = () => {
   }
 
   return (
-    <div className="flex h-screen flex-col bg-background">
-      <SEO
-        title={chatbot?.name || 'Chat'}
-        description={`Chat with ${chatbot?.name} — powered by ChatBot Studio`}
-      />
+    <ErrorBoundary>
+      <div className="flex h-screen flex-col bg-background">
+        <SEO
+          title={chatbot?.name || 'Chat'}
+          description={`Chat with ${chatbot?.name} — powered by ChatBot Studio`}
+        />
 
-      {/* Header */}
-      <div className="flex items-center gap-3 border-b border-border px-4 py-3" style={{ borderBottomColor: `${primaryColor}22` }}>
-        <span className="text-2xl">{chatbot?.avatar_emoji || '🤖'}</span>
-        <div>
-          <p className="text-sm font-bold text-foreground">{chatbot?.name}</p>
-          <p className="text-[11px] text-muted-foreground">Online</p>
+        {/* Header */}
+        <div className="flex items-center gap-3 border-b border-border px-4 py-3" style={{ borderBottomColor: `${primaryColor}22` }}>
+          <span className="text-2xl">{chatbot?.avatar_emoji || '🤖'}</span>
+          <div>
+            <p className="text-sm font-bold text-foreground">{chatbot?.name}</p>
+            <p className="text-[11px] text-muted-foreground">Online</p>
+          </div>
         </div>
-      </div>
 
-      {/* Messages */}
-      <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-3">
-        {messages.map((msg, i) => (
-          <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-            <div
-              className={`max-w-[80%] rounded-2xl px-4 py-2.5 text-sm ${
-                msg.role === 'user'
-                  ? 'text-primary-foreground rounded-br-md'
-                  : 'bg-card border border-border text-foreground rounded-bl-md'
-              }`}
-              style={msg.role === 'user' ? { backgroundColor: primaryColor } : undefined}
+        {/* Messages */}
+        <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-3">
+          {messages.map((msg, i) => (
+            <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+              <div
+                className={`max-w-[80%] rounded-2xl px-4 py-2.5 text-sm ${
+                  msg.role === 'user'
+                    ? 'text-primary-foreground rounded-br-md'
+                    : 'bg-card border border-border text-foreground rounded-bl-md'
+                }`}
+                style={msg.role === 'user' ? { backgroundColor: primaryColor } : undefined}
+              >
+                <div dangerouslySetInnerHTML={{ __html: sanitizeHTML(msg.content) }} />
+              </div>
+            </div>
+          ))}
+          {loading && (
+            <div className="flex justify-start">
+              <div className="flex gap-1 rounded-2xl border border-border bg-card px-4 py-3 rounded-bl-md">
+                <span className="h-2 w-2 animate-bounce rounded-full bg-muted-foreground" style={{ animationDelay: '0ms' }} />
+                <span className="h-2 w-2 animate-bounce rounded-full bg-muted-foreground" style={{ animationDelay: '150ms' }} />
+                <span className="h-2 w-2 animate-bounce rounded-full bg-muted-foreground" style={{ animationDelay: '300ms' }} />
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Input */}
+        <div className="border-t border-border p-3">
+          <div className="flex gap-2">
+            <input
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder={msgCount >= MAX_MESSAGES_PER_SESSION ? 'Message limit reached' : 'Type a message...'}
+              maxLength={2000}
+              disabled={msgCount >= MAX_MESSAGES_PER_SESSION}
+              className="flex-1 rounded-lg border border-border bg-card px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none disabled:opacity-50"
+              style={{ borderColor: input ? primaryColor : undefined }}
+            />
+            <button
+              onClick={sendMessage}
+              disabled={loading || !input.trim() || msgCount >= MAX_MESSAGES_PER_SESSION}
+              className="flex h-10 w-10 items-center justify-center rounded-lg text-primary-foreground transition-colors disabled:opacity-30"
+              style={{ backgroundColor: primaryColor }}
             >
-              <div dangerouslySetInnerHTML={{ __html: sanitizeHTML(msg.content) }} />
-            </div>
+              <Send className="h-4 w-4" />
+            </button>
           </div>
-        ))}
-        {loading && (
-          <div className="flex justify-start">
-            <div className="flex gap-1 rounded-2xl border border-border bg-card px-4 py-3 rounded-bl-md">
-              <span className="h-2 w-2 animate-bounce rounded-full bg-muted-foreground" style={{ animationDelay: '0ms' }} />
-              <span className="h-2 w-2 animate-bounce rounded-full bg-muted-foreground" style={{ animationDelay: '150ms' }} />
-              <span className="h-2 w-2 animate-bounce rounded-full bg-muted-foreground" style={{ animationDelay: '300ms' }} />
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Input */}
-      <div className="border-t border-border p-3">
-        <div className="flex gap-2">
-          <input
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="Type a message..."
-            maxLength={2000}
-            className="flex-1 rounded-lg border border-border bg-card px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none"
-            style={{ borderColor: input ? primaryColor : undefined }}
-          />
-          <button
-            onClick={sendMessage}
-            disabled={loading || !input.trim()}
-            className="flex h-10 w-10 items-center justify-center rounded-lg text-primary-foreground transition-colors disabled:opacity-30"
-            style={{ backgroundColor: primaryColor }}
-          >
-            <Send className="h-4 w-4" />
-          </button>
+          <p className="mt-1 text-center text-[10px] text-muted-foreground">
+            Powered by <span className="font-semibold">ChatBot Studio</span>
+          </p>
         </div>
-        <p className="mt-1 text-center text-[10px] text-muted-foreground">
-          Powered by <span className="font-semibold">ChatBot Studio</span>
-        </p>
       </div>
-    </div>
+    </ErrorBoundary>
   );
 };
 

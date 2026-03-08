@@ -1,3 +1,7 @@
+// STRIPE FUTURE-READINESS: To integrate Stripe payments, replace the waitlist
+// section with a Stripe Checkout button. Use supabase.functions.invoke('create-checkout-session')
+// passing the premium price ID. Listen for webhook events to update the user's plan.
+
 import { useAuth } from '@/context/AuthContext';
 import { PLANS, isPremium } from '@/lib/plans';
 import PageWrapper from '@/components/layout/PageWrapper';
@@ -15,7 +19,7 @@ const BillingPage = () => {
   const premium = isPremium(profile);
 
   const handleJoinWaitlist = async () => {
-    if (!email) { toast.error('Please enter your email'); return; }
+    if (!email || !email.includes('@')) { toast.error('Please enter a valid email'); return; }
     setSubmitting(true);
     try {
       const { error } = await supabase.from('waitlist').insert({ email });
@@ -35,7 +39,7 @@ const BillingPage = () => {
 
   return (
     <PageWrapper>
-      <SEO title="Upgrade to Premium" description="Unlock unlimited chatbots, advanced analytics, and more." />
+      <SEO title="Upgrade to Premium" description="Unlock unlimited chatbots, advanced analytics, and more with ChatBot Studio Premium." />
       <h1 className="mb-6 font-display text-2xl font-bold text-foreground">Billing</h1>
 
       <div className="mb-4 rounded-lg border border-border bg-card p-4">

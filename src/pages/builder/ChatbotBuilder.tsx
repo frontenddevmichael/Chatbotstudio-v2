@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { useCreateChatbot, useUpdateChatbot, useChatbot } from '@/hooks/useChatbot';
@@ -45,6 +45,8 @@ const ChatbotBuilder = () => {
   const [botId, setBotId] = useState<string | null>(id || null);
   const [embedToken, setEmbedToken] = useState<string>('');
   const [showConfetti, setShowConfetti] = useState(false);
+  // Track which FAQs have already been saved to avoid duplicates
+  const savedFaqsRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     if (isEdit && existingBot) {
@@ -105,12 +107,15 @@ const ChatbotBuilder = () => {
     const savedId = await saveDraft();
     if (!savedId) return;
 
-    // Save FAQs on step 3
+    // Save FAQs on step 3 — only save new ones (prevent duplicates)
     if (step === 3) {
       const validFaqs = faqs.filter((f) => f.question.trim() && f.answer.trim());
       for (const faq of validFaqs) {
+        const key = `${faq.question}::${faq.answer}`;
+        if (savedFaqsRef.current.has(key)) continue;
         try {
           await createFAQMutation.mutateAsync({ chatbot_id: savedId, ...faq });
+          savedFaqsRef.current.add(key);
         } catch { /* continue - may already exist */ }
       }
     }
@@ -147,7 +152,6 @@ const ChatbotBuilder = () => {
       if (!text) return;
       const newFaqs: FAQPair[] = [];
       if (file.name.endsWith('.csv')) {
-        // CSV: each row is question,answer
         const lines = text.split('\n').filter((l) => l.trim());
         for (const line of lines) {
           const [question, ...answerParts] = line.split(',');
@@ -157,7 +161,6 @@ const ChatbotBuilder = () => {
           }
         }
       } else {
-        // TXT: alternating lines Q then A, or "Q: ... A: ..." format
         const lines = text.split('\n').filter((l) => l.trim());
         for (let i = 0; i < lines.length - 1; i += 2) {
           const q = lines[i].replace(/^Q:\s*/i, '').trim();
