@@ -1,13 +1,15 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Bot, Plus, BarChart3, Settings } from 'lucide-react';
+import { LayoutDashboard, Bot, Plus, BarChart3, LogOut } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { useAuth } from '@/context/AuthContext';
+import { toast } from 'sonner';
 
 const tabs = [
   { to: '/dashboard', icon: LayoutDashboard, label: 'Home' },
   { to: '/chatbot', icon: Bot, label: 'Bots' },
   { to: '/builder/new', icon: Plus, label: 'Create', isCenter: true },
   { to: '/billing', icon: BarChart3, label: 'Billing' },
-  { to: '/settings', icon: Settings, label: 'Settings' },
+  { to: '#signout', icon: LogOut, label: 'Sign Out' },
 ];
 
 const BottomTabBar = () => {
