@@ -27,7 +27,7 @@ const PageWrapper = ({ children }: { children: ReactNode }) => {
       {!isMobile && <Sidebar />}
       <div className="flex flex-1 flex-col min-w-0">
         <TopNav />
-        <main className="flex-1 overflow-y-auto p-4 md:p-6" style={{ paddingBottom: isMobile ? 'calc(80px + env(safe-area-inset-bottom))' : undefined }}>
+        <main id="main-content" className="flex-1 overflow-y-auto p-4 md:p-6" role="main" style={{ paddingBottom: isMobile ? 'calc(80px + env(safe-area-inset-bottom))' : undefined }}>
           {children}
         </main>
       </div>
