@@ -101,7 +101,8 @@ const WidgetPage = () => {
   };
 
   const primaryColor = chatbot?.primary_color || '#00d4ff';
-  const botEmoji = chatbot?.avatar_emoji || '🤖';
+  const botAvatar = chatbot?.avatar_emoji || 'bot';
+  const botName = chatbot?.name || 'Bot';
 
   if (initialLoad) {
     return (
