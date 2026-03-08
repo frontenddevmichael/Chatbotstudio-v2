@@ -5,6 +5,7 @@ import { sanitizeHTML, sanitizeText } from '@/lib/sanitize';
 import SEO from '@/components/ui/SEO';
 import ErrorBoundary from '@/components/ui/ErrorBoundary';
 import { Send } from 'lucide-react';
+import BotAvatar from '@/components/chatbot/BotAvatar';
 
 interface Message {
   role: 'user' | 'assistant';
