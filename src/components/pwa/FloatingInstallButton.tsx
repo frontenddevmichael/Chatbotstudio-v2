@@ -82,12 +82,13 @@ const FloatingInstallButton = () => {
     <AnimatePresence>
       <motion.div
         initial={{ scale: 0, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1, ...controls }}
+        animate={{ scale: 1, opacity: 1 }}
         exit={{ scale: 0, opacity: 0 }}
         transition={{ type: 'spring', stiffness: 260, damping: 20 }}
         className="fixed bottom-6 right-6 z-[90]"
         style={{ bottom: 'calc(24px + env(safe-area-inset-bottom))' }}
       >
+        <motion.div animate={controls}>
         <motion.button
           onClick={expanded ? handleInstall : () => setExpanded(true)}
           onMouseEnter={() => setExpanded(true)}
