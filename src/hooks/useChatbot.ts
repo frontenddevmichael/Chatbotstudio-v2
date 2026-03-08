@@ -1,0 +1,107 @@
+import { useAuth } from '@/context/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { sanitizeText } from '@/lib/sanitize';
+
+export interface Chatbot {
+  id: string;
+  user_id: string;
+  name: string;
+  welcome_message: string | null;
+  tone: string | null;
+  primary_color: string | null;
+  avatar_emoji: string | null;
+  is_active: boolean | null;
+  total_conversations: number | null;
+  embed_token: string | null;
+  created_at: string | null;
+}
+
+export const useChatbots = () => {
+  const { user } = useAuth();
+  return useQuery({
+    queryKey: ['chatbots', user?.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('chatbots')
+        .select('*')
+        .eq('user_id', user!.id)
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      return data as Chatbot[];
+    },
+    enabled: !!user,
+  });
+};
+
+export const useChatbot = (id: string) => {
+  return useQuery({
+    queryKey: ['chatbot', id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('chatbots')
+        .select('*')
+        .eq('id', id)
+        .single();
+      if (error) throw error;
+      return data as Chatbot;
+    },
+    enabled: !!id,
+  });
+};
+
+export const useCreateChatbot = () => {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+  return useMutation({
+    mutationFn: async (data: Partial<Chatbot>) => {
+      const { data: result, error } = await supabase
+        .from('chatbots')
+        .insert({
+          ...data,
+          name: sanitizeText(data.name || 'Untitled Bot'),
+          welcome_message: sanitizeText(data.welcome_message || ''),
+          user_id: user!.id,
+        })
+        .select()
+        .single();
+      if (error) throw error;
+      return result as Chatbot;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['chatbots'] }),
+  });
+};
+
+export const useUpdateChatbot = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, ...data }: Partial<Chatbot> & { id: string }) => {
+      const updates: Record<string, any> = { ...data };
+      if (data.name) updates.name = sanitizeText(data.name);
+      if (data.welcome_message) updates.welcome_message = sanitizeText(data.welcome_message);
+      const { data: result, error } = await supabase
+        .from('chatbots')
+        .update(updates)
+        .eq('id', id)
+        .select()
+        .single();
+      if (error) throw error;
+      return result as Chatbot;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['chatbots'] });
+      queryClient.invalidateQueries({ queryKey: ['chatbot', data.id] });
+    },
+  });
+};
+
+export const useDeleteChatbot = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from('chatbots').delete().eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['chatbots'] }),
+  });
+};
