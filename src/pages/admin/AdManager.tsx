@@ -13,7 +13,7 @@ const AdManager = () => {
   const { data: ads, isLoading } = useQuery({
     queryKey: ['admin-ads'],
     queryFn: async () => {
-      const { data } = await supabase.from('ads').select('*').order('created_at', { ascending: false });
+      const { data } = await supabase.from('ads').select('*').order('created_at', { ascending: false }).limit(200);
       return data ?? [];
     },
   });

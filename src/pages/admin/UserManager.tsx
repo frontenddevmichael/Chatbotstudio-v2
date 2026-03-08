@@ -16,7 +16,7 @@ const UserManager = () => {
   const { data: users, isLoading } = useQuery({
     queryKey: ['admin-users'],
     queryFn: async () => {
-      const { data } = await supabase.from('profiles').select('*').order('created_at', { ascending: false });
+      const { data } = await supabase.from('profiles').select('*').order('created_at', { ascending: false }).limit(500);
       return data ?? [];
     },
   });
