@@ -10,7 +10,7 @@ import SkipToContent from "@/components/SkipToContent";
 import CookieConsent from "@/components/CookieConsent";
 import FloatingInstallButton from "@/components/pwa/FloatingInstallButton";
 import React, { Suspense } from "react";
-import PageSkeleton, { AuthSkeleton, BuilderSkeleton, LandingSkeleton, WidgetSkeleton } from "@/components/ui/PageSkeleton";
+import PageLoader from "@/components/ui/PageLoader";
 
 const Landing = React.lazy(() => import("./pages/landing/Landing"));
 const Login = React.lazy(() => import("./pages/auth/Login"));
@@ -48,23 +48,23 @@ const App = () => (
               <Toaster />
               <SkipToContent />
             <BrowserRouter>
-              <Suspense fallback={<PageSkeleton />}>
+              <Suspense fallback={<PageLoader />}>
                 <Routes>
-                  <Route path="/" element={<Suspense fallback={<LandingSkeleton />}><Landing /></Suspense>} />
-                  <Route path="/login" element={<Suspense fallback={<AuthSkeleton />}><Login /></Suspense>} />
-                  <Route path="/signup" element={<Suspense fallback={<AuthSkeleton />}><Signup /></Suspense>} />
-                  <Route path="/forgot-password" element={<Suspense fallback={<AuthSkeleton />}><ForgotPassword /></Suspense>} />
-                  <Route path="/reset-password" element={<Suspense fallback={<AuthSkeleton />}><ResetPassword /></Suspense>} />
+                  <Route path="/" element={<Landing />} />
+                  <Route path="/login" element={<Login />} />
+                  <Route path="/signup" element={<Signup />} />
+                  <Route path="/forgot-password" element={<ForgotPassword />} />
+                  <Route path="/reset-password" element={<ResetPassword />} />
                   <Route path="/dashboard" element={<ErrorBoundary><Dashboard /></ErrorBoundary>} />
-                  <Route path="/builder/new" element={<ErrorBoundary><Suspense fallback={<BuilderSkeleton />}><ChatbotBuilder /></Suspense></ErrorBoundary>} />
-                  <Route path="/builder/:id/edit" element={<ErrorBoundary><Suspense fallback={<BuilderSkeleton />}><ChatbotBuilder /></Suspense></ErrorBoundary>} />
+                  <Route path="/builder/new" element={<ErrorBoundary><ChatbotBuilder /></ErrorBoundary>} />
+                  <Route path="/builder/:id/edit" element={<ErrorBoundary><ChatbotBuilder /></ErrorBoundary>} />
                   <Route path="/chatbot/:id" element={<ErrorBoundary><ChatbotDetail /></ErrorBoundary>} />
                   <Route path="/chatbot/:id/faqs" element={<ErrorBoundary><FAQManager /></ErrorBoundary>} />
                   <Route path="/chatbot/:id/analytics" element={<ErrorBoundary><Analytics /></ErrorBoundary>} />
                   <Route path="/chatbot/:id/deploy" element={<ErrorBoundary><DeployPage /></ErrorBoundary>} />
                   <Route path="/billing" element={<ErrorBoundary><BillingPage /></ErrorBoundary>} />
                   <Route path="/settings" element={<ErrorBoundary><SettingsPage /></ErrorBoundary>} />
-                  <Route path="/widget/:embedToken" element={<ErrorBoundary><Suspense fallback={<WidgetSkeleton />}><WidgetPage /></Suspense></ErrorBoundary>} />
+                  <Route path="/widget/:embedToken" element={<ErrorBoundary><WidgetPage /></ErrorBoundary>} />
                   <Route path="/admin" element={<ErrorBoundary><AdminDashboard /></ErrorBoundary>} />
                   <Route path="/admin/users" element={<ErrorBoundary><UserManager /></ErrorBoundary>} />
                   <Route path="/admin/chatbots" element={<ErrorBoundary><ChatbotManager /></ErrorBoundary>} />
