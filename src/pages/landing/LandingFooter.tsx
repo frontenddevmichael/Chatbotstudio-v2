@@ -8,10 +8,14 @@ const PRODUCT = [
   { label: 'Pricing', href: '#pricing' },
 ];
 const COMPANY = ['About', 'Blog', 'Careers', 'Contact'];
-const LEGAL = ['Privacy', 'Terms', 'Cookie Policy'];
+const LEGAL = [
+  { label: 'Privacy', to: '/privacy' },
+  { label: 'Terms', to: '/terms' },
+  { label: 'Cookie Policy', to: '/cookies' },
+];
 
 const LandingFooter = () => (
-  <footer className="relative bg-background pt-16 pb-8 px-6 border-t border-border">
+  <footer className="relative bg-background pt-16 pb-8 px-6 border-t border-border" role="contentinfo">
     <div className="max-w-6xl mx-auto">
       <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-10 mb-12">
         {/* Brand */}
@@ -54,8 +58,8 @@ const LandingFooter = () => (
           <h4 className="text-[11px] font-medium tracking-[0.1em] uppercase text-muted-foreground/50 mb-4">Legal</h4>
           <ul className="space-y-2.5">
             {LEGAL.map(item => (
-              <li key={item}>
-                <span className="text-[13px] text-muted-foreground/70 hover:text-foreground/70 transition-colors cursor-pointer">{item}</span>
+              <li key={item.label}>
+                <Link to={item.to} className="text-[13px] text-muted-foreground/70 hover:text-foreground/70 transition-colors">{item.label}</Link>
               </li>
             ))}
           </ul>

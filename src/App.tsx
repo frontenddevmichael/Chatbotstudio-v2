@@ -6,6 +6,8 @@ import { HelmetProvider } from "react-helmet-async";
 import { AuthProvider } from "@/context/AuthContext";
 import { ThemeProvider } from "@/context/ThemeContext";
 import ErrorBoundary from "@/components/ui/ErrorBoundary";
+import SkipToContent from "@/components/SkipToContent";
+import CookieConsent from "@/components/CookieConsent";
 import React, { Suspense } from "react";
 import PageSkeleton, { AuthSkeleton, BuilderSkeleton, LandingSkeleton, WidgetSkeleton } from "@/components/ui/PageSkeleton";
 
@@ -28,6 +30,9 @@ const UserManager = React.lazy(() => import("./pages/admin/UserManager"));
 const ChatbotManager = React.lazy(() => import("./pages/admin/ChatbotManager"));
 const AdManager = React.lazy(() => import("./pages/admin/AdManager"));
 const AdminSettings = React.lazy(() => import("./pages/admin/AdminSettings"));
+const PrivacyPolicy = React.lazy(() => import("./pages/legal/PrivacyPolicy"));
+const TermsOfService = React.lazy(() => import("./pages/legal/TermsOfService"));
+const CookiePolicy = React.lazy(() => import("./pages/legal/CookiePolicy"));
 const NotFound = React.lazy(() => import("./pages/NotFound"));
 
 const queryClient = new QueryClient();
@@ -40,6 +45,7 @@ const App = () => (
           <ThemeProvider>
             <TooltipProvider>
               <Toaster />
+              <SkipToContent />
             <BrowserRouter>
               <Suspense fallback={<PageSkeleton />}>
                 <Routes>
@@ -63,9 +69,13 @@ const App = () => (
                   <Route path="/admin/chatbots" element={<ErrorBoundary><ChatbotManager /></ErrorBoundary>} />
                   <Route path="/admin/ads" element={<ErrorBoundary><AdManager /></ErrorBoundary>} />
                   <Route path="/admin/settings" element={<ErrorBoundary><AdminSettings /></ErrorBoundary>} />
+                  <Route path="/privacy" element={<PrivacyPolicy />} />
+                  <Route path="/terms" element={<TermsOfService />} />
+                  <Route path="/cookies" element={<CookiePolicy />} />
                   <Route path="*" element={<NotFound />} />
                 </Routes>
               </Suspense>
+              <CookieConsent />
             </BrowserRouter>
             </TooltipProvider>
           </ThemeProvider>
