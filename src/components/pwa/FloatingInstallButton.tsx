@@ -130,6 +130,7 @@ const FloatingInstallButton = () => {
           transition={{ duration: 2, repeat: Infinity, repeatDelay: 3 }}
           style={{ pointerEvents: 'none' }}
         />
+        </motion.div>
       </motion.div>
     </AnimatePresence>
   );
