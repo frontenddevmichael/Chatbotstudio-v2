@@ -7,7 +7,7 @@ import { AuthProvider } from "@/context/AuthContext";
 import { ThemeProvider } from "@/context/ThemeContext";
 import ErrorBoundary from "@/components/ui/ErrorBoundary";
 import React, { Suspense } from "react";
-import PageSkeleton from "@/components/ui/PageSkeleton";
+import PageSkeleton, { AuthSkeleton, BuilderSkeleton, LandingSkeleton, WidgetSkeleton } from "@/components/ui/PageSkeleton";
 
 const Landing = React.lazy(() => import("./pages/landing/Landing"));
 const Login = React.lazy(() => import("./pages/auth/Login"));
