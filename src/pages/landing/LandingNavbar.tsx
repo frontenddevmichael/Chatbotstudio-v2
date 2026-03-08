@@ -86,12 +86,13 @@ const LandingNavbar = () => {
             className="md:hidden bg-black/90 backdrop-blur-xl border-b border-white/[0.06] overflow-hidden"
           >
             <div className="flex flex-col gap-1 px-6 py-4">
-              <button onClick={() => scrollTo('features')} className="text-left text-[15px] text-white/60 py-2">Features</button>
-              <button onClick={() => scrollTo('developers')} className="text-left text-[15px] text-white/60 py-2">Developers</button>
-              <button onClick={() => scrollTo('pricing')} className="text-left text-[15px] text-white/60 py-2">Pricing</button>
-              <Link to="/login" className="text-[15px] text-white/60 py-2" onClick={() => setMenuOpen(false)}>Sign In</Link>
+              <button onClick={() => scrollTo('features')} className="text-left text-[15px] text-muted-foreground py-2">Features</button>
+              <button onClick={() => scrollTo('developers')} className="text-left text-[15px] text-muted-foreground py-2">Developers</button>
+              <button onClick={() => scrollTo('pricing')} className="text-left text-[15px] text-muted-foreground py-2">Pricing</button>
+              <div className="py-2"><ThemeToggle /></div>
+              <Link to="/login" className="text-[15px] text-muted-foreground py-2" onClick={() => setMenuOpen(false)}>Sign In</Link>
               <Link to="/signup" onClick={() => setMenuOpen(false)}>
-                <span className="mt-2 block h-10 rounded-[8px] bg-[#0a84ff] text-white text-[15px] font-medium flex items-center justify-center">
+                <span className="mt-2 block h-10 rounded-[8px] bg-primary text-primary-foreground text-[15px] font-medium flex items-center justify-center">
                   Get Started
                 </span>
               </Link>
