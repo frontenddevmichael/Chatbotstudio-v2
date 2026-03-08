@@ -10,6 +10,7 @@ import { toast } from 'sonner';
 import { ChevronLeft, Smile, Briefcase, Coffee, Crown, Sparkles, Copy, ExternalLink, Trash2, Upload } from 'lucide-react';
 import { canCreateChatbot } from '@/lib/plans';
 import { sanitizeText } from '@/lib/sanitize';
+import { chatbotNameSchema } from '@/lib/validations';
 import ReactConfetti from 'react-confetti';
 import AvatarPicker from '@/components/chatbot/AvatarPicker';
 import BotAvatar from '@/components/chatbot/BotAvatar';
