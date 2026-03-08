@@ -1,6 +1,11 @@
 import { Link } from 'react-router-dom';
 
-const PRODUCT = ['Features', 'Pricing', 'Demo', 'Changelog'];
+const PRODUCT = [
+  { label: 'Features', href: '#features' },
+  { label: 'Developers', href: '#developers' },
+  { label: 'Install App', href: '#install' },
+  { label: 'Pricing', href: '#pricing' },
+];
 const COMPANY = ['About', 'Blog', 'Careers', 'Contact'];
 const LEGAL = ['Privacy', 'Terms', 'Cookie Policy'];
 
