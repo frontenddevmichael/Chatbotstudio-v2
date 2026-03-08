@@ -35,64 +35,63 @@ const SuperchargeDemo = () => {
     }, 600);
   }, []);
 
-  // Auto-fire on scroll into view
   const handleView = useCallback(() => {
     if (!fired) fire();
   }, [fired, fire]);
 
   return (
-    <section ref={ref} className="py-24 md:py-32 bg-[#080810] px-6">
+    <section ref={ref} className="py-24 md:py-32 bg-black px-6">
       {inView && !fired && <AutoFire onFire={handleView} />}
       <div className="max-w-4xl mx-auto text-center">
         <motion.h2
-          className="font-display text-3xl sm:text-4xl font-bold text-white mb-4"
-          initial={{ opacity: 0, y: 30 }}
+          className="font-serif text-[36px] sm:text-[44px] font-normal text-white/90 mb-4"
+          initial={{ opacity: 0, y: 24 }}
           animate={inView ? { opacity: 1, y: 0 } : {}}
         >
-          One question. <span className="text-[#ffb547]">Eight ways to ask it.</span>
+          One question. <span className="italic text-[#ff9f0a]">Eight ways to ask it.</span>
         </motion.h2>
         <motion.p
-          className="text-gray-500 mb-12 max-w-lg mx-auto"
+          className="text-[15px] text-white/40 mb-12 max-w-md mx-auto"
           initial={{ opacity: 0 }}
           animate={inView ? { opacity: 1 } : {}}
-          transition={{ delay: 0.2 }}
+          transition={{ delay: 0.15 }}
         >
-          ⚡ Supercharge turns one FAQ into a bot that understands every way your customer might ask it.
+          Supercharge turns one FAQ into a bot that understands every way your customer might phrase it.
         </motion.p>
 
         {/* Original FAQ */}
         <motion.div
-          className="inline-block rounded-xl border border-[#1e1e2e] bg-[#111118] px-6 py-4 mb-8"
-          initial={{ opacity: 0, scale: 0.95 }}
+          className="inline-block rounded-[10px] border border-white/[0.08] bg-[#0a0a0a] px-6 py-4 mb-8"
+          initial={{ opacity: 0, scale: 0.97 }}
           animate={inView ? { opacity: 1, scale: 1 } : {}}
-          transition={{ delay: 0.3 }}
+          transition={{ delay: 0.2 }}
         >
-          <div className="text-xs font-mono text-gray-500 mb-1">Original FAQ</div>
-          <div className="text-white font-medium">"What are your opening hours?"</div>
+          <div className="text-[11px] font-mono text-white/25 mb-1">Original FAQ</div>
+          <div className="text-[15px] text-white/80 font-medium">"What are your opening hours?"</div>
         </motion.div>
 
         {/* Fire button */}
         <div className="mb-8">
           <motion.button
             onClick={fire}
-            className="inline-flex items-center gap-2 px-6 py-3 rounded-lg bg-[#ffb547] text-[#080810] font-semibold hover:bg-[#ffb547]/90 transition-colors"
+            className="inline-flex items-center gap-2 h-10 px-6 rounded-[10px] bg-[#ff9f0a] text-black text-[14px] font-semibold hover:bg-[#ff9f0a]/90 active:scale-[0.97] transition-all"
             whileTap={{ scale: 0.95 }}
           >
-            {fired ? <RotateCcw size={18} /> : <Zap size={18} />}
-            {fired ? 'Replay' : '⚡ Supercharge'}
+            {fired ? <RotateCcw size={16} /> : <Zap size={16} />}
+            {fired ? 'Replay' : 'Supercharge'}
           </motion.button>
         </div>
 
         {/* Variation cards */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-6">
           <AnimatePresence>
             {showCards && VARIATIONS.map((v, i) => (
               <motion.div
                 key={v}
-                initial={{ opacity: 0, scale: 0.5, y: 20 }}
+                initial={{ opacity: 0, scale: 0.8, y: 12 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
-                transition={{ type: 'spring', stiffness: 300, damping: 20, delay: i * 0.08 }}
-                className="rounded-lg border border-[#ffb547]/20 bg-[#ffb547]/5 px-3 py-2 text-sm text-[#ffb547]"
+                transition={{ type: 'spring', stiffness: 300, damping: 22, delay: i * 0.06 }}
+                className="rounded-[8px] border border-[#ff9f0a]/15 bg-[#ff9f0a]/[0.05] px-3 py-2 text-[12px] text-[#ff9f0a]/70"
               >
                 {v}
               </motion.div>
@@ -104,9 +103,9 @@ const SuperchargeDemo = () => {
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="font-mono text-sm text-gray-500"
+            className="font-mono text-[13px] text-white/30"
           >
-            <span className="text-[#ffb547] font-bold">{count}</span> variations generated
+            <span className="text-[#ff9f0a] font-semibold">{count}</span> variations generated
           </motion.div>
         )}
       </div>
@@ -114,7 +113,6 @@ const SuperchargeDemo = () => {
   );
 };
 
-// Tiny helper to fire on mount
 const AutoFire = ({ onFire }: { onFire: () => void }) => {
   useState(() => { setTimeout(onFire, 800); });
   return null;
