@@ -7,11 +7,12 @@ import PageWrapper from '@/components/layout/PageWrapper';
 import SEO from '@/components/ui/SEO';
 import Spinner from '@/components/ui/Spinner';
 import { toast } from 'sonner';
-import { Check, ChevronRight, Smile, Briefcase, Coffee, Crown, Sparkles, Copy, ExternalLink } from 'lucide-react';
+import { Check, ChevronRight, Smile, Briefcase, Coffee, Crown, Sparkles, Copy, ExternalLink, Trash2, Upload } from 'lucide-react';
 import { canCreateChatbot } from '@/lib/plans';
+import { sanitizeText } from '@/lib/sanitize';
 import ReactConfetti from 'react-confetti';
 
-const EMOJIS = ['🤖', '💬', '🧠', '⚡', '🎯', '🚀', '🌟', '🎨', '🔥', '💎', '🦊', '🐱', '🎭', '🌈'];
+const EMOJIS = ['🤖', '💬', '🧠', '⚡', '🎯', '🚀', '🌟', '🎨', '🔥', '💎', '🦊', '🐱', '🎭', '🌈', '🏢', '📦', '🛒', '🏥', '📚', '🎓'];
 
 const TONES = [
   { value: 'friendly', label: 'Friendly', icon: Smile, desc: 'Warm, approachable, uses contractions' },
@@ -19,6 +20,8 @@ const TONES = [
   { value: 'casual', label: 'Casual', icon: Coffee, desc: 'Like texting a smart friend' },
   { value: 'formal', label: 'Formal', icon: Crown, desc: 'Corporate, authoritative' },
 ];
+
+const COLOR_PRESETS = ['#00d4ff', '#7c3aed', '#00e5a0', '#ff4d6d', '#ffb547', '#3b82f6'];
 
 interface FAQPair { question: string; answer: string; }
 
@@ -40,6 +43,7 @@ const ChatbotBuilder = () => {
   const [faqs, setFaqs] = useState<FAQPair[]>([{ question: '', answer: '' }]);
   const [primaryColor, setPrimaryColor] = useState('#00d4ff');
   const [botId, setBotId] = useState<string | null>(id || null);
+  const [embedToken, setEmbedToken] = useState<string>('');
   const [showConfetti, setShowConfetti] = useState(false);
 
   useEffect(() => {
@@ -49,6 +53,7 @@ const ChatbotBuilder = () => {
       setAvatarEmoji(existingBot.avatar_emoji || '🤖');
       setTone(existingBot.tone || 'friendly');
       setPrimaryColor(existingBot.primary_color || '#00d4ff');
+      setEmbedToken(existingBot.embed_token || '');
     }
   }, [existingBot, isEdit]);
 
@@ -56,66 +61,125 @@ const ChatbotBuilder = () => {
     return <PageWrapper><div className="flex justify-center py-20"><Spinner className="h-8 w-8" /></div></PageWrapper>;
   }
 
-  const saveDraft = async () => {
+  const saveDraft = async (): Promise<string | null> => {
     try {
       if (botId) {
-        await updateMutation.mutateAsync({
+        const result = await updateMutation.mutateAsync({
           id: botId,
-          name: name || 'Untitled Bot',
-          welcome_message: welcomeMessage,
+          name: sanitizeText(name) || 'Untitled Bot',
+          welcome_message: sanitizeText(welcomeMessage),
           avatar_emoji: avatarEmoji,
           tone,
           primary_color: primaryColor,
         });
+        if (result.embed_token) setEmbedToken(result.embed_token);
+        return botId;
       } else {
         if (!canCreateChatbot(profile, 0)) {
           toast.error('Upgrade to create more chatbots');
-          return;
+          return null;
         }
         const result = await createMutation.mutateAsync({
-          name: name || 'Untitled Bot',
-          welcome_message: welcomeMessage,
+          name: sanitizeText(name) || 'Untitled Bot',
+          welcome_message: sanitizeText(welcomeMessage),
           avatar_emoji: avatarEmoji,
           tone,
           primary_color: primaryColor,
         });
         setBotId(result.id);
+        if (result.embed_token) setEmbedToken(result.embed_token);
+        return result.id;
       }
     } catch {
       toast.error('Failed to save');
+      return null;
     }
   };
 
   const handleNext = async () => {
-    if (step === 1 && !name.trim()) { toast.error('Give your chatbot a name'); return; }
-    await saveDraft();
-    if (step === 3 && botId) {
+    if (step === 1 && !name.trim()) {
+      toast.error('Give your chatbot a name');
+      return;
+    }
+
+    const savedId = await saveDraft();
+    if (!savedId) return;
+
+    // Save FAQs on step 3
+    if (step === 3) {
       const validFaqs = faqs.filter((f) => f.question.trim() && f.answer.trim());
       for (const faq of validFaqs) {
         try {
-          await createFAQMutation.mutateAsync({ chatbot_id: botId, ...faq });
-        } catch { /* continue */ }
+          await createFAQMutation.mutateAsync({ chatbot_id: savedId, ...faq });
+        } catch { /* continue - may already exist */ }
       }
     }
-    if (step < 5) setStep(step + 1);
-    if (step === 4) {
-      await saveDraft();
-      setStep(5);
-      setShowConfetti(true);
-      setTimeout(() => setShowConfetti(false), 5000);
+
+    if (step < 5) {
+      const nextStep = step + 1;
+      setStep(nextStep);
+      // Show confetti when reaching deploy step
+      if (nextStep === 5) {
+        setShowConfetti(true);
+        setTimeout(() => setShowConfetti(false), 5000);
+      }
     }
   };
 
   const addFAQ = () => setFaqs([...faqs, { question: '', answer: '' }]);
+  const removeFAQ = (index: number) => {
+    if (faqs.length <= 1) return;
+    setFaqs(faqs.filter((_, i) => i !== index));
+  };
   const updateFAQField = (index: number, field: 'question' | 'answer', value: string) => {
     const updated = [...faqs];
     updated[index][field] = value;
     setFaqs(updated);
   };
 
-  const embedToken = existingBot?.embed_token || '';
-  const widgetUrl = `${window.location.origin}/widget/${embedToken}`;
-  const embedCode = `<iframe src="${widgetUrl}" width="400" height="600" frameborder="0" style="border-radius:12px;box-shadow:0 4px 24px rgba(0,0,0,0.15)"></iframe>`;
+  // File upload handler for .txt and .csv FAQ files
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const text = ev.target?.result as string;
+      if (!text) return;
+      const newFaqs: FAQPair[] = [];
+      if (file.name.endsWith('.csv')) {
+        // CSV: each row is question,answer
+        const lines = text.split('\n').filter((l) => l.trim());
+        for (const line of lines) {
+          const [question, ...answerParts] = line.split(',');
+          const answer = answerParts.join(',').trim();
+          if (question?.trim() && answer) {
+            newFaqs.push({ question: question.trim().replace(/^"/, '').replace(/"$/, ''), answer: answer.replace(/^"/, '').replace(/"$/, '') });
+          }
+        }
+      } else {
+        // TXT: alternating lines Q then A, or "Q: ... A: ..." format
+        const lines = text.split('\n').filter((l) => l.trim());
+        for (let i = 0; i < lines.length - 1; i += 2) {
+          const q = lines[i].replace(/^Q:\s*/i, '').trim();
+          const a = lines[i + 1]?.replace(/^A:\s*/i, '').trim();
+          if (q && a) newFaqs.push({ question: q, answer: a });
+        }
+      }
+      if (newFaqs.length) {
+        setFaqs((prev) => [...prev.filter((f) => f.question || f.answer), ...newFaqs]);
+        toast.success(`Imported ${newFaqs.length} FAQs`);
+      } else {
+        toast.error('No FAQs found in file');
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  };
+
+  const widgetUrl = embedToken ? `${window.location.origin}/widget/${embedToken}` : '';
+  const embedCode = widgetUrl
+    ? `<iframe src="${widgetUrl}" width="400" height="600" frameborder="0" style="border-radius:12px;box-shadow:0 4px 24px rgba(0,0,0,0.15)"></iframe>`
+    : '';
 
   return (
     <PageWrapper>
@@ -154,6 +218,7 @@ const ChatbotBuilder = () => {
                 onChange={(e) => setName(e.target.value)}
                 className="w-full rounded-md border border-border bg-card px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
                 placeholder="e.g. Support Bot"
+                maxLength={100}
               />
             </div>
             <div>
@@ -162,6 +227,7 @@ const ChatbotBuilder = () => {
                 value={welcomeMessage}
                 onChange={(e) => setWelcomeMessage(e.target.value)}
                 rows={3}
+                maxLength={500}
                 className="w-full rounded-md border border-border bg-card px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
               />
             </div>
@@ -209,15 +275,31 @@ const ChatbotBuilder = () => {
         {/* Step 3: Knowledge Base */}
         {step === 3 && (
           <div className="space-y-6">
-            <h2 className="font-display text-xl font-bold text-foreground">Add FAQs</h2>
+            <div className="flex items-center justify-between">
+              <h2 className="font-display text-xl font-bold text-foreground">Add FAQs</h2>
+              <label className="inline-flex cursor-pointer items-center gap-2 rounded-md border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted">
+                <Upload className="h-3.5 w-3.5" />
+                Upload .txt/.csv
+                <input type="file" accept=".txt,.csv" onChange={handleFileUpload} className="hidden" />
+              </label>
+            </div>
             <p className="text-sm text-muted-foreground">Teach your chatbot about your business. You can add more later.</p>
             {faqs.map((faq, i) => (
               <div key={i} className="space-y-2 rounded-lg border border-border bg-card p-4">
+                <div className="flex items-start justify-between">
+                  <span className="text-xs font-medium text-muted-foreground">FAQ {i + 1}</span>
+                  {faqs.length > 1 && (
+                    <button onClick={() => removeFAQ(i)} className="rounded p-1 text-muted-foreground hover:bg-destructive/10 hover:text-destructive">
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  )}
+                </div>
                 <input
                   type="text"
                   value={faq.question}
                   onChange={(e) => updateFAQField(i, 'question', e.target.value)}
                   placeholder="Question"
+                  maxLength={500}
                   className="w-full rounded-md border border-border bg-muted px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none"
                 />
                 <textarea
@@ -225,6 +307,7 @@ const ChatbotBuilder = () => {
                   onChange={(e) => updateFAQField(i, 'answer', e.target.value)}
                   placeholder="Answer"
                   rows={2}
+                  maxLength={2000}
                   className="w-full rounded-md border border-border bg-muted px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none"
                 />
               </div>
@@ -241,6 +324,18 @@ const ChatbotBuilder = () => {
             <h2 className="font-display text-xl font-bold text-foreground">Customize appearance</h2>
             <div>
               <label className="mb-2 block text-sm font-medium text-foreground">Primary Color</label>
+              <div className="mb-3 flex flex-wrap gap-2">
+                {COLOR_PRESETS.map((color) => (
+                  <button
+                    key={color}
+                    onClick={() => setPrimaryColor(color)}
+                    className={`h-8 w-8 rounded-full border-2 transition-all ${
+                      primaryColor === color ? 'border-foreground scale-110' : 'border-transparent hover:scale-105'
+                    }`}
+                    style={{ backgroundColor: color }}
+                  />
+                ))}
+              </div>
               <div className="flex items-center gap-3">
                 <input
                   type="color"
@@ -260,14 +355,14 @@ const ChatbotBuilder = () => {
             <div className="rounded-lg border border-border bg-card p-4">
               <p className="mb-3 text-xs font-medium text-muted-foreground">Preview</p>
               <div className="mx-auto w-64 rounded-lg border border-border bg-background p-4">
-                <div className="mb-3 flex items-center gap-2" style={{ color: primaryColor }}>
+                <div className="mb-3 flex items-center gap-2">
                   <span className="text-xl">{avatarEmoji}</span>
-                  <span className="text-sm font-bold">{name || 'Your Bot'}</span>
+                  <span className="text-sm font-bold text-foreground">{name || 'Your Bot'}</span>
                 </div>
-                <div className="mb-2 rounded-lg bg-muted p-2.5 text-xs text-foreground">{welcomeMessage}</div>
+                <div className="mb-2 rounded-lg bg-muted p-2.5 text-xs text-foreground">{welcomeMessage || 'Hello!'}</div>
                 <div className="flex gap-2">
                   <div className="flex-1 rounded-md border border-border bg-card px-2 py-1.5 text-xs text-muted-foreground">Type a message...</div>
-                  <button className="rounded-md px-3 py-1.5 text-xs font-medium" style={{ backgroundColor: primaryColor, color: '#000' }}>Send</button>
+                  <button className="rounded-md px-3 py-1.5 text-xs font-medium text-primary-foreground" style={{ backgroundColor: primaryColor }}>Send</button>
                 </div>
               </div>
             </div>
@@ -281,7 +376,7 @@ const ChatbotBuilder = () => {
             <h2 className="font-display text-2xl font-bold text-foreground">Your chatbot is ready! 🎉</h2>
             <p className="text-sm text-muted-foreground">Deploy it anywhere with the embed code below</p>
 
-            {embedToken && (
+            {embedToken ? (
               <>
                 <div className="rounded-lg border border-border bg-card p-4 text-left">
                   <p className="mb-2 text-xs font-medium text-muted-foreground">Embed Code</p>
@@ -302,6 +397,8 @@ const ChatbotBuilder = () => {
                   <ExternalLink className="h-4 w-4" /> Open live preview
                 </a>
               </>
+            ) : (
+              <p className="text-sm text-muted-foreground">Embed code will be available after saving.</p>
             )}
 
             <div>

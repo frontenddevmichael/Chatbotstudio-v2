@@ -61,7 +61,7 @@ const WidgetPage = () => {
         body: {
           chatbot_id: chatbot.id,
           session_id: sessionId,
-          messages: newMessages.filter(m => m.role !== 'assistant' || newMessages.indexOf(m) > 0), // skip welcome
+          messages: newMessages,
           new_message: text,
         },
       });
@@ -71,6 +71,8 @@ const WidgetPage = () => {
         setMessages([...newMessages, { role: 'assistant', content: "You've sent too many messages. Please wait a moment and try again." }]);
       } else if (data?.response) {
         setMessages([...newMessages, { role: 'assistant', content: data.response }]);
+      } else if (data?.error) {
+        setMessages([...newMessages, { role: 'assistant', content: "Sorry, I'm having trouble responding right now. Please try again." }]);
       }
     } catch {
       setMessages([...newMessages, { role: 'assistant', content: "Sorry, I'm having trouble responding right now. Please try again." }]);
@@ -99,20 +101,23 @@ const WidgetPage = () => {
   if (error) {
     return (
       <div className="flex h-screen items-center justify-center bg-background p-4">
-        <p className="text-sm text-muted-foreground">{error}</p>
+        <div className="text-center">
+          <span className="mb-3 inline-block text-4xl">🤖</span>
+          <p className="text-sm text-muted-foreground">{error}</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="flex h-screen flex-col bg-background" style={{ '--widget-primary': primaryColor } as React.CSSProperties}>
+    <div className="flex h-screen flex-col bg-background">
       <SEO
         title={chatbot?.name || 'Chat'}
         description={`Chat with ${chatbot?.name} — powered by ChatBot Studio`}
       />
 
       {/* Header */}
-      <div className="flex items-center gap-3 border-b border-border px-4 py-3">
+      <div className="flex items-center gap-3 border-b border-border px-4 py-3" style={{ borderBottomColor: `${primaryColor}22` }}>
         <span className="text-2xl">{chatbot?.avatar_emoji || '🤖'}</span>
         <div>
           <p className="text-sm font-bold text-foreground">{chatbot?.name}</p>
@@ -127,7 +132,7 @@ const WidgetPage = () => {
             <div
               className={`max-w-[80%] rounded-2xl px-4 py-2.5 text-sm ${
                 msg.role === 'user'
-                  ? 'bg-primary text-primary-foreground rounded-br-md'
+                  ? 'text-primary-foreground rounded-br-md'
                   : 'bg-card border border-border text-foreground rounded-bl-md'
               }`}
               style={msg.role === 'user' ? { backgroundColor: primaryColor } : undefined}
@@ -156,7 +161,8 @@ const WidgetPage = () => {
             onKeyDown={handleKeyDown}
             placeholder="Type a message..."
             maxLength={2000}
-            className="flex-1 rounded-lg border border-border bg-card px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none"
+            className="flex-1 rounded-lg border border-border bg-card px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none"
+            style={{ borderColor: input ? primaryColor : undefined }}
           />
           <button
             onClick={sendMessage}

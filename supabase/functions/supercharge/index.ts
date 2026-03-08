@@ -3,7 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
 serve(async (req) => {
@@ -20,9 +20,9 @@ serve(async (req) => {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const lovableApiKey = Deno.env.get("LOVABLE_API_KEY");
-    const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+    const anonKey = Deno.env.get("SUPABASE_ANON_KEY") || Deno.env.get("SUPABASE_PUBLISHABLE_KEY")!;
 
-    // Verify user
+    // Verify user JWT
     const userClient = createClient(supabaseUrl, anonKey, { global: { headers: { Authorization: authHeader } } });
     const { data: { user }, error: authErr } = await userClient.auth.getUser();
     if (authErr || !user) {
@@ -37,31 +37,48 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, serviceKey);
 
     // Verify FAQ belongs to user's chatbot
-    const { data: faq } = await supabase.from("faqs").select("*, chatbots!inner(user_id)").eq("id", faq_id).single();
+    const { data: faq } = await supabase
+      .from("faqs")
+      .select("*, chatbots!inner(user_id)")
+      .eq("id", faq_id)
+      .single();
+
     if (!faq || (faq as any).chatbots?.user_id !== user.id) {
       return new Response(JSON.stringify({ error: "not_found" }), { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // Rate limiting
+    // Rate limiting: 50 supercharges per user per day
     const identifier = user.id;
     const oneDayAgo = new Date(Date.now() - 86400000).toISOString();
-    const { data: rateData } = await supabase.from("rate_limits").select("*").eq("identifier", identifier).eq("endpoint", "supercharge").gte("window_start", oneDayAgo).single();
+    const { data: rateData } = await supabase
+      .from("rate_limits")
+      .select("*")
+      .eq("identifier", identifier)
+      .eq("endpoint", "supercharge")
+      .gte("window_start", oneDayAgo)
+      .single();
 
     if (rateData && rateData.request_count >= 50) {
-      return new Response(JSON.stringify({ error: "rate_limit", message: "Daily supercharge limit reached." }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      return new Response(
+        JSON.stringify({ error: "rate_limit", message: "Daily supercharge limit reached. Try again tomorrow." }),
+        { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
     if (rateData) {
       await supabase.from("rate_limits").update({ request_count: rateData.request_count + 1 }).eq("id", rateData.id);
     } else {
-      await supabase.from("rate_limits").upsert({ identifier, endpoint: "supercharge", request_count: 1, window_start: new Date().toISOString() }, { onConflict: "identifier,endpoint" });
+      await supabase.from("rate_limits").upsert(
+        { identifier, endpoint: "supercharge", request_count: 1, window_start: new Date().toISOString() },
+        { onConflict: "identifier,endpoint" }
+      );
     }
 
     if (!lovableApiKey) {
       return new Response(JSON.stringify({ error: "api_key_missing" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // Call Lovable AI Gateway
+    // Call Lovable AI Gateway to generate variations
     const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -81,10 +98,16 @@ Return ONLY a valid JSON array of 8 strings. No explanation, no markdown, no cod
 
     if (!aiResponse.ok) {
       if (aiResponse.status === 429) {
-        return new Response(JSON.stringify({ error: "rate_limit", message: "AI rate limit exceeded." }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        return new Response(
+          JSON.stringify({ error: "rate_limit", message: "AI rate limit exceeded." }),
+          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
       }
       if (aiResponse.status === 402) {
-        return new Response(JSON.stringify({ error: "payment_required", message: "AI credits exhausted." }), { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        return new Response(
+          JSON.stringify({ error: "payment_required", message: "AI credits exhausted." }),
+          { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
       }
       const errText = await aiResponse.text();
       console.error("AI gateway error:", aiResponse.status, errText);
@@ -94,15 +117,21 @@ Return ONLY a valid JSON array of 8 strings. No explanation, no markdown, no cod
     const aiData = await aiResponse.json();
     const text = aiData.choices?.[0]?.message?.content || "[]";
 
+    // Safely parse JSON response
     let variations: string[];
     try {
-      variations = JSON.parse(text);
+      // Handle markdown code blocks wrapping
+      const cleaned = text.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
+      variations = JSON.parse(cleaned);
       if (!Array.isArray(variations)) variations = [];
+      // Ensure all items are strings
+      variations = variations.filter((v: any) => typeof v === "string").slice(0, 8);
     } catch {
+      console.error("Failed to parse AI response:", text);
       variations = [];
     }
 
-    // Save variations
+    // Save variations to FAQ
     await supabase.from("faqs").update({ variations }).eq("id", faq_id);
 
     return new Response(JSON.stringify({ variations }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
