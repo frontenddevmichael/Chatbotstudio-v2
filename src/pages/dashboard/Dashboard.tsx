@@ -95,6 +95,9 @@ const Dashboard = () => {
             </p>
           </motion.div>
 
+          {/* Install banner */}
+          <InstallBanner />
+
           {/* Onboarding */}
           <OnboardingChecklist ctx={onboardingCtx} />
 
