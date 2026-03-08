@@ -12,6 +12,8 @@ const FloatingInstallButton = () => {
   const [dismissed, setDismissed] = useState(false);
   const [isInstalled, setIsInstalled] = useState(false);
   const [expanded, setExpanded] = useState(false);
+  const controls = useAnimation();
+  const hasBounced = useRef(false);
 
   useEffect(() => {
     if (window.matchMedia('(display-mode: standalone)').matches) {
