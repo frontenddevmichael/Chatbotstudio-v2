@@ -1,6 +1,5 @@
 import { motion } from 'framer-motion';
 import { useInView } from 'react-intersection-observer';
-import { X } from 'lucide-react';
 
 const PAINS = [
   { title: 'Hiring support staff is expensive', desc: 'Salaries, training, turnover — it adds up fast.' },
@@ -12,55 +11,55 @@ const ProblemSection = () => {
   const [ref, inView] = useInView({ triggerOnce: true, threshold: 0.15 });
 
   return (
-    <section ref={ref} className="py-24 md:py-32 bg-[#0a0a12] px-6">
-      <div className="max-w-7xl mx-auto">
+    <section ref={ref} className="py-24 md:py-32 bg-black px-6">
+      <div className="max-w-6xl mx-auto">
         <div className="grid md:grid-cols-2 gap-12 md:gap-20 mb-16">
           <motion.h2
-            className="font-display text-3xl sm:text-4xl lg:text-5xl font-bold text-white leading-tight"
-            initial={{ opacity: 0, y: 30 }}
+            className="font-serif text-[36px] sm:text-[44px] lg:text-[52px] font-normal text-white/90 leading-[1.05]"
+            initial={{ opacity: 0, y: 24 }}
             animate={inView ? { opacity: 1, y: 0 } : {}}
-            transition={{ duration: 0.6 }}
+            transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
           >
             Your customers have questions.{' '}
-            <span className="text-gray-500">Right now. At 2am.</span>
+            <span className="text-white/30">Right now. At 2am.</span>
           </motion.h2>
           <motion.p
-            className="text-gray-400 text-lg leading-relaxed self-end"
-            initial={{ opacity: 0, y: 30 }}
+            className="text-[15px] text-white/45 leading-relaxed self-end"
+            initial={{ opacity: 0, y: 24 }}
             animate={inView ? { opacity: 1, y: 0 } : {}}
-            transition={{ duration: 0.6, delay: 0.2 }}
+            transition={{ duration: 0.5, delay: 0.15 }}
           >
             There's a growing gap between when your customers need help and when your team is available.
-            Email takes hours. Phone lines close. Live chat requires staff. The result? Lost sales, frustrated
-            customers, and opportunities that slip away silently.
+            Email takes hours. Phone lines close. Live chat requires staff. The result? Lost sales and
+            opportunities that slip away silently.
           </motion.p>
         </div>
 
-        <div className="grid sm:grid-cols-3 gap-6 mb-12">
+        <div className="grid sm:grid-cols-3 gap-4 mb-12">
           {PAINS.map((pain, i) => (
             <motion.div
               key={i}
-              className="p-6 rounded-xl bg-[#111118] border border-[#1e1e2e]"
-              initial={{ opacity: 0, y: 20 }}
+              className="p-6 rounded-[14px] bg-[#0a0a0a] border border-white/[0.06]"
+              initial={{ opacity: 0, y: 16 }}
               animate={inView ? { opacity: 1, y: 0 } : {}}
-              transition={{ duration: 0.5, delay: 0.3 + i * 0.1 }}
+              transition={{ duration: 0.4, delay: 0.25 + i * 0.08 }}
             >
-              <div className="w-8 h-8 rounded-full bg-red-500/10 flex items-center justify-center mb-4">
-                <X size={16} className="text-red-400" />
+              <div className="w-7 h-7 rounded-full bg-[#ff453a]/10 flex items-center justify-center mb-4">
+                <span className="text-[#ff453a] text-[11px] font-bold">✕</span>
               </div>
-              <h4 className="font-display text-white font-semibold mb-2">{pain.title}</h4>
-              <p className="text-sm text-gray-500">{pain.desc}</p>
+              <h4 className="text-[15px] font-semibold text-white/85 mb-2">{pain.title}</h4>
+              <p className="text-[13px] text-white/35 leading-relaxed">{pain.desc}</p>
             </motion.div>
           ))}
         </div>
 
         <motion.p
-          className="text-[#00d4ff] font-display text-lg"
-          initial={{ opacity: 0, x: -20 }}
+          className="text-[15px] font-medium text-[#0a84ff]"
+          initial={{ opacity: 0, x: -12 }}
           animate={inView ? { opacity: 1, x: 0 } : {}}
-          transition={{ duration: 0.5, delay: 0.7 }}
+          transition={{ duration: 0.4, delay: 0.5 }}
         >
-          ChatBot Studio fixes all three. →
+          ChatBot Studio fixes all three →
         </motion.p>
       </div>
     </section>

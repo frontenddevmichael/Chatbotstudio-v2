@@ -2,14 +2,13 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Menu, X } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 
 const LandingNavbar = () => {
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
-    const handler = () => setScrolled(window.scrollY > 80);
+    const handler = () => setScrolled(window.scrollY > 40);
     window.addEventListener('scroll', handler, { passive: true });
     return () => window.removeEventListener('scroll', handler);
   }, []);
@@ -21,39 +20,48 @@ const LandingNavbar = () => {
 
   return (
     <motion.nav
-      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${
-        scrolled ? 'backdrop-blur-xl bg-[#080810]/80 border-b border-[#1e1e2e]' : 'bg-transparent'
+      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
+        scrolled
+          ? 'bg-black/72 backdrop-blur-xl backdrop-saturate-[1.8] border-b border-white/[0.06]'
+          : 'bg-transparent'
       }`}
-      initial={{ y: -80 }}
+      initial={{ y: -48 }}
       animate={{ y: 0 }}
-      transition={{ duration: 0.6 }}
+      transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
     >
-      <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-        <Link to="/" className="font-display text-xl font-bold tracking-tight">
-          ChatBot <span className="text-[#00d4ff]">Studio</span>
+      <div className="max-w-6xl mx-auto px-6 h-12 flex items-center justify-between">
+        <Link to="/" className="text-[15px] font-semibold tracking-tight text-white/90">
+          ChatBot Studio
         </Link>
 
         {/* Desktop */}
         <div className="hidden md:flex items-center gap-8">
-          <button onClick={() => scrollTo('features')} className="text-sm text-gray-400 hover:text-white transition-colors relative group">
+          <button
+            onClick={() => scrollTo('features')}
+            className="text-[13px] text-white/50 hover:text-white/90 transition-colors"
+          >
             Features
-            <span className="absolute bottom-0 left-0 w-full h-px bg-[#00d4ff] scale-x-0 group-hover:scale-x-100 transition-transform origin-left" />
           </button>
-          <button onClick={() => scrollTo('pricing')} className="text-sm text-gray-400 hover:text-white transition-colors relative group">
+          <button
+            onClick={() => scrollTo('pricing')}
+            className="text-[13px] text-white/50 hover:text-white/90 transition-colors"
+          >
             Pricing
-            <span className="absolute bottom-0 left-0 w-full h-px bg-[#00d4ff] scale-x-0 group-hover:scale-x-100 transition-transform origin-left" />
           </button>
-          <Link to="/login" className="text-sm text-gray-400 hover:text-white transition-colors">Sign In</Link>
-          <Link to="/signup">
-            <Button className="bg-[#00d4ff] text-[#080810] hover:bg-[#00d4ff]/90 font-semibold text-sm h-9 px-5">
-              Get Started Free
-            </Button>
+          <Link to="/login" className="text-[13px] text-white/50 hover:text-white/90 transition-colors">
+            Sign In
+          </Link>
+          <Link
+            to="/signup"
+            className="h-8 px-4 inline-flex items-center rounded-[8px] bg-[#0a84ff] text-white text-[13px] font-medium hover:bg-[#409cff] transition-colors"
+          >
+            Get Started
           </Link>
         </div>
 
-        {/* Mobile hamburger */}
-        <button className="md:hidden text-white" onClick={() => setMenuOpen(!menuOpen)}>
-          {menuOpen ? <X size={24} /> : <Menu size={24} />}
+        {/* Mobile */}
+        <button className="md:hidden text-white/70" onClick={() => setMenuOpen(!menuOpen)}>
+          {menuOpen ? <X size={20} /> : <Menu size={20} />}
         </button>
       </div>
 
@@ -63,14 +71,17 @@ const LandingNavbar = () => {
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
-            className="md:hidden bg-[#080810]/95 backdrop-blur-xl border-b border-[#1e1e2e] overflow-hidden"
+            transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+            className="md:hidden bg-black/90 backdrop-blur-xl border-b border-white/[0.06] overflow-hidden"
           >
-            <div className="flex flex-col gap-4 px-6 py-6">
-              <button onClick={() => scrollTo('features')} className="text-left text-gray-300">Features</button>
-              <button onClick={() => scrollTo('pricing')} className="text-left text-gray-300">Pricing</button>
-              <Link to="/login" className="text-gray-300" onClick={() => setMenuOpen(false)}>Sign In</Link>
+            <div className="flex flex-col gap-1 px-6 py-4">
+              <button onClick={() => scrollTo('features')} className="text-left text-[15px] text-white/60 py-2">Features</button>
+              <button onClick={() => scrollTo('pricing')} className="text-left text-[15px] text-white/60 py-2">Pricing</button>
+              <Link to="/login" className="text-[15px] text-white/60 py-2" onClick={() => setMenuOpen(false)}>Sign In</Link>
               <Link to="/signup" onClick={() => setMenuOpen(false)}>
-                <Button className="w-full bg-[#00d4ff] text-[#080810] hover:bg-[#00d4ff]/90 font-semibold">Get Started Free</Button>
+                <span className="mt-2 block h-10 rounded-[8px] bg-[#0a84ff] text-white text-[15px] font-medium flex items-center justify-center">
+                  Get Started
+                </span>
               </Link>
             </div>
           </motion.div>
