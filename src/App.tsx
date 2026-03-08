@@ -8,6 +8,7 @@ import { ThemeProvider } from "@/context/ThemeContext";
 import ErrorBoundary from "@/components/ui/ErrorBoundary";
 import SkipToContent from "@/components/SkipToContent";
 import CookieConsent from "@/components/CookieConsent";
+import FloatingInstallButton from "@/components/pwa/FloatingInstallButton";
 import React, { Suspense } from "react";
 import PageSkeleton, { AuthSkeleton, BuilderSkeleton, LandingSkeleton, WidgetSkeleton } from "@/components/ui/PageSkeleton";
 
@@ -76,6 +77,7 @@ const App = () => (
                 </Routes>
               </Suspense>
               <CookieConsent />
+              <FloatingInstallButton />
             </BrowserRouter>
             </TooltipProvider>
           </ThemeProvider>
