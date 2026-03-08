@@ -41,6 +41,16 @@ const BottomTabBar = () => {
             </Link>
           );
         }
+        if (to === '#signout') {
+          return (
+            <button key={to} onClick={handleSignOut} className="flex flex-col items-center py-1 min-w-[48px]">
+              <motion.div whileTap={{ scale: 0.85 }}>
+                <Icon className="h-5 w-5 text-muted-foreground" />
+              </motion.div>
+              <span className="mt-0.5 text-[10px] font-medium text-muted-foreground">{label}</span>
+            </button>
+          );
+        }
         return (
           <Link key={to} to={to} className="flex flex-col items-center py-1 min-w-[48px]">
             <motion.div whileTap={{ scale: 0.85 }}>

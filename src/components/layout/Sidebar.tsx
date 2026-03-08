@@ -106,6 +106,14 @@ const Sidebar = () => {
             <Progress value={usagePercent} className="mt-1 h-1 bg-muted" />
           </div>
         )}
+        <button
+          onClick={handleSignOut}
+          title={isTablet ? 'Sign out' : undefined}
+          className={`mt-2 flex items-center ${isTablet ? 'justify-center rounded-[8px] p-2.5 w-full' : 'gap-2.5 rounded-[6px] px-3 py-[7px] w-full'} text-[14px] font-medium text-muted-foreground transition-colors hover:bg-[hsl(var(--color-surface-1))] hover:text-foreground`}
+        >
+          <LogOut className="h-4 w-4" />
+          {!isTablet && 'Sign Out'}
+        </button>
       </div>
     </div>
   );
