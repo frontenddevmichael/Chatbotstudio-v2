@@ -136,12 +136,7 @@ const WidgetPage = () => {
           className="flex items-center gap-3 border-b px-4 py-3"
           style={{ borderBottomColor: `${primaryColor}22`, boxShadow: `0 1px 12px -4px ${primaryColor}15` }}
         >
-          <div
-            className="flex h-9 w-9 items-center justify-center rounded-full text-lg"
-            style={{ background: `${primaryColor}15` }}
-          >
-            {botEmoji}
-          </div>
+          <BotAvatar avatarEmoji={botAvatar} botName={botName} accentColor={primaryColor} size="sm" />
           <div>
             <p className="text-sm font-bold text-foreground">{chatbot?.name}</p>
             <div className="flex items-center gap-1.5">
