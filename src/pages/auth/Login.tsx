@@ -48,7 +48,7 @@ const Login = () => {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="w-full rounded-[10px] border border-border bg-[hsl(var(--color-surface-3))] px-3 py-2 text-[15px] text-foreground placeholder:text-muted-foreground outline-none transition-colors focus:border-primary"
-                style={{ boxShadow: 'var(--shadow-focus)' && 'none' }}
+                
                 placeholder="you@example.com"
               />
             </div>
