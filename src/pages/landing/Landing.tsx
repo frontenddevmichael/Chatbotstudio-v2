@@ -22,7 +22,6 @@ const Landing = () => {
   const { user, loading } = useAuth();
   const [exitModal, setExitModal] = useState(false);
 
-  // Exit intent trigger
   useEffect(() => {
     if (localStorage.getItem('waitlist_joined')) return;
     let fired = false;
@@ -40,7 +39,7 @@ const Landing = () => {
   if (user) return <Navigate to="/dashboard" replace />;
 
   return (
-    <div className="bg-[#080810] min-h-screen text-white overflow-x-hidden cursor-none md:cursor-none">
+    <div className="bg-black min-h-screen text-white overflow-x-hidden">
       <SEO
         title="ChatBot Studio — Build AI Chatbots Without Code"
         description="Create intelligent AI chatbots for your business in minutes. No coding required. Train it on your FAQs, deploy anywhere, and let it handle customer questions 24/7. Free to start."

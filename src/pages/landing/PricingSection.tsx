@@ -1,116 +1,102 @@
 import { useState } from 'react';
-import { motion, useMotionValue, useTransform } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { useInView } from 'react-intersection-observer';
 import { Link } from 'react-router-dom';
-import { Button } from '@/components/ui/button';
 import { Check } from 'lucide-react';
 import WaitlistModal from './WaitlistModal';
 
 const FREE_FEATURES = ['1 chatbot', '500 messages/month', 'Supercharge FAQ', 'Website embed', 'Basic analytics'];
 const PREMIUM_FEATURES = ['Up to 10 chatbots', '10,000 messages/month', 'Custom branding', 'Advanced analytics', 'Ad-free dashboard', 'Priority support'];
 
-const TiltCard = ({ children, className, premium = false }: { children: React.ReactNode; className?: string; premium?: boolean }) => {
-  const x = useMotionValue(0.5);
-  const y = useMotionValue(0.5);
-  const rotateX = useTransform(y, [0, 1], [8, -8]);
-  const rotateY = useTransform(x, [0, 1], [-8, 8]);
-
-  const handleMouse = (e: React.MouseEvent<HTMLDivElement>) => {
-    const rect = e.currentTarget.getBoundingClientRect();
-    x.set((e.clientX - rect.left) / rect.width);
-    y.set((e.clientY - rect.top) / rect.height);
-  };
-  const reset = () => { x.set(0.5); y.set(0.5); };
-
-  return (
-    <motion.div
-      className={`relative rounded-xl p-px ${className}`}
-      style={{ rotateX, rotateY, transformPerspective: 800 }}
-      onMouseMove={handleMouse}
-      onMouseLeave={reset}
-    >
-      {premium && (
-        <div className="absolute inset-0 rounded-xl animate-gradient-border" />
-      )}
-      <div className={`relative rounded-xl bg-[#111118] p-8 h-full ${premium ? 'z-10' : ''}`}>
-        {children}
-      </div>
-    </motion.div>
-  );
-};
-
 const PricingSection = () => {
   const [ref, inView] = useInView({ triggerOnce: true, threshold: 0.2 });
   const [modalOpen, setModalOpen] = useState(false);
 
   return (
-    <section ref={ref} id="pricing" className="py-24 md:py-32 bg-[#080810] px-6">
+    <section ref={ref} id="pricing" className="py-24 md:py-32 bg-black px-6">
       <div className="max-w-4xl mx-auto">
+        <motion.p
+          className="text-[11px] font-medium tracking-[0.15em] uppercase text-[#0a84ff] text-center mb-4"
+          initial={{ opacity: 0 }}
+          animate={inView ? { opacity: 1 } : {}}
+        >
+          Pricing
+        </motion.p>
         <motion.h2
-          className="font-display text-3xl sm:text-4xl font-bold text-white text-center mb-4"
-          initial={{ opacity: 0, y: 30 }}
+          className="font-serif text-[36px] sm:text-[44px] font-normal text-white/90 text-center mb-4"
+          initial={{ opacity: 0, y: 24 }}
           animate={inView ? { opacity: 1, y: 0 } : {}}
         >
           Simple, honest pricing
         </motion.h2>
         <motion.p
-          className="text-gray-500 text-center mb-16"
+          className="text-[15px] text-white/40 text-center mb-16"
           initial={{ opacity: 0 }}
           animate={inView ? { opacity: 1 } : {}}
-          transition={{ delay: 0.2 }}
+          transition={{ delay: 0.15 }}
         >
           Start free. Upgrade when you're ready.
         </motion.p>
 
-        <div className="grid sm:grid-cols-2 gap-8">
+        <div className="grid sm:grid-cols-2 gap-4">
           {/* Free */}
           <motion.div
-            initial={{ opacity: 0, y: 30 }}
+            className="rounded-[14px] border border-white/[0.06] bg-[#0a0a0a] p-8"
+            initial={{ opacity: 0, y: 20 }}
             animate={inView ? { opacity: 1, y: 0 } : {}}
-            transition={{ delay: 0.3 }}
+            transition={{ delay: 0.2 }}
           >
-            <TiltCard className="border border-[#1e1e2e]">
-              <div className="text-sm text-gray-500 font-mono mb-4">Free Forever</div>
-              <div className="font-display text-4xl font-bold text-white mb-6">$0<span className="text-lg text-gray-500">/mo</span></div>
-              <ul className="space-y-3 mb-8">
-                {FREE_FEATURES.map(f => (
-                  <li key={f} className="text-sm text-gray-300 flex items-center gap-2">
-                    <Check size={14} className="text-[#00d4ff]" /> {f}
-                  </li>
-                ))}
-              </ul>
-              <Link to="/signup">
-                <Button className="w-full bg-[#00d4ff] text-[#080810] hover:bg-[#00d4ff]/90 font-semibold">Start Building Free</Button>
-              </Link>
-            </TiltCard>
+            <div className="text-[11px] font-mono text-white/25 mb-4">Free Forever</div>
+            <div className="mb-6">
+              <span className="font-serif text-[48px] text-white/90">$0</span>
+              <span className="text-[15px] text-white/30">/mo</span>
+            </div>
+            <ul className="space-y-3 mb-8">
+              {FREE_FEATURES.map(f => (
+                <li key={f} className="text-[13px] text-white/55 flex items-center gap-2">
+                  <Check size={14} className="text-[#0a84ff] shrink-0" /> {f}
+                </li>
+              ))}
+            </ul>
+            <Link
+              to="/signup"
+              className="block w-full h-10 rounded-[10px] bg-[#0a84ff] text-white text-[14px] font-medium flex items-center justify-center hover:bg-[#409cff] active:scale-[0.97] transition-all"
+            >
+              Start Building Free
+            </Link>
           </motion.div>
 
           {/* Premium */}
           <motion.div
-            initial={{ opacity: 0, y: 30 }}
+            className="rounded-[14px] border border-[#0a84ff]/20 bg-[#0a0a0a] p-8 relative overflow-hidden"
+            initial={{ opacity: 0, y: 20 }}
             animate={inView ? { opacity: 1, y: 0 } : {}}
-            transition={{ delay: 0.4 }}
+            transition={{ delay: 0.3 }}
           >
-            <TiltCard premium className="overflow-hidden">
-              <div className="flex items-center gap-2 mb-4">
-                <span className="text-sm text-gray-500 font-mono">Premium</span>
-                <span className="text-[10px] font-mono bg-[#ffb547]/10 text-[#ffb547] px-2 py-0.5 rounded-full">Coming Soon</span>
-              </div>
-              <div className="font-display text-4xl font-bold text-white mb-6">$19.99<span className="text-lg text-gray-500">/mo</span></div>
-              <ul className="space-y-3 mb-8">
-                {PREMIUM_FEATURES.map(f => (
-                  <li key={f} className="text-sm text-gray-300 flex items-center gap-2">
-                    <Check size={14} className="text-[#ffb547]" /> {f}
-                  </li>
-                ))}
-              </ul>
-              <Button
-                onClick={() => setModalOpen(true)}
-                className="w-full bg-[#ffb547] text-[#080810] hover:bg-[#ffb547]/90 font-semibold"
-              >
-                Join the Waitlist
-              </Button>
-            </TiltCard>
+            {/* Subtle glow */}
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[200px] h-[1px] bg-gradient-to-r from-transparent via-[#0a84ff]/40 to-transparent" />
+
+            <div className="flex items-center gap-2 mb-4">
+              <span className="text-[11px] font-mono text-white/25">Premium</span>
+              <span className="text-[10px] font-medium bg-[#ff9f0a]/10 text-[#ff9f0a] px-2 py-0.5 rounded-full">Coming Soon</span>
+            </div>
+            <div className="mb-6">
+              <span className="font-serif text-[48px] text-white/90">$19.99</span>
+              <span className="text-[15px] text-white/30">/mo</span>
+            </div>
+            <ul className="space-y-3 mb-8">
+              {PREMIUM_FEATURES.map(f => (
+                <li key={f} className="text-[13px] text-white/55 flex items-center gap-2">
+                  <Check size={14} className="text-[#ff9f0a] shrink-0" /> {f}
+                </li>
+              ))}
+            </ul>
+            <button
+              onClick={() => setModalOpen(true)}
+              className="block w-full h-10 rounded-[10px] border border-white/10 text-white/80 text-[14px] font-medium flex items-center justify-center hover:border-white/20 hover:text-white active:scale-[0.97] transition-all"
+            >
+              Join the Waitlist
+            </button>
           </motion.div>
         </div>
       </div>

@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Check } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { Button } from '@/components/ui/button';
 
 interface WaitlistModalProps {
   open: boolean;
@@ -14,31 +13,20 @@ const WaitlistModal = ({ open, onClose }: WaitlistModalProps) => {
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
 
-  // Exit intent — show once per session
   useEffect(() => {
-    if (localStorage.getItem('waitlist_joined')) return;
-    const handler = (e: MouseEvent) => {
-      if (e.clientY < 5 && !open) {
-        // We can't open from here since we don't control parent state
-        // Exit intent handled in Landing.tsx
-      }
-    };
-    document.addEventListener('mouseleave', handler);
-    return () => document.removeEventListener('mouseleave', handler);
-  }, [open]);
+    if (!open) return;
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [open, onClose]);
 
   const handleSubmit = async () => {
     if (!email.trim() || !/\S+@\S+\.\S+/.test(email)) return;
     setSubmitting(true);
     try {
       const { error } = await supabase.from('waitlist').insert({ email: email.trim() });
-      if (error && error.code === '23505') {
-        setSuccess(true);
-      } else if (error) {
-        throw error;
-      } else {
-        setSuccess(true);
-      }
+      if (error && error.code !== '23505') throw error;
+      setSuccess(true);
       localStorage.setItem('waitlist_joined', 'true');
     } catch {
       // silently handle
@@ -55,36 +43,37 @@ const WaitlistModal = ({ open, onClose }: WaitlistModalProps) => {
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
         >
-          {/* Backdrop */}
-          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
+          {/* Overlay */}
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-[8px]" onClick={onClose} />
 
           <motion.div
-            className="relative bg-[#111118] border border-[#1e1e2e] rounded-2xl p-8 max-w-md w-full"
-            initial={{ scale: 0.9, opacity: 0 }}
+            className="relative bg-[#141414] border border-white/[0.10] rounded-[20px] p-8 max-w-[420px] w-full shadow-xl"
+            initial={{ scale: 0.96, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
-            exit={{ scale: 0.9, opacity: 0 }}
+            exit={{ scale: 0.96, opacity: 0 }}
+            transition={{ duration: 0.4, ease: [0.175, 0.885, 0.32, 1.275] }}
           >
-            <button onClick={onClose} className="absolute top-4 right-4 text-gray-500 hover:text-white">
-              <X size={20} />
+            <button onClick={onClose} className="absolute top-4 right-4 text-white/30 hover:text-white/60 transition-colors">
+              <X size={18} />
             </button>
 
             {success ? (
               <div className="text-center py-4">
                 <motion.div
-                  className="w-16 h-16 rounded-full bg-[#00d4ff]/10 flex items-center justify-center mx-auto mb-4"
+                  className="w-14 h-14 rounded-full bg-[#0a84ff]/10 flex items-center justify-center mx-auto mb-4"
                   initial={{ scale: 0 }}
                   animate={{ scale: 1 }}
                   transition={{ type: 'spring', stiffness: 300 }}
                 >
-                  <Check size={32} className="text-[#00d4ff]" />
+                  <Check size={28} className="text-[#0a84ff]" />
                 </motion.div>
-                <h3 className="font-display text-xl font-bold text-white mb-2">You're on the list!</h3>
-                <p className="text-sm text-gray-500">We'll notify you when Premium launches.</p>
+                <h3 className="text-[17px] font-semibold text-white/90 mb-2">You're on the list</h3>
+                <p className="text-[13px] text-white/40">We'll notify you when Premium launches.</p>
               </div>
             ) : (
               <>
-                <h3 className="font-display text-xl font-bold text-white mb-2">Join the Premium Waitlist</h3>
-                <p className="text-sm text-gray-500 mb-6">Be first to unlock 10 chatbots, 10K messages, and more.</p>
+                <h3 className="text-[17px] font-semibold text-white/90 mb-2">Join the Premium Waitlist</h3>
+                <p className="text-[13px] text-white/40 mb-6">Be first to unlock 10 chatbots, 10K messages, and more.</p>
                 <div className="space-y-3">
                   <input
                     type="email"
@@ -92,16 +81,16 @@ const WaitlistModal = ({ open, onClose }: WaitlistModalProps) => {
                     onChange={e => setEmail(e.target.value)}
                     onKeyDown={e => e.key === 'Enter' && handleSubmit()}
                     placeholder="your@email.com"
-                    className="w-full bg-[#0c0c14] border border-[#1e1e2e] rounded-lg px-4 py-3 text-sm text-white placeholder:text-gray-600 focus:outline-none focus:border-[#00d4ff]/50"
+                    className="w-full h-10 bg-[#1c1c1c] border border-white/[0.06] rounded-[10px] px-4 text-[15px] text-white/90 placeholder:text-white/25 focus:outline-none focus:border-[#0a84ff]/40 focus:shadow-focus transition-all"
                     autoFocus
                   />
-                  <Button
+                  <button
                     onClick={handleSubmit}
                     disabled={submitting}
-                    className="w-full bg-[#00d4ff] text-[#080810] hover:bg-[#00d4ff]/90 font-semibold"
+                    className="w-full h-10 rounded-[10px] bg-[#0a84ff] text-white text-[14px] font-medium hover:bg-[#409cff] active:scale-[0.97] disabled:opacity-50 transition-all"
                   >
                     {submitting ? 'Joining...' : 'Join Waitlist'}
-                  </Button>
+                  </button>
                 </div>
               </>
             )}

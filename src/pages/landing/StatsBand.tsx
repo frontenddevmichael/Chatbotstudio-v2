@@ -29,7 +29,7 @@ const Counter = ({ value, suffix, inView }: { value: number | string; suffix: st
   }, [inView, value, isNumber]);
 
   return (
-    <span className="font-display text-4xl sm:text-5xl font-bold text-white">
+    <span className="font-serif italic text-[48px] sm:text-[56px] text-white/90">
       {isNumber ? count : value}{suffix}
     </span>
   );
@@ -39,28 +39,18 @@ const StatsBand = () => {
   const [ref, inView] = useInView({ triggerOnce: true, threshold: 0.3 });
 
   return (
-    <section
-      ref={ref}
-      className="py-16 md:py-20 bg-[#0a0a12] border-y border-[#1e1e2e]/50 relative overflow-hidden"
-    >
-      {/* Scanline texture */}
-      <div
-        className="absolute inset-0 opacity-[0.03] pointer-events-none"
-        style={{
-          backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(255,255,255,0.05) 2px, rgba(255,255,255,0.05) 4px)',
-        }}
-      />
-
-      <div className="relative max-w-5xl mx-auto px-6 grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-4 text-center">
+    <section ref={ref} className="py-16 md:py-20 bg-black border-y border-white/[0.04]">
+      <div className="max-w-5xl mx-auto px-6 grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-4 text-center">
         {STATS.map((stat, i) => (
           <motion.div
             key={i}
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 16 }}
             animate={inView ? { opacity: 1, y: 0 } : {}}
-            transition={{ delay: i * 0.1 }}
+            transition={{ delay: i * 0.08, ease: [0.16, 1, 0.3, 1] }}
+            className={i < STATS.length - 1 ? 'md:border-r md:border-white/[0.06]' : ''}
           >
             <Counter value={stat.value} suffix={stat.suffix} inView={inView} />
-            <p className="text-sm text-gray-500 mt-2">{stat.label}</p>
+            <p className="text-[11px] tracking-[0.08em] uppercase text-white/25 mt-2">{stat.label}</p>
           </motion.div>
         ))}
       </div>
