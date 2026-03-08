@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import logo from '@/assets/logo.png';
 
 const PRODUCT = [
   { label: 'Features', href: '#features' },
@@ -15,8 +16,9 @@ const LandingFooter = () => (
       <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-10 mb-12">
         {/* Brand */}
         <div>
-          <Link to="/" className="text-[15px] font-semibold text-foreground/85">
-            ChatBot Studio
+          <Link to="/" className="flex items-center gap-2 text-foreground/85 hover:opacity-80 transition-opacity">
+            <img src={logo} alt="ChatBot Studio" className="h-6 w-6" />
+            <span className="text-[15px] font-semibold">ChatBot Studio</span>
           </Link>
           <p className="text-[13px] text-muted-foreground/60 mt-3 leading-relaxed">
             Build intelligent AI chatbots for your business. No code required.
