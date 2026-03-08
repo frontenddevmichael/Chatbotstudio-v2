@@ -7,6 +7,7 @@ import {
 import { toast } from 'sonner';
 import { useState } from 'react';
 import { useDevice } from '@/hooks/useDevice';
+import sidebarLogo from '@/assets/logo.png';
 
 const navItems = [
   { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
