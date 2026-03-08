@@ -1,3 +1,8 @@
+// Plan configuration for ChatBot Studio
+// STRIPE FUTURE-READINESS: When ready to integrate Stripe, replace the waitlist
+// flow with Stripe Checkout. Add stripe_price_id to each plan and use
+// supabase.functions.invoke('create-checkout-session', { priceId }) to start billing.
+
 export const PLANS = {
   free: {
     name: 'Free',

@@ -1,13 +1,13 @@
 import { useAuth } from '@/context/AuthContext';
 import { useChatbots, useDeleteChatbot } from '@/hooks/useChatbot';
 import { useAllConversationStats } from '@/hooks/useConversations';
-import { canCreateChatbot } from '@/lib/plans';
+import { canCreateChatbot, isPremium, isNearMessageLimit } from '@/lib/plans';
 import PageWrapper from '@/components/layout/PageWrapper';
 import SEO from '@/components/ui/SEO';
 import ChatbotCard from '@/components/chatbot/ChatbotCard';
 import AdSidebar from '@/components/ads/AdSidebar';
 import UpgradeModal from '@/components/billing/UpgradeModal';
-import { Bot, MessageSquare, BarChart3, Zap, Plus } from 'lucide-react';
+import { Bot, MessageSquare, BarChart3, Zap, Plus, AlertTriangle } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 import { useState } from 'react';
@@ -53,6 +53,14 @@ const Dashboard = () => {
       <SEO title="Dashboard" noIndex />
       <div className="flex gap-6">
         <div className="flex-1">
+          {/* 80% message limit warning */}
+          {isNearMessageLimit(profile) && (
+            <div className="mb-4 flex items-center gap-2 rounded-lg border border-warning bg-warning/10 p-3 text-sm text-warning">
+              <AlertTriangle className="h-4 w-4 shrink-0" />
+              <span>You've used {profile?.monthly_message_count ?? 0} of {profile?.message_limit ?? 500} messages this month. <button onClick={() => setUpgradeOpen(true)} className="font-semibold underline">Upgrade to Premium</button> for more.</span>
+            </div>
+          )}
+
           <div className="mb-6 flex items-center justify-between">
             <h1 className="font-display text-2xl font-bold text-foreground">Dashboard</h1>
             {canCreateChatbot(profile, chatbots?.length ?? 0) ? (
@@ -76,7 +84,7 @@ const Dashboard = () => {
             <StatCard icon={Bot} label="Chatbots" value={chatbots?.length ?? 0} />
             <StatCard icon={MessageSquare} label="Conversations" value={stats?.totalConversations ?? 0} />
             <StatCard icon={BarChart3} label="Messages" value={profile?.monthly_message_count ?? 0} />
-            <StatCard icon={Zap} label="Plan" value={profile?.plan === 'premium' ? 'Premium' : 'Free'} />
+            <StatCard icon={Zap} label="Plan" value={isPremium(profile) ? 'Premium' : 'Free'} />
           </div>
 
           {isLoading ? (
@@ -87,8 +95,10 @@ const Dashboard = () => {
             </div>
           ) : chatbots?.length ? (
             <div className="grid gap-4 sm:grid-cols-2">
-              {chatbots.map((bot) => (
-                <ChatbotCard key={bot.id} chatbot={bot} onDelete={handleDelete} />
+              {chatbots.map((bot, i) => (
+                <div key={bot.id} className="stagger-in" style={{ animationDelay: `${i * 80}ms` }}>
+                  <ChatbotCard chatbot={bot} onDelete={handleDelete} />
+                </div>
               ))}
             </div>
           ) : (
