@@ -14,6 +14,12 @@ const tabs = [
 
 const BottomTabBar = () => {
   const { pathname } = useLocation();
+  const navigate = useNavigate();
+  const { signOut } = useAuth();
+
+  const handleSignOut = async () => {
+    try { await signOut(); navigate('/'); } catch { toast.error('Failed to sign out'); }
+  };
 
   return (
     <nav
