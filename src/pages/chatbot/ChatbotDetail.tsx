@@ -5,6 +5,7 @@ import { useConversations } from '@/hooks/useConversations';
 import PageWrapper from '@/components/layout/PageWrapper';
 import SEO from '@/components/ui/SEO';
 import Spinner from '@/components/ui/Spinner';
+import BotAvatar from '@/components/chatbot/BotAvatar';
 import { MessageSquare, FileQuestion, BarChart3, Rocket, Settings } from 'lucide-react';
 
 const statConfig = [
@@ -43,14 +44,7 @@ const ChatbotDetail = () => {
     <PageWrapper>
       <SEO title={chatbot.name} noIndex />
       <div className="mb-6 flex items-center gap-4">
-        <div
-          className="flex h-14 w-14 items-center justify-center rounded-xl text-3xl"
-          style={{
-            background: `radial-gradient(circle, ${accentColor}15 0%, transparent 70%)`,
-          }}
-        >
-          {chatbot.avatar_emoji}
-        </div>
+        <BotAvatar avatarEmoji={chatbot.avatar_emoji} botName={chatbot.name} accentColor={accentColor} size="lg" />
         <div>
           <h1 className="font-display text-2xl font-bold text-foreground">{chatbot.name}</h1>
           <div className="mt-1 flex items-center gap-1.5">
