@@ -83,7 +83,10 @@ const ChatbotBuilder = () => {
   };
 
   const handleNext = async () => {
-    if (step === 1 && !name.trim()) { toast.error('Give your chatbot a name'); return; }
+    if (step === 1) {
+      const nameResult = chatbotNameSchema.safeParse(name);
+      if (!nameResult.success) { toast.error(nameResult.error.errors[0].message); return; }
+    }
     const savedId = await saveDraft();
     if (!savedId) return;
     if (step === 3) {

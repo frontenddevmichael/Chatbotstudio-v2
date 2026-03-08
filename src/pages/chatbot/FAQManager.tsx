@@ -44,7 +44,8 @@ const FAQManager = () => {
   };
 
   const handleSaveEdit = async () => {
-    if (!editingId || !editQuestion.trim() || !editAnswer.trim()) { toast.error('Fill in both fields'); return; }
+    const result = faqSchema.safeParse({ question: editQuestion, answer: editAnswer });
+    if (!editingId || !result.success) { toast.error(result.success === false ? result.error.errors[0].message : 'Fill in both fields'); return; }
     try {
       await updateMutation.mutateAsync({ id: editingId, chatbot_id: id!, question: editQuestion, answer: editAnswer });
       setEditingId(null);

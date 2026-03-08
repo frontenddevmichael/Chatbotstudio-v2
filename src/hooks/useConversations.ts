@@ -43,7 +43,8 @@ export const useAllConversationStats = () => {
       const { data: conversations } = await supabase
         .from('conversations')
         .select('messages')
-        .in('chatbot_id', ids);
+        .in('chatbot_id', ids)
+        .limit(500);
 
       const totalConversations = conversations?.length ?? 0;
       const totalMessages = conversations?.reduce((acc, c) => {
