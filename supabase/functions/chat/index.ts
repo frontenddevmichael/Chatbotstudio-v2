@@ -25,7 +25,7 @@ serve(async (req) => {
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const anthropicKey = Deno.env.get("ANTHROPIC_API_KEY");
+    const lovableApiKey = Deno.env.get("LOVABLE_API_KEY");
     const supabase = createClient(supabaseUrl, serviceKey);
 
     // Fetch chatbot
@@ -81,7 +81,7 @@ BEHAVIOR RULES:
 - Match the tone: ${chatbot.tone}
 - Keep responses concise unless the question needs depth.
 - Never break character. You are ${chatbot.name}.
-- Never mention Anthropic, Claude, or any underlying AI technology.`;
+- Never mention any underlying AI technology.`;
 
     // Build conversation history
     const conversationMessages = Array.isArray(messages)
@@ -89,30 +89,41 @@ BEHAVIOR RULES:
       : [];
     conversationMessages.push({ role: "user", content: sanitizedMessage });
 
-    if (!anthropicKey) {
-      // Fallback: return a helpful message if no API key
+    if (!lovableApiKey) {
       const fallbackResponse = "I'm currently unable to process your request. Please try again later.";
       return new Response(JSON.stringify({ response: fallbackResponse, session_id }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // Call Claude API
-    const claudeResponse = await fetch("https://api.anthropic.com/v1/messages", {
+    // Call Lovable AI Gateway
+    const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "x-api-key": anthropicKey,
-        "anthropic-version": "2023-06-01",
+        Authorization: `Bearer ${lovableApiKey}`,
       },
       body: JSON.stringify({
-        model: "claude-sonnet-4-20250514",
-        max_tokens: 1024,
-        system: systemPrompt,
-        messages: conversationMessages,
+        model: "google/gemini-2.5-flash",
+        messages: [
+          { role: "system", content: systemPrompt },
+          ...conversationMessages,
+        ],
       }),
     });
 
-    const claudeData = await claudeResponse.json();
-    const responseText = claudeData.content?.[0]?.text || "Sorry, I couldn't generate a response.";
+    if (!aiResponse.ok) {
+      if (aiResponse.status === 429) {
+        return new Response(JSON.stringify({ error: "rate_limit", message: "AI rate limit exceeded. Please try again later." }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+      if (aiResponse.status === 402) {
+        return new Response(JSON.stringify({ error: "payment_required", message: "AI credits exhausted." }), { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+      const errText = await aiResponse.text();
+      console.error("AI gateway error:", aiResponse.status, errText);
+      return new Response(JSON.stringify({ error: "ai_error" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    const aiData = await aiResponse.json();
+    const responseText = aiData.choices?.[0]?.message?.content || "Sorry, I couldn't generate a response.";
     const sanitizedResponse = responseText.replace(/<script[^>]*>.*?<\/script>/gi, "");
 
     // Save conversation async (fire and forget)
