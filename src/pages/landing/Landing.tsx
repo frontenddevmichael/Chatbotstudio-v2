@@ -54,9 +54,11 @@ const Landing = () => {
       <ProblemSection />
       <HowItWorks />
       <FeatureShowcase />
+      <DeveloperDocs />
       <SuperchargeDemo />
       <StatsBand />
       <Testimonials />
+      <InstallApp />
       <PricingSection />
       <FinalCTA />
       <LandingFooter />
