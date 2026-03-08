@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { useState, useEffect, useRef } from 'react';
+import { motion, AnimatePresence, useAnimation } from 'framer-motion';
 import { Download, X } from 'lucide-react';
 
 interface BeforeInstallPromptEvent extends Event {
@@ -12,6 +12,8 @@ const FloatingInstallButton = () => {
   const [dismissed, setDismissed] = useState(false);
   const [isInstalled, setIsInstalled] = useState(false);
   const [expanded, setExpanded] = useState(false);
+  const controls = useAnimation();
+  const hasBounced = useRef(false);
 
   useEffect(() => {
     if (window.matchMedia('(display-mode: standalone)').matches) {
@@ -43,6 +45,23 @@ const FloatingInstallButton = () => {
     };
   }, [deferredPrompt, dismissed, isInstalled]);
 
+  // Bounce when scrolling past hero
+  useEffect(() => {
+    if (!deferredPrompt || dismissed || isInstalled) return;
+    const onScroll = () => {
+      if (hasBounced.current) return;
+      if (window.scrollY > window.innerHeight * 0.8) {
+        hasBounced.current = true;
+        controls.start({
+          y: [0, -12, 0, -6, 0],
+          transition: { duration: 0.6, ease: 'easeOut' },
+        });
+      }
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, [deferredPrompt, dismissed, isInstalled, controls]);
+
   const handleInstall = async () => {
     if (!deferredPrompt) return;
     await deferredPrompt.prompt();
@@ -69,6 +88,7 @@ const FloatingInstallButton = () => {
         className="fixed bottom-6 right-6 z-[90]"
         style={{ bottom: 'calc(24px + env(safe-area-inset-bottom))' }}
       >
+        <motion.div animate={controls}>
         <motion.button
           onClick={expanded ? handleInstall : () => setExpanded(true)}
           onMouseEnter={() => setExpanded(true)}
@@ -110,6 +130,7 @@ const FloatingInstallButton = () => {
           transition={{ duration: 2, repeat: Infinity, repeatDelay: 3 }}
           style={{ pointerEvents: 'none' }}
         />
+        </motion.div>
       </motion.div>
     </AnimatePresence>
   );
