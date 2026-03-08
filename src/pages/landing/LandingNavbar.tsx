@@ -33,7 +33,7 @@ const LandingNavbar = () => {
       <div className="max-w-6xl mx-auto px-6 h-12 flex items-center justify-between">
         <button
           onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-          className="text-[15px] font-semibold tracking-tight text-white/90 hover:text-white transition-colors"
+          className="text-[15px] font-semibold tracking-tight text-foreground/90 hover:text-foreground transition-colors"
         >
           ChatBot Studio
         </button>
