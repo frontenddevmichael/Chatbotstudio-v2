@@ -1,11 +1,16 @@
+import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import AdminLayout from '@/components/layout/AdminLayout';
 import SEO from '@/components/ui/SEO';
 import { toast } from 'sonner';
+import { Search } from 'lucide-react';
 
 const ChatbotManager = () => {
   const queryClient = useQueryClient();
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+
   const { data: chatbots, isLoading } = useQuery({
     queryKey: ['admin-chatbots'],
     queryFn: async () => {
@@ -13,6 +18,17 @@ const ChatbotManager = () => {
       return data ?? [];
     },
   });
+
+  const filtered = useMemo(() => {
+    let result = chatbots ?? [];
+    if (search) {
+      const q = search.toLowerCase();
+      result = result.filter((b: any) => b.name?.toLowerCase().includes(q));
+    }
+    if (statusFilter === 'active') result = result.filter((b: any) => b.is_active);
+    if (statusFilter === 'inactive') result = result.filter((b: any) => !b.is_active);
+    return result;
+  }, [chatbots, search, statusFilter]);
 
   const toggleActive = useMutation({
     mutationFn: async ({ id, is_active }: { id: string; is_active: boolean }) => {
@@ -23,12 +39,34 @@ const ChatbotManager = () => {
       queryClient.invalidateQueries({ queryKey: ['admin-chatbots'] });
       toast.success('Chatbot updated');
     },
+    onError: () => toast.error('Failed to update chatbot'),
   });
 
   return (
     <AdminLayout>
       <SEO title="Chatbot Management" noIndex />
       <h1 className="mb-6 font-display text-2xl font-bold text-foreground">All Chatbots</h1>
+
+      <div className="mb-4 flex flex-wrap items-center gap-3">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search by name..."
+            className="w-full rounded-md border border-border bg-card pl-9 pr-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none"
+          />
+        </div>
+        <select
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value)}
+          className="rounded-md border border-border bg-card px-3 py-2 text-sm text-foreground focus:border-primary focus:outline-none"
+        >
+          <option value="all">All Status</option>
+          <option value="active">Active</option>
+          <option value="inactive">Inactive</option>
+        </select>
+      </div>
 
       {isLoading ? (
         <div className="space-y-2">
@@ -47,7 +85,7 @@ const ChatbotManager = () => {
               </tr>
             </thead>
             <tbody>
-              {chatbots?.map((bot: any) => (
+              {filtered.map((bot: any) => (
                 <tr key={bot.id} className="border-b border-border last:border-0">
                   <td className="px-4 py-3">
                     <span className="mr-2">{bot.avatar_emoji}</span>
@@ -59,7 +97,7 @@ const ChatbotManager = () => {
                     }`}>{bot.is_active ? 'Active' : 'Inactive'}</span>
                   </td>
                   <td className="px-4 py-3 text-muted-foreground">{bot.total_conversations ?? 0}</td>
-                  <td className="px-4 py-3 text-muted-foreground">{new Date(bot.created_at).toLocaleDateString()}</td>
+                  <td className="px-4 py-3 text-muted-foreground">{bot.created_at ? new Date(bot.created_at).toLocaleDateString() : '-'}</td>
                   <td className="px-4 py-3">
                     <button
                       onClick={() => toggleActive.mutate({ id: bot.id, is_active: bot.is_active })}
@@ -70,6 +108,9 @@ const ChatbotManager = () => {
                   </td>
                 </tr>
               ))}
+              {!filtered.length && (
+                <tr><td colSpan={5} className="px-4 py-8 text-center text-sm text-muted-foreground">No chatbots found</td></tr>
+              )}
             </tbody>
           </table>
         </div>
