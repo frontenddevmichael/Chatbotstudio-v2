@@ -29,13 +29,14 @@ const Login = () => {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4">
+    <div className="auth-mesh-bg scanline-overlay relative flex min-h-screen items-center justify-center px-4">
       <SEO title="Sign In" description="Sign in to ChatBot Studio and manage your AI chatbots." noIndex />
-      <div className="w-full max-w-sm">
+      <div className="glass-card w-full max-w-sm rounded-xl p-8">
         <div className="mb-8 text-center">
-          <span className="mb-2 inline-block text-4xl">🤖</span>
-          <h1 className="font-display text-2xl font-bold text-foreground">Welcome back</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Sign in to ChatBot Studio</p>
+          <h1 className="font-display text-2xl font-bold text-foreground">
+            ChatBot<span className="text-primary"> Studio</span>
+          </h1>
+          <p className="mt-2 text-sm text-muted-foreground">Sign in to your account</p>
         </div>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
@@ -44,7 +45,7 @@ const Login = () => {
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full rounded-md border border-border bg-card px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+              className="w-full rounded-md border border-border bg-muted/50 px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
               placeholder="you@example.com"
             />
           </div>
@@ -54,7 +55,7 @@ const Login = () => {
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full rounded-md border border-border bg-card px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+              className="w-full rounded-md border border-border bg-muted/50 px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
               placeholder="••••••••"
             />
           </div>
@@ -71,6 +72,9 @@ const Login = () => {
           <Link to="/signup" className="font-medium text-primary hover:underline">
             Get started free
           </Link>
+        </p>
+        <p className="mt-6 text-center text-[11px] text-muted-foreground/60">
+          Join 2,000+ businesses already building with AI
         </p>
       </div>
     </div>

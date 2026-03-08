@@ -7,24 +7,63 @@ import SEO from '@/components/ui/SEO';
 import ChatbotCard from '@/components/chatbot/ChatbotCard';
 import AdSidebar from '@/components/ads/AdSidebar';
 import UpgradeModal from '@/components/billing/UpgradeModal';
+import { Progress } from '@/components/ui/progress';
 import { Bot, MessageSquare, BarChart3, Zap, Plus, AlertTriangle } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 import { useState } from 'react';
+import { motion, useMotionValue, useTransform, animate } from 'framer-motion';
+import { useEffect, useRef } from 'react';
 
-const StatCard = ({ icon: Icon, label, value }: { icon: any; label: string; value: string | number }) => (
-  <div className="rounded-lg border border-border bg-card p-4">
-    <div className="flex items-center gap-3">
-      <div className="flex h-9 w-9 items-center justify-center rounded-md bg-primary/10">
-        <Icon className="h-4 w-4 text-primary" />
-      </div>
-      <div>
-        <p className="text-xs text-muted-foreground">{label}</p>
-        <p className="font-display text-lg font-bold text-foreground">{value}</p>
+const AnimatedNumber = ({ value }: { value: number }) => {
+  const motionVal = useMotionValue(0);
+  const rounded = useTransform(motionVal, (v) => Math.round(v));
+  const [display, setDisplay] = useState(0);
+  const mounted = useRef(false);
+
+  useEffect(() => {
+    if (!mounted.current) {
+      mounted.current = true;
+      const controls = animate(motionVal, value, { duration: 0.8, ease: 'easeOut' });
+      return controls.stop;
+    } else {
+      motionVal.set(value);
+    }
+  }, [value]);
+
+  useEffect(() => {
+    const unsub = rounded.on('change', (v) => setDisplay(v));
+    return unsub;
+  }, [rounded]);
+
+  return <>{display}</>;
+};
+
+const statColors = [
+  { bg: 'bg-primary/10', text: 'text-primary' },
+  { bg: 'bg-success/10', text: 'text-success' },
+  { bg: 'bg-warning/10', text: 'text-warning' },
+  { bg: 'bg-secondary/10', text: 'text-secondary' },
+];
+
+const StatCard = ({ icon: Icon, label, value, colorIdx }: { icon: any; label: string; value: number; colorIdx: number }) => {
+  const c = statColors[colorIdx % statColors.length];
+  return (
+    <div className="glass-card glow-border rounded-lg p-4">
+      <div className="flex items-center gap-3">
+        <div className={`flex h-10 w-10 items-center justify-center rounded-lg ${c.bg}`}>
+          <Icon className={`h-5 w-5 ${c.text}`} />
+        </div>
+        <div>
+          <p className="text-xs text-muted-foreground">{label}</p>
+          <p className="font-display text-xl font-bold text-foreground">
+            <AnimatedNumber value={value} />
+          </p>
+        </div>
       </div>
     </div>
-  </div>
-);
+  );
+};
 
 const Dashboard = () => {
   const { profile } = useAuth();
@@ -44,15 +83,34 @@ const Dashboard = () => {
   const handleNewBot = () => {
     if (!canCreateChatbot(profile, chatbots?.length ?? 0)) {
       setUpgradeOpen(true);
-      return;
     }
   };
+
+  const usagePercent = profile?.message_limit
+    ? Math.min(100, Math.round(((profile.monthly_message_count ?? 0) / profile.message_limit) * 100))
+    : 0;
+  const usageColor = usagePercent > 90 ? 'text-destructive' : usagePercent > 60 ? 'text-warning' : 'text-success';
 
   return (
     <PageWrapper>
       <SEO title="Dashboard" noIndex />
       <div className="flex gap-6">
         <div className="flex-1">
+          {/* Welcome banner */}
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4 }}
+            className="auth-mesh-bg mb-6 rounded-xl border border-border p-6"
+          >
+            <h1 className="font-display text-2xl font-bold text-foreground">
+              Welcome back, <span className="gradient-text">{profile?.full_name || 'there'}</span>
+            </h1>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {chatbots?.length ? `You have ${chatbots.length} chatbot${chatbots.length > 1 ? 's' : ''} running.` : 'Create your first chatbot to get started.'}
+            </p>
+          </motion.div>
+
           {/* 80% message limit warning */}
           {isNearMessageLimit(profile) && (
             <div className="mb-4 flex items-center gap-2 rounded-lg border border-warning bg-warning/10 p-3 text-sm text-warning">
@@ -61,8 +119,28 @@ const Dashboard = () => {
             </div>
           )}
 
+          {/* Stats */}
+          <div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
+            <StatCard icon={Bot} label="Chatbots" value={chatbots?.length ?? 0} colorIdx={0} />
+            <StatCard icon={MessageSquare} label="Conversations" value={stats?.totalConversations ?? 0} colorIdx={1} />
+            <StatCard icon={BarChart3} label="Messages" value={profile?.monthly_message_count ?? 0} colorIdx={2} />
+            <StatCard icon={Zap} label="Plan" value={isPremium(profile) ? 1 : 0} colorIdx={3} />
+          </div>
+
+          {/* Usage bar */}
+          <div className="mb-6 glass-card rounded-lg p-3">
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-muted-foreground">Monthly Usage</span>
+              <span className={`font-mono font-medium ${usageColor}`}>
+                {profile?.monthly_message_count ?? 0} / {profile?.message_limit ?? 500}
+              </span>
+            </div>
+            <Progress value={usagePercent} className="mt-2 h-1.5 bg-muted" />
+          </div>
+
+          {/* New chatbot button */}
           <div className="mb-6 flex items-center justify-between">
-            <h1 className="font-display text-2xl font-bold text-foreground">Dashboard</h1>
+            <h2 className="font-display text-lg font-bold text-foreground">Your Chatbots</h2>
             {canCreateChatbot(profile, chatbots?.length ?? 0) ? (
               <Link
                 to="/builder/new"
@@ -80,30 +158,28 @@ const Dashboard = () => {
             )}
           </div>
 
-          <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
-            <StatCard icon={Bot} label="Chatbots" value={chatbots?.length ?? 0} />
-            <StatCard icon={MessageSquare} label="Conversations" value={stats?.totalConversations ?? 0} />
-            <StatCard icon={BarChart3} label="Messages" value={profile?.monthly_message_count ?? 0} />
-            <StatCard icon={Zap} label="Plan" value={isPremium(profile) ? 'Premium' : 'Free'} />
-          </div>
-
           {isLoading ? (
             <div className="grid gap-4 sm:grid-cols-2">
               {[...Array(2)].map((_, i) => (
-                <div key={i} className="h-40 animate-pulse rounded-lg border border-border bg-card" />
+                <div key={i} className="h-44 animate-pulse rounded-lg glass-card" />
               ))}
             </div>
           ) : chatbots?.length ? (
             <div className="grid gap-4 sm:grid-cols-2">
               {chatbots.map((bot, i) => (
-                <div key={bot.id} className="stagger-in" style={{ animationDelay: `${i * 80}ms` }}>
+                <motion.div
+                  key={bot.id}
+                  initial={{ opacity: 0, y: 16 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3, delay: i * 0.08 }}
+                >
                   <ChatbotCard chatbot={bot} onDelete={handleDelete} />
-                </div>
+                </motion.div>
               ))}
             </div>
           ) : (
-            <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-border bg-card/50 py-16">
-              <span className="mb-3 text-5xl">🤖</span>
+            <div className="glass-card glow-border flex flex-col items-center justify-center rounded-xl py-16">
+              <span className="mb-3 text-5xl animate-pulse-glow">🤖</span>
               <h2 className="mb-1 font-display text-lg font-bold text-foreground">No chatbots yet</h2>
               <p className="mb-4 text-sm text-muted-foreground">Create your first AI chatbot in minutes</p>
               <Link
