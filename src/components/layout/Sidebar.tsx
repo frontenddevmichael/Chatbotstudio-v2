@@ -17,9 +17,14 @@ const navItems = [
 
 const Sidebar = () => {
   const { pathname } = useLocation();
-  const { isAdmin, profile, user } = useAuth();
+  const navigate = useNavigate();
+  const { isAdmin, profile, user, signOut } = useAuth();
   const [open, setOpen] = useState(false);
   const { isTablet } = useDevice();
+
+  const handleSignOut = async () => {
+    try { await signOut(); navigate('/'); } catch { toast.error('Failed to sign out'); }
+  };
 
   const links = isAdmin
     ? [...navItems, { to: '/admin', icon: Shield, label: 'Admin' }]
