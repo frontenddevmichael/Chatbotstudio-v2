@@ -3,7 +3,7 @@ import { Navigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import SEO from '@/components/ui/SEO';
 import ScrollProgress from './ScrollProgress';
-import CustomCursor from './CustomCursor';
+
 import LandingNavbar from './LandingNavbar';
 import HeroSection from './HeroSection';
 import TrustBar from './TrustBar';
