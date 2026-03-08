@@ -83,7 +83,7 @@ const LandingNavbar = () => {
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
             transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
-            className="md:hidden bg-black/90 backdrop-blur-xl border-b border-white/[0.06] overflow-hidden"
+            className="md:hidden bg-background/90 backdrop-blur-xl border-b border-border overflow-hidden"
           >
             <div className="flex flex-col gap-1 px-6 py-4">
               <button onClick={() => scrollTo('features')} className="text-left text-[15px] text-muted-foreground py-2">Features</button>

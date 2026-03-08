@@ -41,7 +41,7 @@ const Landing = () => {
   if (user) return <Navigate to="/dashboard" replace />;
 
   return (
-    <div className="bg-black min-h-screen text-white overflow-x-hidden">
+    <div className="bg-background min-h-screen text-foreground overflow-x-hidden">
       <SEO
         title="ChatBot Studio — Build AI Chatbots Without Code"
         description="Create intelligent AI chatbots for your business in minutes. No coding required. Train it on your FAQs, deploy anywhere, and let it handle customer questions 24/7. Free to start."

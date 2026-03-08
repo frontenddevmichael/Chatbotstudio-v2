@@ -33,6 +33,10 @@ const Login = () => {
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <SEO title="Sign In" description="Sign in to ChatBot Studio" noIndex />
       <div className="w-full max-w-[380px]">
+        <Link to="/" className="mb-6 inline-flex items-center gap-1.5 text-[13px] text-muted-foreground hover:text-foreground transition-colors">
+          <ArrowLeft className="h-4 w-4" />
+          Back to home
+        </Link>
         <div className="mb-8 text-center">
           <Link to="/" className="text-[22px] font-semibold text-foreground hover:opacity-80 transition-opacity">
             ChatBot<span className="text-primary"> Studio</span>
