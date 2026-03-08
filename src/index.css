@@ -48,6 +48,46 @@
     font-family: 'DM Sans', system-ui, sans-serif;
   }
 
+  .light {
+    --background: 0 0% 98%;
+    --foreground: 240 10% 10%;
+    --card: 0 0% 100%;
+    --card-foreground: 240 10% 10%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 240 10% 10%;
+    --primary: 190 100% 40%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 260 50% 55%;
+    --secondary-foreground: 0 0% 100%;
+    --muted: 220 14% 92%;
+    --muted-foreground: 220 10% 46%;
+    --accent: 190 100% 40%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 350 80% 50%;
+    --destructive-foreground: 0 0% 100%;
+    --success: 160 85% 35%;
+    --success-foreground: 0 0% 100%;
+    --warning: 35 90% 50%;
+    --warning-foreground: 0 0% 100%;
+    --border: 220 13% 87%;
+    --input: 220 13% 87%;
+    --ring: 190 100% 40%;
+
+    --sidebar-background: 0 0% 98%;
+    --sidebar-foreground: 220 10% 46%;
+    --sidebar-primary: 190 100% 40%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 220 14% 92%;
+    --sidebar-accent-foreground: 240 10% 10%;
+    --sidebar-border: 220 13% 87%;
+    --sidebar-ring: 190 100% 40%;
+
+    --surface: 0 0% 100%;
+    --elevated: 220 14% 96%;
+    --glow-primary: 0 0 20px hsl(190 100% 40% / 0.15);
+    --glow-secondary: 0 0 20px hsl(260 50% 55% / 0.15);
+  }
+
   * {
     @apply border-border;
   }

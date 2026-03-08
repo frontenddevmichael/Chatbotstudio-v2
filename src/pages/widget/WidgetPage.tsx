@@ -5,6 +5,7 @@ import { sanitizeHTML, sanitizeText } from '@/lib/sanitize';
 import SEO from '@/components/ui/SEO';
 import ErrorBoundary from '@/components/ui/ErrorBoundary';
 import { Send } from 'lucide-react';
+import BotAvatar from '@/components/chatbot/BotAvatar';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -100,7 +101,8 @@ const WidgetPage = () => {
   };
 
   const primaryColor = chatbot?.primary_color || '#00d4ff';
-  const botEmoji = chatbot?.avatar_emoji || '🤖';
+  const botAvatar = chatbot?.avatar_emoji || 'bot';
+  const botName = chatbot?.name || 'Bot';
 
   if (initialLoad) {
     return (
@@ -114,7 +116,7 @@ const WidgetPage = () => {
     return (
       <div className="flex h-screen items-center justify-center bg-background p-4">
         <div className="text-center">
-          <span className="mb-3 inline-block text-4xl">🤖</span>
+          <BotAvatar avatarEmoji="bot" botName="Bot" accentColor="#666" size="lg" className="mx-auto mb-3" />
           <p className="text-sm text-muted-foreground">{error}</p>
         </div>
       </div>
@@ -134,12 +136,7 @@ const WidgetPage = () => {
           className="flex items-center gap-3 border-b px-4 py-3"
           style={{ borderBottomColor: `${primaryColor}22`, boxShadow: `0 1px 12px -4px ${primaryColor}15` }}
         >
-          <div
-            className="flex h-9 w-9 items-center justify-center rounded-full text-lg"
-            style={{ background: `${primaryColor}15` }}
-          >
-            {botEmoji}
-          </div>
+          <BotAvatar avatarEmoji={botAvatar} botName={botName} accentColor={primaryColor} size="sm" />
           <div>
             <p className="text-sm font-bold text-foreground">{chatbot?.name}</p>
             <div className="flex items-center gap-1.5">
@@ -154,12 +151,7 @@ const WidgetPage = () => {
           {messages.map((msg, i) => (
             <div key={i} className={`message-in flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`} style={{ animationDelay: `${i * 50}ms` }}>
               {msg.role === 'assistant' && (
-                <div
-                  className="mr-2 flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-sm"
-                  style={{ background: `${primaryColor}15` }}
-                >
-                  {botEmoji}
-                </div>
+                <BotAvatar avatarEmoji={botAvatar} botName={botName} accentColor={primaryColor} size="sm" className="mr-2 shrink-0" />
               )}
               <div
                 className={`max-w-[80%] rounded-2xl px-4 py-2.5 text-sm ${
@@ -175,12 +167,7 @@ const WidgetPage = () => {
           ))}
           {loading && (
             <div className="message-in flex justify-start">
-              <div
-                className="mr-2 flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-sm"
-                style={{ background: `${primaryColor}15` }}
-              >
-                {botEmoji}
-              </div>
+              <BotAvatar avatarEmoji={botAvatar} botName={botName} accentColor={primaryColor} size="sm" className="mr-2 shrink-0" />
               <div className="rounded-2xl border border-border bg-card px-4 py-3 rounded-bl-md">
                 <div className="flex gap-1">
                   <span className="h-2 w-2 animate-bounce rounded-full bg-muted-foreground" style={{ animationDelay: '0ms' }} />

@@ -11,8 +11,9 @@ import { Check, ChevronRight, Smile, Briefcase, Coffee, Crown, Sparkles, Copy, E
 import { canCreateChatbot } from '@/lib/plans';
 import { sanitizeText } from '@/lib/sanitize';
 import ReactConfetti from 'react-confetti';
-
-const EMOJIS = ['🤖', '💬', '🧠', '⚡', '🎯', '🚀', '🌟', '🎨', '🔥', '💎', '🦊', '🐱', '🎭', '🌈', '🏢', '📦', '🛒', '🏥', '📚', '🎓'];
+import AvatarPicker from '@/components/chatbot/AvatarPicker';
+import BotAvatar from '@/components/chatbot/BotAvatar';
+import ColorPicker from '@/components/chatbot/ColorPicker';
 
 const TONES = [
   { value: 'friendly', label: 'Friendly', icon: Smile, desc: 'Warm, approachable, uses contractions' },
@@ -20,8 +21,6 @@ const TONES = [
   { value: 'casual', label: 'Casual', icon: Coffee, desc: 'Like texting a smart friend' },
   { value: 'formal', label: 'Formal', icon: Crown, desc: 'Corporate, authoritative' },
 ];
-
-const COLOR_PRESETS = ['#00d4ff', '#7c3aed', '#00e5a0', '#ff4d6d', '#ffb547', '#3b82f6'];
 
 interface FAQPair { question: string; answer: string; }
 
@@ -38,21 +37,28 @@ const ChatbotBuilder = () => {
   const [step, setStep] = useState(1);
   const [name, setName] = useState('');
   const [welcomeMessage, setWelcomeMessage] = useState('Hi! How can I help you today?');
-  const [avatarEmoji, setAvatarEmoji] = useState('🤖');
+  const [avatarEmoji, setAvatarEmoji] = useState('bot');
+  const [avatarType, setAvatarType] = useState<'icon' | 'initials'>('icon');
   const [tone, setTone] = useState('friendly');
   const [faqs, setFaqs] = useState<FAQPair[]>([{ question: '', answer: '' }]);
   const [primaryColor, setPrimaryColor] = useState('#00d4ff');
   const [botId, setBotId] = useState<string | null>(id || null);
   const [embedToken, setEmbedToken] = useState<string>('');
   const [showConfetti, setShowConfetti] = useState(false);
-  // Track which FAQs have already been saved to avoid duplicates
   const savedFaqsRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     if (isEdit && existingBot) {
       setName(existingBot.name);
       setWelcomeMessage(existingBot.welcome_message || '');
-      setAvatarEmoji(existingBot.avatar_emoji || '🤖');
+      const av = existingBot.avatar_emoji || 'bot';
+      // Detect old emoji values (non-ASCII) and convert to initials
+      if (/[^\x00-\x7F]/.test(av)) {
+        setAvatarType('initials');
+        setAvatarEmoji('initials');
+      } else {
+        setAvatarEmoji(av);
+      }
       setTone(existingBot.tone || 'friendly');
       setPrimaryColor(existingBot.primary_color || '#00d4ff');
       setEmbedToken(existingBot.embed_token || '');
@@ -65,12 +71,13 @@ const ChatbotBuilder = () => {
 
   const saveDraft = async (): Promise<string | null> => {
     try {
+      const avatarValue = avatarType === 'initials' ? 'initials' : avatarEmoji;
       if (botId) {
         const result = await updateMutation.mutateAsync({
           id: botId,
           name: sanitizeText(name) || 'Untitled Bot',
           welcome_message: sanitizeText(welcomeMessage),
-          avatar_emoji: avatarEmoji,
+          avatar_emoji: avatarValue,
           tone,
           primary_color: primaryColor,
         });
@@ -84,7 +91,7 @@ const ChatbotBuilder = () => {
         const result = await createMutation.mutateAsync({
           name: sanitizeText(name) || 'Untitled Bot',
           welcome_message: sanitizeText(welcomeMessage),
-          avatar_emoji: avatarEmoji,
+          avatar_emoji: avatarValue,
           tone,
           primary_color: primaryColor,
         });
@@ -107,7 +114,6 @@ const ChatbotBuilder = () => {
     const savedId = await saveDraft();
     if (!savedId) return;
 
-    // Save FAQs on step 3 — only save new ones (prevent duplicates)
     if (step === 3) {
       const validFaqs = faqs.filter((f) => f.question.trim() && f.answer.trim());
       for (const faq of validFaqs) {
@@ -116,14 +122,13 @@ const ChatbotBuilder = () => {
         try {
           await createFAQMutation.mutateAsync({ chatbot_id: savedId, ...faq });
           savedFaqsRef.current.add(key);
-        } catch { /* continue - may already exist */ }
+        } catch { /* continue */ }
       }
     }
 
     if (step < 5) {
       const nextStep = step + 1;
       setStep(nextStep);
-      // Show confetti when reaching deploy step
       if (nextStep === 5) {
         setShowConfetti(true);
         setTimeout(() => setShowConfetti(false), 5000);
@@ -142,7 +147,6 @@ const ChatbotBuilder = () => {
     setFaqs(updated);
   };
 
-  // File upload handler for .txt and .csv FAQ files
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -236,19 +240,14 @@ const ChatbotBuilder = () => {
             </div>
             <div>
               <label className="mb-2 block text-sm font-medium text-foreground">Avatar</label>
-              <div className="flex flex-wrap gap-2">
-                {EMOJIS.map((e) => (
-                  <button
-                    key={e}
-                    onClick={() => setAvatarEmoji(e)}
-                    className={`flex h-10 w-10 items-center justify-center rounded-lg border text-lg transition-all ${
-                      avatarEmoji === e ? 'border-primary bg-primary/10' : 'border-border hover:border-primary/30'
-                    }`}
-                  >
-                    {e}
-                  </button>
-                ))}
-              </div>
+              <AvatarPicker
+                value={avatarEmoji}
+                avatarType={avatarType}
+                botName={name}
+                accentColor={primaryColor}
+                onChangeType={setAvatarType}
+                onChangeIcon={setAvatarEmoji}
+              />
             </div>
           </div>
         )}
@@ -327,45 +326,20 @@ const ChatbotBuilder = () => {
             <h2 className="font-display text-xl font-bold text-foreground">Customize appearance</h2>
             <div>
               <label className="mb-2 block text-sm font-medium text-foreground">Primary Color</label>
-              <div className="mb-3 flex flex-wrap gap-2">
-                {COLOR_PRESETS.map((color) => (
-                  <button
-                    key={color}
-                    onClick={() => setPrimaryColor(color)}
-                    className={`h-8 w-8 rounded-full border-2 transition-all ${
-                      primaryColor === color ? 'border-foreground scale-110' : 'border-transparent hover:scale-105'
-                    }`}
-                    style={{ backgroundColor: color }}
-                  />
-                ))}
-              </div>
-              <div className="flex items-center gap-3">
-                <input
-                  type="color"
-                  value={primaryColor}
-                  onChange={(e) => setPrimaryColor(e.target.value)}
-                  className="h-10 w-10 cursor-pointer rounded border-0"
-                />
-                <input
-                  type="text"
-                  value={primaryColor}
-                  onChange={(e) => setPrimaryColor(e.target.value)}
-                  className="w-32 rounded-md border border-border bg-card px-3 py-2 font-mono text-sm text-foreground focus:border-primary focus:outline-none"
-                />
-              </div>
+              <ColorPicker value={primaryColor} onChange={setPrimaryColor} />
             </div>
             {/* Live preview */}
             <div className="rounded-lg border border-border bg-card p-4">
               <p className="mb-3 text-xs font-medium text-muted-foreground">Preview</p>
               <div className="mx-auto w-64 rounded-lg border border-border bg-background p-4">
                 <div className="mb-3 flex items-center gap-2">
-                  <span className="text-xl">{avatarEmoji}</span>
+                  <BotAvatar avatarEmoji={avatarType === 'initials' ? 'initials' : avatarEmoji} botName={name} accentColor={primaryColor} size="sm" />
                   <span className="text-sm font-bold text-foreground">{name || 'Your Bot'}</span>
                 </div>
                 <div className="mb-2 rounded-lg bg-muted p-2.5 text-xs text-foreground">{welcomeMessage || 'Hello!'}</div>
                 <div className="flex gap-2">
                   <div className="flex-1 rounded-md border border-border bg-card px-2 py-1.5 text-xs text-muted-foreground">Type a message...</div>
-                  <button className="rounded-md px-3 py-1.5 text-xs font-medium text-primary-foreground" style={{ backgroundColor: primaryColor }}>Send</button>
+                  <button className="rounded-md px-3 py-1.5 text-xs font-medium text-white" style={{ backgroundColor: primaryColor }}>Send</button>
                 </div>
               </div>
             </div>
@@ -376,7 +350,7 @@ const ChatbotBuilder = () => {
         {step === 5 && (
           <div className="space-y-6 text-center">
             <Sparkles className="mx-auto h-12 w-12 text-primary" />
-            <h2 className="font-display text-2xl font-bold text-foreground">Your chatbot is ready! 🎉</h2>
+            <h2 className="font-display text-2xl font-bold text-foreground">Your chatbot is ready!</h2>
             <p className="text-sm text-muted-foreground">Deploy it anywhere with the embed code below</p>
 
             {embedToken ? (

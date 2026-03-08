@@ -8,6 +8,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import type { Chatbot } from '@/hooks/useChatbot';
+import BotAvatar from './BotAvatar';
 
 interface ChatbotCardProps {
   chatbot: Chatbot;
@@ -24,7 +25,7 @@ const ChatbotCard = ({ chatbot, onDelete }: ChatbotCardProps) => {
 
       <div className="mb-3 flex items-start justify-between">
         <div className="flex items-center gap-3">
-          <span className="text-2xl">{chatbot.avatar_emoji || '🤖'}</span>
+          <BotAvatar avatarEmoji={chatbot.avatar_emoji} botName={chatbot.name} accentColor={accentColor} size="md" />
           <div>
             <h3 className="font-display text-sm font-bold text-foreground">{chatbot.name}</h3>
             <div className="mt-1 flex items-center gap-1.5">

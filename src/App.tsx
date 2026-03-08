@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { HelmetProvider } from "react-helmet-async";
 import { AuthProvider } from "@/context/AuthContext";
+import { ThemeProvider } from "@/context/ThemeContext";
 import ErrorBoundary from "@/components/ui/ErrorBoundary";
 import React, { Suspense } from "react";
 import PageSkeleton from "@/components/ui/PageSkeleton";
@@ -34,8 +35,9 @@ const App = () => (
     <HelmetProvider>
       <QueryClientProvider client={queryClient}>
         <AuthProvider>
-          <TooltipProvider>
-            <Toaster />
+          <ThemeProvider>
+            <TooltipProvider>
+              <Toaster />
             <BrowserRouter>
               <Suspense fallback={<PageSkeleton />}>
                 <Routes>
@@ -61,7 +63,8 @@ const App = () => (
                 </Routes>
               </Suspense>
             </BrowserRouter>
-          </TooltipProvider>
+            </TooltipProvider>
+          </ThemeProvider>
         </AuthProvider>
       </QueryClientProvider>
     </HelmetProvider>
