@@ -3,27 +3,35 @@ import { useChatbot } from '@/hooks/useChatbot';
 import PageWrapper from '@/components/layout/PageWrapper';
 import SEO from '@/components/ui/SEO';
 import Spinner from '@/components/ui/Spinner';
-import { Copy, ExternalLink, Code, MessageSquare, Link as LinkIcon } from 'lucide-react';
+import { Copy, ExternalLink, Code, MessageSquare, Link as LinkIcon, Zap } from 'lucide-react';
 import { toast } from 'sonner';
 import { useState } from 'react';
 
-type EmbedVariant = 'floating' | 'iframe' | 'link';
+type EmbedVariant = 'sdk' | 'floating' | 'iframe' | 'link';
 
 const DeployPage = () => {
   const { id } = useParams<{ id: string }>();
   const { data: chatbot, isLoading } = useChatbot(id!);
-  const [variant, setVariant] = useState<EmbedVariant>('floating');
+  const [variant, setVariant] = useState<EmbedVariant>('sdk');
 
   if (isLoading) return <PageWrapper><div className="flex justify-center py-20"><Spinner className="h-6 w-6" /></div></PageWrapper>;
   if (!chatbot) return <PageWrapper><p className="text-[13px] text-muted-foreground">Chatbot not found</p></PageWrapper>;
 
   const widgetUrl = `${window.location.origin}/widget/${chatbot.embed_token}`;
+  const embedJsUrl = `${window.location.origin}/embed.js`;
+  const primaryColor = chatbot.primary_color || '#0a84ff';
 
   const codes: Record<EmbedVariant, { label: string; icon: React.ElementType; code: string; desc: string }> = {
+    sdk: {
+      label: 'SDK (Recommended)',
+      icon: Zap,
+      desc: 'Lightweight launcher with toggle bubble, lazy loading, and mobile support',
+      code: `<!-- ChatBot Studio Embed -->\n<script>\n  window.$chatbot = {\n    id: "${chatbot.embed_token}",\n    color: "${primaryColor}",\n    position: "bottom-right"\n  };\n</script>\n<script src="${embedJsUrl}" async></script>`,
+    },
     floating: {
       label: 'Floating Widget',
       icon: MessageSquare,
-      desc: 'Fixed bubble in the bottom-right corner of your site',
+      desc: 'Fixed bubble in the bottom-right corner of your site (no toggle)',
       code: `<script>\n(function(){\n  var d=document,s=d.createElement('iframe');\n  s.src='${widgetUrl}';\n  s.style='position:fixed;bottom:20px;right:20px;width:380px;height:560px;border:none;border-radius:14px;box-shadow:0 8px 32px rgba(0,0,0,0.3);z-index:9999';\n  d.body.appendChild(s);\n})();\n</script>`,
     },
     iframe: {
@@ -43,7 +51,7 @@ const DeployPage = () => {
   const current = codes[variant];
   const copy = (text: string) => { navigator.clipboard.writeText(text); toast.success('Copied to clipboard'); };
 
-  const variants: EmbedVariant[] = ['floating', 'iframe', 'link'];
+  const variants: EmbedVariant[] = ['sdk', 'floating', 'iframe', 'link'];
 
   return (
     <PageWrapper>
@@ -68,7 +76,7 @@ const DeployPage = () => {
         </div>
 
         {/* Variant selector */}
-        <div className="mb-4 flex gap-2">
+        <div className="mb-4 grid grid-cols-2 sm:grid-cols-4 gap-2">
           {variants.map((v) => {
             const c = codes[v];
             const Icon = c.icon;
@@ -76,14 +84,14 @@ const DeployPage = () => {
               <button
                 key={v}
                 onClick={() => setVariant(v)}
-                className={`flex-1 flex items-center gap-2 rounded-[10px] border px-3 py-2.5 text-[13px] font-medium transition-all ${
+                className={`flex items-center gap-2 rounded-[10px] border px-3 py-2.5 text-[13px] font-medium transition-all ${
                   variant === v
                     ? 'border-primary bg-primary/5 text-primary'
                     : 'border-border bg-card text-muted-foreground hover:text-foreground hover:border-foreground/20'
                 }`}
               >
-                <Icon className="h-3.5 w-3.5" />
-                {c.label}
+                <Icon className="h-3.5 w-3.5 shrink-0" />
+                <span className="truncate">{c.label}</span>
               </button>
             );
           })}
@@ -99,6 +107,16 @@ const DeployPage = () => {
           <button onClick={() => copy(current.code)} className="mt-2 inline-flex items-center gap-1 text-[12px] font-medium text-primary hover:underline">
             <Copy className="h-3 w-3" /> Copy
           </button>
+
+          {variant === 'sdk' && (
+            <div className="mt-4 rounded-[10px] border border-border bg-muted/30 p-3">
+              <p className="text-[12px] font-medium text-foreground mb-1">Public API</p>
+              <pre className="text-[11px] font-mono text-muted-foreground leading-relaxed">{`window.ChatBotStudio.open()   // Open widget
+window.ChatBotStudio.close()  // Close widget
+window.ChatBotStudio.toggle() // Toggle
+window.ChatBotStudio.setUser({ name, email })`}</pre>
+            </div>
+          )}
         </div>
       </div>
     </PageWrapper>

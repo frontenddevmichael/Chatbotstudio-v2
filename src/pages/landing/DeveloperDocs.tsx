@@ -4,26 +4,24 @@ import { useInView } from 'react-intersection-observer';
 import { Code2, Monitor, Link as LinkIcon, Copy, Check, ArrowRight } from 'lucide-react';
 import { toast } from 'sonner';
 
-type EmbedTab = 'floating' | 'iframe' | 'link';
+type EmbedTab = 'sdk' | 'iframe' | 'link';
 
 const TABS: { id: EmbedTab; label: string; icon: React.ElementType; desc: string }[] = [
-  { id: 'floating', label: 'Floating Widget', icon: Monitor, desc: 'A chat bubble that floats in the corner of your site.' },
+  { id: 'sdk', label: 'SDK Embed', icon: Monitor, desc: 'Lightweight launcher with toggle bubble, lazy loading, and mobile support.' },
   { id: 'iframe', label: 'Inline Iframe', icon: Code2, desc: 'Embed the chatbot directly inside a page section.' },
   { id: 'link', label: 'Direct Link', icon: LinkIcon, desc: 'Share a standalone chatbot page with anyone.' },
 ];
 
 const SNIPPETS: Record<EmbedTab, string> = {
-  floating: `<!-- Floating Chat Widget -->
+  sdk: `<!-- ChatBot Studio Embed -->
 <script>
-  (function() {
-    var d = document, s = d.createElement('iframe');
-    s.src = 'https://yourapp.com/widget/YOUR_EMBED_TOKEN';
-    s.style.cssText = 'position:fixed;bottom:20px;right:20px;' +
-      'width:400px;height:560px;border:none;border-radius:16px;' +
-      'box-shadow:0 8px 32px rgba(0,0,0,.25);z-index:9999';
-    d.body.appendChild(s);
-  })();
-</script>`,
+  window.$chatbot = {
+    id: "YOUR_EMBED_TOKEN",
+    color: "#0a84ff",
+    position: "bottom-right"
+  };
+</script>
+<script src="https://yourapp.com/embed.js" async></script>`,
   iframe: `<!-- Inline Chatbot Embed -->
 <iframe
   src="https://yourapp.com/widget/YOUR_EMBED_TOKEN"
@@ -45,7 +43,7 @@ const STEPS = [
 ];
 
 const DeveloperDocs = () => {
-  const [active, setActive] = useState<EmbedTab>('floating');
+  const [active, setActive] = useState<EmbedTab>('sdk');
   const [copied, setCopied] = useState(false);
   const [ref, inView] = useInView({ triggerOnce: true, threshold: 0.12 });
 

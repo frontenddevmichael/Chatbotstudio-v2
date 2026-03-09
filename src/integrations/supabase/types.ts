@@ -315,6 +315,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      increment_message_count: {
+        Args: { _user_id: string }
+        Returns: undefined
+      }
       is_admin: { Args: never; Returns: boolean }
     }
     Enums: {
