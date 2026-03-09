@@ -4,7 +4,16 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+  "X-Frame-Options": "ALLOWALL",
+  "Content-Security-Policy": "frame-ancestors *",
 };
+
+function jsonResponse(body: Record<string, unknown>, status = 200) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+}
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -15,13 +24,13 @@ serve(async (req) => {
     const { chatbot_id, session_id, messages, new_message } = await req.json();
 
     if (!chatbot_id || !session_id || !new_message) {
-      return new Response(JSON.stringify({ error: "missing_fields" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      return jsonResponse({ error: "missing_fields" }, 400);
     }
 
     // Sanitize: strip HTML tags and limit to 2000 chars
     const sanitizedMessage = new_message.replace(/<[^>]*>/g, "").trim().slice(0, 2000);
     if (!sanitizedMessage) {
-      return new Response(JSON.stringify({ error: "empty_message" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      return jsonResponse({ error: "empty_message" }, 400);
     }
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -32,19 +41,16 @@ serve(async (req) => {
     // Fetch chatbot
     const { data: chatbot, error: botErr } = await supabase.from("chatbots").select("*").eq("id", chatbot_id).single();
     if (botErr || !chatbot) {
-      return new Response(JSON.stringify({ error: "chatbot_not_found" }), { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      return jsonResponse({ error: "chatbot_not_found" }, 404);
     }
     if (!chatbot.is_active) {
-      return new Response(JSON.stringify({ error: "chatbot_inactive" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      return jsonResponse({ error: "chatbot_inactive" }, 403);
     }
 
     // Check chatbot owner's message limit
     const { data: ownerProfile } = await supabase.from("profiles").select("monthly_message_count, message_limit").eq("id", chatbot.user_id).single();
     if (ownerProfile && ownerProfile.monthly_message_count >= ownerProfile.message_limit) {
-      return new Response(
-        JSON.stringify({ error: "owner_limit_reached", message: "This chatbot's message limit has been reached. Please contact the business owner." }),
-        { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return jsonResponse({ error: "owner_limit_reached", message: "This chatbot's message limit has been reached. Please contact the business owner." }, 429);
     }
 
     // Rate limiting: 20 messages per session per hour
@@ -59,10 +65,7 @@ serve(async (req) => {
       .single();
 
     if (rateData && rateData.request_count >= 20) {
-      return new Response(
-        JSON.stringify({ error: "rate_limit", message: "Too many messages. Please wait and try again." }),
-        { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return jsonResponse({ error: "rate_limit", message: "Too many messages. Please wait and try again." }, 429);
     }
 
     // Upsert rate limit counter
@@ -78,7 +81,7 @@ serve(async (req) => {
     // Fetch FAQs for knowledge base
     const { data: faqs } = await supabase.from("faqs").select("*").eq("chatbot_id", chatbot_id);
 
-    // Build 2-layer system prompt
+    // Build system prompt
     const faqContext = (faqs || []).map((f: any) => {
       let entry = `Topic: ${f.question}\nAnswer: ${f.answer}`;
       if (f.variations?.length) entry += `\nAlso asked as: ${f.variations.join(", ")}`;
@@ -106,7 +109,7 @@ BEHAVIOR RULES:
 - Never mention Anthropic, Claude, Google, Gemini, or any underlying AI technology.
 - If asked "are you an AI?" respond naturally based on tone — acknowledge it without revealing the technology stack.`;
 
-    // Build conversation history for multi-turn memory
+    // Build conversation history
     const conversationMessages = Array.isArray(messages)
       ? messages
           .filter((m: any) => m.role === "user" || m.role === "assistant")
@@ -115,13 +118,10 @@ BEHAVIOR RULES:
     conversationMessages.push({ role: "user", content: sanitizedMessage });
 
     if (!lovableApiKey) {
-      return new Response(
-        JSON.stringify({ response: "I'm currently unable to process your request. Please try again later.", session_id }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return jsonResponse({ response: "I'm currently unable to process your request. Please try again later.", session_id });
     }
 
-    // Call Lovable AI Gateway
+    // Call AI Gateway
     const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -139,40 +139,24 @@ BEHAVIOR RULES:
 
     if (!aiResponse.ok) {
       if (aiResponse.status === 429) {
-        return new Response(
-          JSON.stringify({ error: "rate_limit", message: "AI rate limit exceeded. Please try again later." }),
-          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+        return jsonResponse({ error: "rate_limit", message: "AI rate limit exceeded. Please try again later." }, 429);
       }
       if (aiResponse.status === 402) {
-        return new Response(
-          JSON.stringify({ error: "payment_required", message: "AI credits exhausted." }),
-          { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+        return jsonResponse({ error: "payment_required", message: "AI credits exhausted." }, 402);
       }
       const errText = await aiResponse.text();
       console.error("AI gateway error:", aiResponse.status, errText);
-      return new Response(
-        JSON.stringify({ error: "ai_error" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return jsonResponse({ error: "ai_error" }, 500);
     }
 
     const aiData = await aiResponse.json();
     const responseText = aiData.choices?.[0]?.message?.content || "Sorry, I couldn't generate a response.";
-    // Sanitize AI output: strip script tags
     const sanitizedResponse = responseText.replace(/<script[^>]*>.*?<\/script>/gi, "").replace(/<\/script>/gi, "");
 
-    // Increment owner's monthly_message_count (fire and forget)
-    if (ownerProfile) {
-      supabase
-        .from("profiles")
-        .update({ monthly_message_count: (ownerProfile.monthly_message_count || 0) + 1 })
-        .eq("id", chatbot.user_id)
-        .then(() => {});
-    }
+    // Atomic increment of owner's monthly_message_count (fire and forget)
+    supabase.rpc("increment_message_count", { _user_id: chatbot.user_id }).then(() => {});
 
-    // Save conversation to Supabase (fire and forget)
+    // Save conversation (fire and forget)
     const { data: existingConvo } = await supabase
       .from("conversations")
       .select("id, messages")
@@ -197,27 +181,13 @@ BEHAVIOR RULES:
         { role: "user", content: sanitizedMessage },
         { role: "assistant", content: sanitizedResponse },
       ];
-      supabase
-        .from("conversations")
-        .insert({ chatbot_id, session_id, messages: fullMessages })
-        .then(() => {});
-      // Increment total_conversations for new session
-      supabase
-        .from("chatbots")
-        .update({ total_conversations: (chatbot.total_conversations || 0) + 1 })
-        .eq("id", chatbot_id)
-        .then(() => {});
+      supabase.from("conversations").insert({ chatbot_id, session_id, messages: fullMessages }).then(() => {});
+      supabase.from("chatbots").update({ total_conversations: (chatbot.total_conversations || 0) + 1 }).eq("id", chatbot_id).then(() => {});
     }
 
-    return new Response(
-      JSON.stringify({ response: sanitizedResponse, session_id }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return jsonResponse({ response: sanitizedResponse, session_id });
   } catch (err) {
     console.error("Chat function error:", err);
-    return new Response(
-      JSON.stringify({ error: "internal_error" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return jsonResponse({ error: "internal_error" }, 500);
   }
 });
