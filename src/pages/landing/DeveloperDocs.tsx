@@ -43,7 +43,7 @@ const STEPS = [
 ];
 
 const DeveloperDocs = () => {
-  const [active, setActive] = useState<EmbedTab>('floating');
+  const [active, setActive] = useState<EmbedTab>('sdk');
   const [copied, setCopied] = useState(false);
   const [ref, inView] = useInView({ triggerOnce: true, threshold: 0.12 });
 
