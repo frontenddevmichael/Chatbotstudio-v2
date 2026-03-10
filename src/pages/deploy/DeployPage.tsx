@@ -17,8 +17,17 @@ const DeployPage = () => {
   if (isLoading) return <PageWrapper><div className="flex justify-center py-20"><Spinner className="h-6 w-6" /></div></PageWrapper>;
   if (!chatbot) return <PageWrapper><p className="text-[13px] text-muted-foreground">Chatbot not found</p></PageWrapper>;
 
-  const widgetUrl = `${window.location.origin}/widget/${chatbot.embed_token}`;
-  const embedJsUrl = `${window.location.origin}/embed.js`;
+  const getPublishedOrigin = () => {
+    const origin = window.location.origin;
+    if (origin.includes('-preview--') && origin.includes('.lovable.app')) {
+      return 'https://ideaweave-bot.lovable.app';
+    }
+    return origin;
+  };
+
+  const baseUrl = getPublishedOrigin();
+  const widgetUrl = `${baseUrl}/widget/${chatbot.embed_token}`;
+  const embedJsUrl = `${baseUrl}/embed.js`;
   const primaryColor = chatbot.primary_color || '#0a84ff';
 
   const codes: Record<EmbedVariant, { label: string; icon: React.ElementType; code: string; desc: string }> = {

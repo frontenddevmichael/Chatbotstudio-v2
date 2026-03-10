@@ -21,16 +21,16 @@ const SNIPPETS: Record<EmbedTab, string> = {
     position: "bottom-right"
   };
 </script>
-<script src="https://yourapp.com/embed.js" async></script>`,
+<script src="https://ideaweave-bot.lovable.app/embed.js" async></script>`,
   iframe: `<!-- Inline Chatbot Embed -->
 <iframe
-  src="https://yourapp.com/widget/YOUR_EMBED_TOKEN"
+  src="https://ideaweave-bot.lovable.app/widget/YOUR_EMBED_TOKEN"
   width="100%"
   height="600"
   style="border:none; border-radius:12px;"
   title="ChatBot"
 ></iframe>`,
-  link: `https://yourapp.com/widget/YOUR_EMBED_TOKEN
+  link: `https://ideaweave-bot.lovable.app/widget/YOUR_EMBED_TOKEN
 
 Share this URL directly — no code needed.
 Users can chat with your bot from any browser.`,
