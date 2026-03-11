@@ -53,29 +53,21 @@ serve(async (req) => {
       return jsonResponse({ error: "owner_limit_reached", message: "This chatbot's message limit has been reached. Please contact the business owner." }, 429);
     }
 
-    // Rate limiting: 20 messages per session per hour
+    // Atomic rate limiting: 20 messages per session per hour
     const identifier = session_id.slice(0, 64);
-    const oneHourAgo = new Date(Date.now() - 3600000).toISOString();
-    const { data: rateData } = await supabase
-      .from("rate_limits")
-      .select("*")
-      .eq("identifier", identifier)
-      .eq("endpoint", "widget_chat")
-      .gte("window_start", oneHourAgo)
-      .single();
+    const { data: allowed, error: rlErr } = await supabase.rpc("check_and_increment_rate_limit", {
+      _identifier: identifier,
+      _endpoint: "widget_chat",
+      _max_requests: 20,
+      _window_seconds: 3600,
+    });
 
-    if (rateData && rateData.request_count >= 20) {
-      return jsonResponse({ error: "rate_limit", message: "Too many messages. Please wait and try again." }, 429);
+    if (rlErr) {
+      console.error("Rate limit check error:", rlErr);
     }
 
-    // Upsert rate limit counter
-    if (rateData) {
-      await supabase.from("rate_limits").update({ request_count: rateData.request_count + 1 }).eq("id", rateData.id);
-    } else {
-      await supabase.from("rate_limits").upsert(
-        { identifier, endpoint: "widget_chat", request_count: 1, window_start: new Date().toISOString() },
-        { onConflict: "identifier,endpoint" }
-      );
+    if (allowed === false) {
+      return jsonResponse({ error: "rate_limit", message: "Too many messages. Please wait and try again." }, 429);
     }
 
     // Fetch FAQs for knowledge base

@@ -35,7 +35,7 @@ const DeployPage = () => {
       label: 'SDK (Recommended)',
       icon: Zap,
       desc: 'Lightweight launcher with toggle bubble, lazy loading, and mobile support',
-      code: `<!-- ChatBot Studio Embed -->\n<script>\n  window.$chatbot = {\n    id: "${chatbot.embed_token}",\n    color: "${primaryColor}",\n    position: "bottom-right"\n  };\n</script>\n<script src="${embedJsUrl}" async></script>`,
+      code: `<!-- ChatBot Studio Embed -->\n<script>\n  window.$chatbot = {\n    id: "${chatbot.embed_token}",\n    color: "${primaryColor}",\n    position: "bottom-right",\n    width: 400,      // optional: 320–700\n    height: 600,     // optional: 400–900\n    // autoOpen: 5000 // optional: auto-open after ms\n  };\n</script>\n<script src="${embedJsUrl}" async></script>`,
     },
     floating: {
       label: 'Floating Widget',
