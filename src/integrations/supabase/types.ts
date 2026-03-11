@@ -295,6 +295,15 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      check_and_increment_rate_limit: {
+        Args: {
+          _endpoint: string
+          _identifier: string
+          _max_requests?: number
+          _window_seconds?: number
+        }
+        Returns: boolean
+      }
       get_chatbot_by_embed_token: {
         Args: { token: string }
         Returns: {

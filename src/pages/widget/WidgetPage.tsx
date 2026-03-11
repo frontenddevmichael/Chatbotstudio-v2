@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { sanitizeHTML, sanitizeText } from '@/lib/sanitize';
 import SEO from '@/components/ui/SEO';
 import ErrorBoundary from '@/components/ui/ErrorBoundary';
-import { ArrowUp, RotateCcw, X } from 'lucide-react';
+import { ArrowUp, RotateCcw, X, Maximize2, Minimize2 } from 'lucide-react';
 import BotAvatar from '@/components/chatbot/BotAvatar';
 
 interface Message {
@@ -24,6 +24,44 @@ function isEmbedded() {
   try { return window.self !== window.top; } catch { return true; }
 }
 
+/** Simple markdown-to-HTML: bold, italic, code, links, lists */
+function renderMarkdown(text: string): string {
+  let html = text
+    // Code blocks
+    .replace(/```([\s\S]*?)```/g, '<pre style="background:rgba(128,128,128,0.15);padding:8px;border-radius:8px;overflow-x:auto;font-size:13px;margin:4px 0"><code>$1</code></pre>')
+    // Inline code
+    .replace(/`([^`]+)`/g, '<code style="background:rgba(128,128,128,0.15);padding:1px 4px;border-radius:4px;font-size:13px">$1</code>')
+    // Bold
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    // Italic
+    .replace(/\*(.+?)\*/g, '<em>$1</em>')
+    // Links — open in parent window
+    .replace(/\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer" style="color:inherit;text-decoration:underline">$1</a>')
+    // Unordered lists
+    .replace(/^[•\-\*] (.+)$/gm, '<li>$1</li>')
+    // Ordered lists
+    .replace(/^\d+\.\s(.+)$/gm, '<li>$1</li>')
+    // Line breaks
+    .replace(/\n/g, '<br/>');
+
+  // Wrap consecutive <li> in <ul>
+  html = html.replace(/((?:<li>.*?<\/li><br\/>?)+)/g, (match) => {
+    return '<ul style="margin:4px 0;padding-left:18px">' + match.replace(/<br\/>/g, '') + '</ul>';
+  });
+
+  return html;
+}
+
+/** Get the expected parent origin for postMessage validation */
+function getParentOrigin(): string | null {
+  try {
+    if (document.referrer) {
+      return new URL(document.referrer).origin;
+    }
+  } catch {}
+  return null;
+}
+
 const WidgetPage = () => {
   const { embedToken } = useParams<{ embedToken: string }>();
   const [chatbot, setChatbot] = useState<any>(null);
@@ -31,15 +69,18 @@ const WidgetPage = () => {
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [isNetworkError, setIsNetworkError] = useState(false);
   const [sessionId] = useState(() => crypto.randomUUID());
   const [msgCount, setMsgCount] = useState(0);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const [initialLoad, setInitialLoad] = useState(true);
   const [theme, setTheme] = useState<'light' | 'dark'>('dark');
+  const [isExpanded, setIsExpanded] = useState(false);
   const embedded = isEmbedded();
+  const parentOrigin = useRef(getParentOrigin());
 
-  // Restore session from localStorage (works in iframes unlike sessionStorage in some browsers)
+  // Restore session from localStorage
   useEffect(() => {
     if (!embedToken) return;
     try {
@@ -51,9 +92,7 @@ const WidgetPage = () => {
           setMsgCount(parsed.msgCount ?? 0);
         }
       }
-    } catch {
-      // localStorage may be blocked in cross-origin iframes — fall back silently
-    }
+    } catch {}
   }, [embedToken]);
 
   // Persist session
@@ -64,33 +103,61 @@ const WidgetPage = () => {
     } catch {}
   }, [messages, msgCount, embedToken]);
 
-  // PostMessage listener — receive config from embed SDK
+  // PostMessage listener with origin validation
   useEffect(() => {
     function handleMessage(e: MessageEvent) {
       if (!e.data || typeof e.data !== 'object') return;
+      // Only accept messages from the parent origin
+      if (parentOrigin.current && e.origin !== parentOrigin.current) return;
+
       if (e.data.type === 'cbs:init') {
         if (e.data.theme === 'light') setTheme('light');
       }
+      if (e.data.type === 'cbs:focus') {
+        inputRef.current?.focus();
+      }
+      if (e.data.type === 'cbs:expanded') {
+        setIsExpanded(!!e.data.expanded);
+      }
       if (e.data.type === 'cbs:user') {
-        // Could store user metadata for analytics in future
+        // Store user metadata for future analytics
       }
     }
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
   }, []);
 
-  const closeWidget = useCallback(() => {
-    if (embedded) {
-      window.parent.postMessage({ type: 'cbs:close' }, '*');
-    }
+  const postToParent = useCallback((msg: Record<string, unknown>) => {
+    if (!embedded) return;
+    const origin = parentOrigin.current || '*';
+    window.parent.postMessage(msg, origin);
   }, [embedded]);
 
-  useEffect(() => {
-    const fetchChatbot = async () => {
+  const closeWidget = useCallback(() => {
+    postToParent({ type: 'cbs:close' });
+  }, [postToParent]);
+
+  const toggleExpand = useCallback(() => {
+    const next = !isExpanded;
+    setIsExpanded(next);
+    postToParent({ type: 'cbs:expand-request', expanded: next });
+  }, [isExpanded, postToParent]);
+
+  const fetchChatbot = useCallback(async () => {
+    setError('');
+    setIsNetworkError(false);
+    setInitialLoad(true);
+    try {
       const { data, error: rpcError } = await supabase.rpc('get_chatbot_by_embed_token', {
         token: embedToken,
       });
-      if (rpcError || !data?.length) {
+      if (rpcError) {
+        setError('Unable to connect. Check your internet and try again.');
+        setIsNetworkError(true);
+        setInitialLoad(false);
+        return;
+      }
+      if (!data?.length) {
         setError('Chatbot not found or inactive');
         setInitialLoad(false);
         return;
@@ -99,9 +166,14 @@ const WidgetPage = () => {
       setChatbot(bot);
       setMessages(prev => prev.length ? prev : (bot.welcome_message ? [{ role: 'assistant', content: bot.welcome_message }] : []));
       setInitialLoad(false);
-    };
-    fetchChatbot();
+    } catch {
+      setError('Unable to connect. Check your internet and try again.');
+      setIsNetworkError(true);
+      setInitialLoad(false);
+    }
   }, [embedToken]);
+
+  useEffect(() => { fetchChatbot(); }, [fetchChatbot]);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
@@ -199,7 +271,16 @@ const WidgetPage = () => {
       <div className="flex h-screen items-center justify-center p-4" style={{ background: bg }}>
         <div className="text-center">
           <BotAvatar avatarEmoji="bot" botName="Bot" accentColor="#666" size="lg" className="mx-auto mb-3" />
-          <p className="text-[13px]" style={{ color: textSecondary }}>{error}</p>
+          <p className="text-[13px] mb-3" style={{ color: textSecondary }}>{error}</p>
+          {isNetworkError && (
+            <button
+              onClick={fetchChatbot}
+              className="rounded-full px-4 py-2 text-[13px] font-medium text-white transition-all active:scale-95"
+              style={{ background: '#0a84ff' }}
+            >
+              Retry
+            </button>
+          )}
         </div>
       </div>
     );
@@ -224,10 +305,20 @@ const WidgetPage = () => {
             </div>
           </div>
           <div className="flex items-center gap-1">
+            {embedded && !isMobileViewport() && (
+              <button
+                onClick={toggleExpand}
+                className="rounded-[6px] p-1.5 transition-colors hover:opacity-80"
+                style={{ color: iconMuted }}
+                aria-label={isExpanded ? 'Collapse chat' : 'Expand chat'}
+              >
+                {isExpanded ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+              </button>
+            )}
             {messages.length > 1 && (
               <button
                 onClick={clearSession}
-                className="rounded-[6px] p-1.5 transition-colors"
+                className="rounded-[6px] p-1.5 transition-colors hover:opacity-80"
                 style={{ color: iconMuted }}
                 aria-label="Clear conversation"
               >
@@ -237,7 +328,7 @@ const WidgetPage = () => {
             {embedded && (
               <button
                 onClick={closeWidget}
-                className="rounded-[6px] p-1.5 transition-colors"
+                className="rounded-[6px] p-1.5 transition-colors hover:opacity-80"
                 style={{ color: iconMuted }}
                 aria-label="Close chat"
               >
@@ -262,7 +353,14 @@ const WidgetPage = () => {
                     : { background: bubbleBg, border: `1px solid ${bubbleBorder}`, color: textPrimary, borderRadius: '18px 18px 18px 4px' }
                 }
               >
-                <div dangerouslySetInnerHTML={{ __html: sanitizeHTML(msg.content) }} />
+                <div
+                  className="widget-markdown"
+                  dangerouslySetInnerHTML={{
+                    __html: sanitizeHTML(
+                      msg.role === 'assistant' ? renderMarkdown(msg.content) : msg.content
+                    ),
+                  }}
+                />
               </div>
             </div>
           ))}
@@ -315,5 +413,10 @@ const WidgetPage = () => {
     </ErrorBoundary>
   );
 };
+
+/** Check if current viewport is mobile-sized */
+function isMobileViewport() {
+  return window.innerWidth <= 640;
+}
 
 export default WidgetPage;
