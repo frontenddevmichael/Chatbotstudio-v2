@@ -1,27 +1,6 @@
 /**
- * ChatBot Studio — Embed SDK v2.0
+ * ChatBot Studio — Embed SDK v2.1
  * Production-grade launcher with lazy iframe, resize, expand, security, and mobile support.
- *
- * Usage:
- *   <script>
- *     window.$chatbot = {
- *       id: "YOUR_EMBED_TOKEN",
- *       color: "#0a84ff",
- *       position: "bottom-right",
- *       width: 400,          // optional, default 400
- *       height: 600,         // optional, default 600
- *       autoOpen: 5000       // optional, ms delay to auto-open
- *     };
- *   </script>
- *   <script src="https://yourapp.lovable.app/embed.js" async></script>
- *
- * API:
- *   window.ChatBotStudio.open()
- *   window.ChatBotStudio.close()
- *   window.ChatBotStudio.toggle()
- *   window.ChatBotStudio.expand()
- *   window.ChatBotStudio.collapse()
- *   window.ChatBotStudio.setUser({ name, email })
  */
 (function () {
   'use strict';
@@ -59,25 +38,17 @@
   var userMeta = null;
   var hasUnread = false;
 
-  // ---- Helpers ----
-  function isMobile() {
-    return window.innerWidth <= MOBILE_BP;
-  }
+  function isMobile() { return window.innerWidth <= MOBILE_BP; }
 
   function positionProps() {
     var pos = {};
-    if (POSITION === 'bottom-left') {
-      pos.bottom = '20px'; pos.left = '20px';
-    } else {
-      pos.bottom = '20px'; pos.right = '20px';
-    }
+    if (POSITION === 'bottom-left') { pos.bottom = '20px'; pos.left = '20px'; }
+    else { pos.bottom = '20px'; pos.right = '20px'; }
     return pos;
   }
 
   function applyStyles(el, styles) {
-    for (var k in styles) {
-      if (styles.hasOwnProperty(k)) el.style[k] = styles[k];
-    }
+    for (var k in styles) { if (styles.hasOwnProperty(k)) el.style[k] = styles[k]; }
   }
 
   // ---- Launcher bubble ----
@@ -126,10 +97,24 @@
     border: '2px solid #fff',
     display: 'none',
   });
-  bubble.style.position = 'fixed'; // ensure relative context
   bubble.appendChild(dot);
-
   document.body.appendChild(bubble);
+
+  // ---- Backdrop (click-outside to close on desktop) ----
+  var backdrop = document.createElement('div');
+  backdrop.id = 'cbs-backdrop';
+  applyStyles(backdrop, {
+    position: 'fixed',
+    top: '0',
+    left: '0',
+    right: '0',
+    bottom: '0',
+    zIndex: '2147483645',
+    display: 'none',
+    background: 'transparent',
+  });
+  backdrop.addEventListener('click', function () { close(); });
+  document.body.appendChild(backdrop);
 
   // ---- Container ----
   var container = document.createElement('div');
@@ -172,7 +157,7 @@
   applyStyles(container, getContainerStyles(true));
   document.body.appendChild(container);
 
-  // Fix: only update position/radius on resize, never reset display/opacity when open
+  // Only update position/radius on resize, never reset display/opacity when open
   window.addEventListener('resize', function () {
     if (!isOpen) return;
     var mobile = isMobile();
@@ -204,19 +189,18 @@
       width: '100%',
       height: '100%',
       border: 'none',
-      background: '#000',
+      background: '#fff',
     });
     container.appendChild(iframe);
 
     iframe.addEventListener('load', function () {
       iframeLoaded = true;
-      sendToWidget({ type: 'cbs:init', theme: cfg.theme || 'dark', user: userMeta });
+      sendToWidget({ type: 'cbs:init', theme: cfg.theme || 'light', user: userMeta });
     });
   }
 
   // ---- PostMessage bridge with origin validation ----
   window.addEventListener('message', function (e) {
-    // Validate origin
     if (e.origin !== ORIGIN) return;
     if (!e.data || typeof e.data !== 'object') return;
     if (e.data.type === 'cbs:close') close();
@@ -253,13 +237,17 @@
     bubble.style.transform = 'scale(0)';
     bubble.style.pointerEvents = 'none';
 
+    // Show backdrop on desktop for click-outside-to-close
+    if (!isMobile()) {
+      backdrop.style.display = 'block';
+    }
+
     // Force reflow then animate
     container.offsetHeight;
     container.style.opacity = '1';
     container.style.transform = isMobile() ? 'translateY(0)' : 'translateY(0) scale(1)';
     bubble.setAttribute('aria-label', 'Close chat');
 
-    // Tell widget to focus input
     setTimeout(function () { sendToWidget({ type: 'cbs:focus' }); }, 300);
   }
 
@@ -271,15 +259,14 @@
     bubble.style.transform = 'scale(1)';
     bubble.style.pointerEvents = 'auto';
     bubble.setAttribute('aria-label', 'Open chat');
+    backdrop.style.display = 'none';
 
     setTimeout(function () {
       if (!isOpen) container.style.display = 'none';
     }, 260);
   }
 
-  function toggle() {
-    isOpen ? close() : open();
-  }
+  function toggle() { isOpen ? close() : open(); }
 
   function expand() {
     if (isExpanded || isMobile()) return;
@@ -297,9 +284,7 @@
 
   // ---- Auto-open ----
   if (cfg.autoOpen && typeof cfg.autoOpen === 'number' && cfg.autoOpen > 0) {
-    setTimeout(function () {
-      if (!isOpen) open();
-    }, cfg.autoOpen);
+    setTimeout(function () { if (!isOpen) open(); }, cfg.autoOpen);
   }
 
   // ---- Public API ----
