@@ -3,11 +3,12 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { useCreateChatbot, useUpdateChatbot, useChatbot } from '@/hooks/useChatbot';
 import { useCreateFAQ } from '@/hooks/useFAQs';
+import { supabase } from '@/integrations/supabase/client';
 import PageWrapper from '@/components/layout/PageWrapper';
 import SEO from '@/components/ui/SEO';
 import Spinner from '@/components/ui/Spinner';
 import { toast } from 'sonner';
-import { ChevronLeft, Smile, Briefcase, Coffee, Crown, Sparkles, Copy, ExternalLink, Trash2, Upload } from 'lucide-react';
+import { ChevronLeft, Smile, Briefcase, Coffee, Crown, Sparkles, Copy, ExternalLink, Trash2, Upload, Wand2, FileText } from 'lucide-react';
 import { canCreateChatbot } from '@/lib/plans';
 import { sanitizeText } from '@/lib/sanitize';
 import { chatbotNameSchema } from '@/lib/validations';
@@ -49,6 +50,7 @@ const ChatbotBuilder = () => {
   const [embedToken, setEmbedToken] = useState('');
   const [showConfetti, setShowConfetti] = useState(false);
   const savedFaqsRef = useRef<Set<string>>(new Set());
+  const [generatingFaqs, setGeneratingFaqs] = useState(false);
 
   useEffect(() => {
     if (isEdit && existingBot) {
@@ -148,8 +150,60 @@ const ChatbotBuilder = () => {
     e.target.value = '';
   };
 
-  const widgetUrl = embedToken ? `${window.location.origin}/widget/${embedToken}` : '';
-  const embedCode = widgetUrl ? `<iframe src="${widgetUrl}" width="400" height="600" frameborder="0" style="border-radius:14px;box-shadow:0 4px 24px rgba(0,0,0,0.15)"></iframe>` : '';
+  const handleAIGenerate = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = '';
+
+    // Read file as text
+    const text = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (ev) => resolve(ev.target?.result as string || '');
+      reader.onerror = () => reject(new Error('Failed to read file'));
+      reader.readAsText(file);
+    });
+
+    if (text.trim().length < 50) {
+      toast.error('Document is too short. Please upload a more detailed file.');
+      return;
+    }
+
+    setGeneratingFaqs(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('generate-faqs', {
+        body: { document_text: text },
+      });
+
+      if (error) throw error;
+      if (data?.error) { toast.error(data.error); return; }
+
+      const generated: FAQPair[] = data.faqs;
+      if (generated?.length) {
+        setFaqs(prev => [...prev.filter(f => f.question || f.answer), ...generated]);
+        toast.success(`Generated ${generated.length} FAQs from your document`);
+      } else {
+        toast.error('No FAQs could be extracted. Try a different document.');
+      }
+    } catch (err: any) {
+      console.error('AI FAQ generation failed:', err);
+      toast.error('Failed to generate FAQs. Please try again.');
+    } finally {
+      setGeneratingFaqs(false);
+    }
+  };
+
+  const getPublishedOrigin = () => {
+    const origin = window.location.origin;
+    if (origin.includes('-preview--') && origin.includes('.lovable.app')) return 'https://ideaweave-bot.lovable.app';
+    return origin;
+  };
+
+  const baseUrl = getPublishedOrigin();
+  const widgetUrl = embedToken ? `${baseUrl}/widget/${embedToken}` : '';
+  const embedJsUrl = `${baseUrl}/embed.js`;
+  const sdkSnippet = embedToken
+    ? `<!-- ChatBot Studio Embed -->\n<script>\n  window.$chatbot = {\n    id: "${embedToken}",\n    color: "${primaryColor}",\n    position: "bottom-right"\n  };\n</script>\n<script src="${embedJsUrl}" async></script>`
+    : '';
 
   const inputClass = "w-full rounded-[10px] border border-border bg-[hsl(var(--color-surface-3))] px-3 py-2 text-[15px] text-foreground placeholder:text-muted-foreground outline-none transition-colors focus:border-primary";
 
@@ -164,7 +218,6 @@ const ChatbotBuilder = () => {
           <p className="text-[12px] text-muted-foreground">Step {step} of 5</p>
           <h1 className="text-[22px] font-semibold text-foreground">{STEP_NAMES[step - 1]}</h1>
         </div>
-        {/* Dots */}
         <div className="flex gap-1.5">
           {[1, 2, 3, 4, 5].map(s => (
             <div key={s} className={`h-1.5 w-1.5 rounded-full transition-colors ${s <= step ? 'bg-primary' : 'bg-border'}`} />
@@ -212,16 +265,40 @@ const ChatbotBuilder = () => {
           </div>
         )}
 
-        {/* Step 3 */}
+        {/* Step 3 — Knowledge */}
         {step === 3 && (
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <p className="text-[13px] text-muted-foreground">Teach your chatbot about your business</p>
-              <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-[6px] border border-border px-2.5 py-1 text-[11px] font-medium text-muted-foreground hover:text-foreground transition-colors">
-                <Upload className="h-3 w-3" /> Upload
-                <input type="file" accept=".txt,.csv" onChange={handleFileUpload} className="hidden" />
-              </label>
+              <div className="flex gap-1.5">
+                <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-[6px] border border-border px-2.5 py-1 text-[11px] font-medium text-muted-foreground hover:text-foreground transition-colors">
+                  <Upload className="h-3 w-3" /> Import
+                  <input type="file" accept=".txt,.csv" onChange={handleFileUpload} className="hidden" />
+                </label>
+              </div>
             </div>
+
+            {/* AI Generate FAQs card */}
+            <div className="rounded-[14px] border border-dashed border-primary/30 bg-primary/5 p-4">
+              <div className="flex items-start gap-3">
+                <div className="rounded-[10px] bg-primary/10 p-2">
+                  <Wand2 className="h-4 w-4 text-primary" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[14px] font-medium text-foreground">Auto-Generate FAQs</p>
+                  <p className="text-[12px] text-muted-foreground mt-0.5">Upload a company document (.txt, .csv) and AI will generate FAQs automatically</p>
+                  <label className={`mt-3 inline-flex cursor-pointer items-center gap-1.5 rounded-[8px] bg-primary px-3 py-1.5 text-[12px] font-medium text-primary-foreground hover:bg-primary/90 transition-all active:scale-[0.97] ${generatingFaqs ? 'opacity-50 pointer-events-none' : ''}`}>
+                    {generatingFaqs ? (
+                      <><Spinner className="h-3 w-3" /> Generating...</>
+                    ) : (
+                      <><FileText className="h-3 w-3" /> Upload Document</>
+                    )}
+                    <input type="file" accept=".txt,.csv" onChange={handleAIGenerate} className="hidden" disabled={generatingFaqs} />
+                  </label>
+                </div>
+              </div>
+            </div>
+
             {faqs.map((faq, i) => (
               <div key={i} className="space-y-2 rounded-[14px] border border-border bg-card p-4">
                 <div className="flex items-center justify-between">
@@ -240,7 +317,7 @@ const ChatbotBuilder = () => {
           </div>
         )}
 
-        {/* Step 4 */}
+        {/* Step 4 — Appearance with full-theme preview */}
         {step === 4 && (
           <div className="space-y-5">
             <div>
@@ -249,33 +326,49 @@ const ChatbotBuilder = () => {
             </div>
             <div className="rounded-[14px] border border-border bg-card p-5">
               <p className="mb-3 text-[11px] font-medium tracking-[0.06em] uppercase text-muted-foreground">Preview</p>
-              <div className="mx-auto w-64 rounded-[14px] border border-border bg-background p-4">
-                <div className="mb-3 flex items-center gap-2">
+              <div className="mx-auto w-64 rounded-[14px] border border-border overflow-hidden" style={{ background: 'hsl(var(--background))' }}>
+                {/* Themed header */}
+                <div className="flex items-center gap-2 px-3 py-2.5" style={{ background: `${primaryColor}0F`, borderBottom: `1px solid ${primaryColor}1A` }}>
                   <BotAvatar avatarEmoji={avatarType === 'initials' ? 'initials' : avatarEmoji} botName={name} accentColor={primaryColor} size="sm" />
-                  <span className="text-[13px] font-semibold text-foreground">{name || 'Your Bot'}</span>
+                  <div className="flex-1 min-w-0">
+                    <span className="text-[12px] font-semibold text-foreground truncate block">{name || 'Your Bot'}</span>
+                    <div className="flex items-center gap-1">
+                      <span className="h-1 w-1 rounded-full" style={{ background: primaryColor }} />
+                      <span className="text-[9px] text-muted-foreground">Online</span>
+                    </div>
+                  </div>
                 </div>
-                <div className="mb-2 rounded-[10px] bg-[hsl(var(--color-surface-2))] p-2.5 text-[12px] text-foreground">{welcomeMessage || 'Hello!'}</div>
-                <div className="flex gap-2">
-                  <div className="flex-1 rounded-full border border-border bg-[hsl(var(--color-surface-3))] px-2.5 py-1 text-[11px] text-muted-foreground">Message...</div>
-                  <button className="rounded-full px-3 py-1 text-[11px] font-medium text-white" style={{ backgroundColor: primaryColor }}>Send</button>
+                {/* Messages */}
+                <div className="p-2.5 space-y-1.5">
+                  <div className="rounded-[8px] bg-[hsl(var(--color-surface-2))] p-2 text-[11px] text-foreground">{welcomeMessage || 'Hello!'}</div>
+                  <div className="flex justify-end">
+                    <div className="rounded-[8px] px-2 py-1.5 text-[11px] text-white" style={{ background: primaryColor }}>How does it work?</div>
+                  </div>
+                </div>
+                {/* Input */}
+                <div className="px-2.5 pb-2.5">
+                  <div className="flex gap-1.5">
+                    <div className="flex-1 rounded-full border border-border bg-[hsl(var(--color-surface-3))] px-2.5 py-1 text-[10px] text-muted-foreground" style={{ borderColor: `${primaryColor}30` }}>Message...</div>
+                    <button className="rounded-full px-2.5 py-1 text-[10px] font-medium text-white" style={{ backgroundColor: primaryColor }}>Send</button>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
         )}
 
-        {/* Step 5 */}
+        {/* Step 5 — Deploy with SDK snippet */}
         {step === 5 && (
           <div className="space-y-6 text-center">
             <Sparkles className="mx-auto h-10 w-10 text-primary" />
             <h2 className="text-[22px] font-semibold text-foreground">Your chatbot is ready!</h2>
-            <p className="text-[13px] text-muted-foreground">Deploy it anywhere with the embed code</p>
+            <p className="text-[13px] text-muted-foreground">Deploy it anywhere with the SDK embed code</p>
             {embedToken ? (
               <>
                 <div className="rounded-[14px] border border-border bg-card p-4 text-left">
-                  <p className="mb-2 text-[11px] font-medium tracking-[0.06em] uppercase text-muted-foreground">Embed Code</p>
-                  <pre className="overflow-x-auto rounded-[10px] bg-[hsl(var(--color-surface-3))] p-3 font-mono text-[12px] text-foreground">{embedCode}</pre>
-                  <button onClick={() => { navigator.clipboard.writeText(embedCode); toast.success('Copied!'); }} className="mt-2 inline-flex items-center gap-1 text-[12px] font-medium text-primary hover:underline">
+                  <p className="mb-2 text-[11px] font-medium tracking-[0.06em] uppercase text-muted-foreground">SDK Embed Code</p>
+                  <pre className="overflow-x-auto rounded-[10px] bg-[hsl(var(--color-surface-3))] p-3 font-mono text-[12px] text-foreground whitespace-pre-wrap">{sdkSnippet}</pre>
+                  <button onClick={() => { navigator.clipboard.writeText(sdkSnippet); toast.success('Copied!'); }} className="mt-2 inline-flex items-center gap-1 text-[12px] font-medium text-primary hover:underline">
                     <Copy className="h-3 w-3" /> Copy code
                   </button>
                 </div>

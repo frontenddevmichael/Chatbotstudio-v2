@@ -5,3 +5,6 @@ verify_jwt = false
 
 [functions.supercharge]
 verify_jwt = false
+
+[functions.generate-faqs]
+verify_jwt = false
