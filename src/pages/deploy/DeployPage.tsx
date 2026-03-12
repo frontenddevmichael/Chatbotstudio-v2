@@ -3,11 +3,11 @@ import { useChatbot } from '@/hooks/useChatbot';
 import PageWrapper from '@/components/layout/PageWrapper';
 import SEO from '@/components/ui/SEO';
 import Spinner from '@/components/ui/Spinner';
-import { Copy, ExternalLink, Code, MessageSquare, Link as LinkIcon, Zap } from 'lucide-react';
+import { Copy, ExternalLink, Zap, Link as LinkIcon } from 'lucide-react';
 import { toast } from 'sonner';
 import { useState } from 'react';
 
-type EmbedVariant = 'sdk' | 'floating' | 'iframe' | 'link';
+type EmbedVariant = 'sdk' | 'link';
 
 const DeployPage = () => {
   const { id } = useParams<{ id: string }>();
@@ -19,9 +19,7 @@ const DeployPage = () => {
 
   const getPublishedOrigin = () => {
     const origin = window.location.origin;
-    if (origin.includes('-preview--') && origin.includes('.lovable.app')) {
-      return 'https://ideaweave-bot.lovable.app';
-    }
+    if (origin.includes('-preview--') && origin.includes('.lovable.app')) return 'https://ideaweave-bot.lovable.app';
     return origin;
   };
 
@@ -37,18 +35,6 @@ const DeployPage = () => {
       desc: 'Lightweight launcher with toggle bubble, lazy loading, and mobile support',
       code: `<!-- ChatBot Studio Embed -->\n<script>\n  window.$chatbot = {\n    id: "${chatbot.embed_token}",\n    color: "${primaryColor}",\n    position: "bottom-right",\n    width: 400,      // optional: 320–700\n    height: 600,     // optional: 400–900\n    // autoOpen: 5000 // optional: auto-open after ms\n  };\n</script>\n<script src="${embedJsUrl}" async></script>`,
     },
-    floating: {
-      label: 'Floating Widget',
-      icon: MessageSquare,
-      desc: 'Fixed bubble in the bottom-right corner of your site (no toggle)',
-      code: `<script>\n(function(){\n  var d=document,s=d.createElement('iframe');\n  s.src='${widgetUrl}';\n  s.style='position:fixed;bottom:20px;right:20px;width:380px;height:560px;border:none;border-radius:14px;box-shadow:0 8px 32px rgba(0,0,0,0.3);z-index:9999';\n  d.body.appendChild(s);\n})();\n</script>`,
-    },
-    iframe: {
-      label: 'Inline Iframe',
-      icon: Code,
-      desc: 'Embed directly in a page section',
-      code: `<iframe src="${widgetUrl}" width="400" height="600" frameborder="0" style="border-radius:14px;box-shadow:0 4px 24px rgba(0,0,0,0.15)"></iframe>`,
-    },
     link: {
       label: 'Direct Link',
       icon: LinkIcon,
@@ -59,8 +45,7 @@ const DeployPage = () => {
 
   const current = codes[variant];
   const copy = (text: string) => { navigator.clipboard.writeText(text); toast.success('Copied to clipboard'); };
-
-  const variants: EmbedVariant[] = ['sdk', 'floating', 'iframe', 'link'];
+  const variants: EmbedVariant[] = ['sdk', 'link'];
 
   return (
     <PageWrapper>
@@ -85,7 +70,7 @@ const DeployPage = () => {
         </div>
 
         {/* Variant selector */}
-        <div className="mb-4 grid grid-cols-2 sm:grid-cols-4 gap-2">
+        <div className="mb-4 grid grid-cols-2 gap-2">
           {variants.map((v) => {
             const c = codes[v];
             const Icon = c.icon;
