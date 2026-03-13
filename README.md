@@ -1,4 +1,4 @@
-🤖 ChatBot Studio
+ ChatBot Studio
 
 ChatBot Studio is a no-code AI chatbot creation platform that enables businesses, creators, and organizations to build, train, and deploy intelligent chatbots in minutes — without writing code.
 
@@ -6,7 +6,7 @@ The platform focuses on simplicity and accessibility. Users can create a functio
 
 ChatBot Studio is designed with a freemium model, allowing anyone to start for free while offering premium upgrades for advanced AI capabilities.
 
-🎯 Purpose
+ Purpose
 
 Many small and medium businesses want AI chatbots but:
 
