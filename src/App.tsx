@@ -66,6 +66,7 @@ const App = () => (
                   <Route path="/billing" element={<ErrorBoundary><BillingPage /></ErrorBoundary>} />
                   <Route path="/settings" element={<ErrorBoundary><SettingsPage /></ErrorBoundary>} />
                   <Route path="/widget/:embedToken" element={<ErrorBoundary><WidgetPage /></ErrorBoundary>} />
+                  <Route path="/admin/login" element={<AdminLogin />} />
                   <Route path="/admin" element={<ErrorBoundary><AdminDashboard /></ErrorBoundary>} />
                   <Route path="/admin/users" element={<ErrorBoundary><UserManager /></ErrorBoundary>} />
                   <Route path="/admin/chatbots" element={<ErrorBoundary><ChatbotManager /></ErrorBoundary>} />
