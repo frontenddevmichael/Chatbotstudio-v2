@@ -1,4 +1,4 @@
-import { ReactNode } from 'react';
+import { ReactNode, useEffect, useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import Sidebar from './Sidebar';
@@ -11,6 +11,16 @@ import { useDevice } from '@/hooks/useDevice';
 const PageWrapper = ({ children }: { children: ReactNode }) => {
   const { user, loading } = useAuth();
   const { isMobile } = useDevice();
+  const [shouldRedirect, setShouldRedirect] = useState(false);
+
+  // Delay redirect to avoid flashing to login during auth state transitions
+  useEffect(() => {
+    if (!loading && !user) {
+      const timer = setTimeout(() => setShouldRedirect(true), 150);
+      return () => clearTimeout(timer);
+    }
+    setShouldRedirect(false);
+  }, [loading, user]);
 
   if (loading) {
     return (
@@ -20,7 +30,14 @@ const PageWrapper = ({ children }: { children: ReactNode }) => {
     );
   }
 
-  if (!user) return <Navigate to="/login" replace />;
+  if (!user && shouldRedirect) return <Navigate to="/login" replace />;
+  if (!user) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <Spinner className="h-8 w-8" />
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen bg-background">

@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
-import { useCreateChatbot, useUpdateChatbot, useChatbot } from '@/hooks/useChatbot';
+import { useCreateChatbot, useUpdateChatbot, useChatbot, useChatbots } from '@/hooks/useChatbot';
 import { useCreateFAQ } from '@/hooks/useFAQs';
 import { supabase } from '@/integrations/supabase/client';
 import PageWrapper from '@/components/layout/PageWrapper';
@@ -37,6 +37,7 @@ const ChatbotBuilder = () => {
   const updateMutation = useUpdateChatbot();
   const createFAQMutation = useCreateFAQ();
   const { data: existingBot, isLoading: loadingBot } = useChatbot(id || '');
+  const { data: chatbots } = useChatbots();
 
   const [step, setStep] = useState(1);
   const [name, setName] = useState('');
@@ -51,6 +52,7 @@ const ChatbotBuilder = () => {
   const [showConfetti, setShowConfetti] = useState(false);
   const savedFaqsRef = useRef<Set<string>>(new Set());
   const [generatingFaqs, setGeneratingFaqs] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (isEdit && existingBot) {
@@ -82,7 +84,11 @@ const ChatbotBuilder = () => {
         if (result.embed_token) setEmbedToken(result.embed_token);
         return botId;
       } else {
-        if (!canCreateChatbot(profile, 0)) { toast.error('Upgrade to create more chatbots'); return null; }
+        const currentCount = chatbots?.length ?? 0;
+        if (!canCreateChatbot(profile, currentCount)) {
+          toast.error('Upgrade to create more chatbots');
+          return null;
+        }
         const result = await createMutation.mutateAsync(payload);
         setBotId(result.id);
         if (result.embed_token) setEmbedToken(result.embed_token);
@@ -96,24 +102,51 @@ const ChatbotBuilder = () => {
   };
 
   const handleNext = async () => {
-    if (step === 1) {
-      const nameResult = chatbotNameSchema.safeParse(name);
-      if (!nameResult.success) { toast.error(nameResult.error.errors[0].message); return; }
-    }
-    const savedId = await saveDraft();
-    if (!savedId) return;
-    if (step === 3) {
-      const validFaqs = faqs.filter((f) => f.question.trim() && f.answer.trim());
-      for (const faq of validFaqs) {
-        const key = `${faq.question}::${faq.answer}`;
-        if (savedFaqsRef.current.has(key)) continue;
-        try { await createFAQMutation.mutateAsync({ chatbot_id: savedId, ...faq }); savedFaqsRef.current.add(key); } catch { /* continue */ }
+    if (saving) return;
+    setSaving(true);
+    try {
+      if (step === 1) {
+        const nameResult = chatbotNameSchema.safeParse(name);
+        if (!nameResult.success) { toast.error(nameResult.error.errors[0].message); return; }
       }
-    }
-    if (step < 5) {
-      const next = step + 1;
-      setStep(next);
-      if (next === 5) { setShowConfetti(true); setTimeout(() => setShowConfetti(false), 5000); }
+      const savedId = await saveDraft();
+      if (!savedId) return;
+
+      if (step === 3) {
+        const validFaqs = faqs.filter((f) => f.question.trim() && f.answer.trim());
+        const newFaqs = validFaqs.filter(faq => !savedFaqsRef.current.has(`${faq.question}::${faq.answer}`));
+        if (newFaqs.length > 0) {
+          const results = await Promise.allSettled(
+            newFaqs.map(faq =>
+              createFAQMutation.mutateAsync({ chatbot_id: savedId, ...faq })
+            )
+          );
+          results.forEach((result, i) => {
+            if (result.status === 'fulfilled') {
+              savedFaqsRef.current.add(`${newFaqs[i].question}::${newFaqs[i].answer}`);
+            }
+          });
+          const failed = results.filter(r => r.status === 'rejected').length;
+          if (failed > 0) {
+            toast.warning(`${failed} FAQ(s) failed to save, but you can continue`);
+          }
+        }
+      }
+
+      if (step < 5) {
+        const next = step + 1;
+        setStep(next);
+        if (next === 5) {
+          setShowConfetti(true);
+          setTimeout(() => setShowConfetti(false), 5000);
+          toast.success('🎉 Chatbot created successfully!');
+        }
+      }
+    } catch (err: any) {
+      console.error('handleNext error:', err);
+      toast.error(err?.message || 'Something went wrong. Please try again.');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -155,7 +188,6 @@ const ChatbotBuilder = () => {
     if (!file) return;
     e.target.value = '';
 
-    // Read file as text
     const text = await new Promise<string>((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = (ev) => resolve(ev.target?.result as string || '');
@@ -395,17 +427,17 @@ const ChatbotBuilder = () => {
           <div className="mt-8 flex justify-between">
             <button
               onClick={() => step > 1 && setStep(step - 1)}
-              disabled={step === 1}
+              disabled={step === 1 || saving}
               className="inline-flex items-center gap-1 rounded-[10px] border border-border px-4 py-2 text-[13px] font-medium text-foreground transition-colors hover:bg-[hsl(var(--color-surface-1))] disabled:opacity-25"
             >
               <ChevronLeft className="h-3.5 w-3.5" /> Back
             </button>
             <button
               onClick={handleNext}
-              disabled={createMutation.isPending || updateMutation.isPending}
+              disabled={saving}
               className="rounded-[10px] bg-primary px-5 py-2 text-[13px] font-medium text-primary-foreground hover:bg-primary/90 active:scale-[0.97] disabled:opacity-50 transition-all"
             >
-              {(createMutation.isPending || updateMutation.isPending || createFAQMutation.isPending) ? <Spinner className="h-4 w-4" /> : 'Continue'}
+              {saving ? <Spinner className="h-4 w-4" /> : 'Continue'}
             </button>
           </div>
         )}

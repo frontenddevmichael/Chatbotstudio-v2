@@ -13,21 +13,33 @@ const ResetPassword = () => {
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    // Check for recovery token in URL hash
+    // Check for recovery token in URL hash (multiple formats)
     const hash = window.location.hash;
-    if (hash.includes('type=recovery')) {
+    const params = new URLSearchParams(hash.replace('#', ''));
+    const type = params.get('type');
+    const accessToken = params.get('access_token');
+
+    if (type === 'recovery' && accessToken) {
       setReady(true);
-    } else {
-      // Also listen for auth state change with recovery event
-      const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
-        if (event === 'PASSWORD_RECOVERY') {
-          setReady(true);
-        }
-      });
-      // Give it a moment to process the hash
-      setTimeout(() => setReady(true), 1000);
-      return () => subscription.unsubscribe();
+      return;
     }
+
+    // Listen for auth state change with recovery event
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'PASSWORD_RECOVERY') {
+        setReady(true);
+      }
+    });
+
+    // Fallback: if hash exists but in a different format, give it time
+    if (hash.length > 1) {
+      setTimeout(() => setReady(true), 1500);
+    } else {
+      // No hash at all — still show the form after a brief wait
+      setTimeout(() => setReady(true), 500);
+    }
+
+    return () => subscription.unsubscribe();
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {

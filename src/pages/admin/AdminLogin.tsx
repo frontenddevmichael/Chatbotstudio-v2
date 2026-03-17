@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { Shield } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
@@ -14,9 +14,11 @@ const AdminLogin = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const isSubmittingRef = useRef(false);
 
   useEffect(() => {
-    if (!loading && user && isAdmin) {
+    // Only auto-redirect if not in the middle of a login submission
+    if (!loading && user && isAdmin && !isSubmittingRef.current) {
       navigate('/admin', { replace: true });
     }
   }, [loading, user, isAdmin, navigate]);
@@ -29,7 +31,7 @@ const AdminLogin = () => {
     );
   }
 
-  if (user && isAdmin) return <Navigate to="/admin" replace />;
+  if (user && isAdmin && !isSubmittingRef.current) return <Navigate to="/admin" replace />;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -38,9 +40,10 @@ const AdminLogin = () => {
       return;
     }
     setSubmitting(true);
+    isSubmittingRef.current = true;
     try {
       await signIn(email, password);
-      // Check admin role
+      // Wait a tick for auth state to settle
       const { data: { user: authUser } } = await supabase.auth.getUser();
       if (!authUser) throw new Error('Authentication failed');
 
@@ -62,6 +65,7 @@ const AdminLogin = () => {
       toast.error(err.message || 'Sign in failed');
     } finally {
       setSubmitting(false);
+      isSubmittingRef.current = false;
     }
   };
 
