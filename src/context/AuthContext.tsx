@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState, useRef } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import type { Profile } from '@/lib/plans';
@@ -23,42 +23,63 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
+  const loadingResolved = useRef(false);
 
   const fetchProfile = async (userId: string) => {
-    const { data } = await supabase.from('profiles').select('*').eq('id', userId).single();
-    if (data) setProfile(data as Profile);
+    try {
+      const { data } = await supabase.from('profiles').select('*').eq('id', userId).single();
+      if (data) setProfile(data as Profile);
+    } catch {
+      // Profile fetch failed — non-critical
+    }
   };
 
   const checkAdmin = async (userId: string) => {
-    const { data } = await supabase.from('user_roles').select('role').eq('user_id', userId).eq('role', 'admin');
-    setIsAdmin(!!data && data.length > 0);
+    try {
+      const { data } = await supabase.from('user_roles').select('role').eq('user_id', userId).eq('role', 'admin');
+      setIsAdmin(!!data && data.length > 0);
+    } catch {
+      setIsAdmin(false);
+    }
+  };
+
+  const resolveLoading = () => {
+    if (!loadingResolved.current) {
+      loadingResolved.current = true;
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    // Use only onAuthStateChange — it fires INITIAL_SESSION on mount,
+    // eliminating the race condition with a separate getSession call.
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       setSession(session);
       setUser(session?.user ?? null);
+
       if (session?.user) {
-        await fetchProfile(session.user.id);
-        await checkAdmin(session.user.id);
+        // Use setTimeout to avoid potential Supabase deadlock on auth state change
+        setTimeout(async () => {
+          await Promise.all([
+            fetchProfile(session.user.id),
+            checkAdmin(session.user.id),
+          ]);
+          resolveLoading();
+        }, 0);
       } else {
         setProfile(null);
         setIsAdmin(false);
+        resolveLoading();
       }
-      setLoading(false);
     });
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        fetchProfile(session.user.id);
-        checkAdmin(session.user.id);
-      }
-      setLoading(false);
-    });
+    // Safety net: if onAuthStateChange never fires within 3s, resolve loading
+    const timeout = setTimeout(() => resolveLoading(), 3000);
 
-    return () => subscription.unsubscribe();
+    return () => {
+      subscription.unsubscribe();
+      clearTimeout(timeout);
+    };
   }, []);
 
   const signUp = async (email: string, password: string, fullName: string) => {
@@ -76,7 +97,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const signOut = async () => {
-    // Clear local state immediately so UI updates even if API call fails
     setUser(null);
     setSession(null);
     setProfile(null);
@@ -84,7 +104,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       await supabase.auth.signOut({ scope: 'local' });
     } catch {
-      // Ignore errors — local state is already cleared
+      // Ignore — local state already cleared
     }
   };
 
