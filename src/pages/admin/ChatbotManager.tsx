@@ -6,6 +6,7 @@ import SEO from '@/components/ui/SEO';
 import { toast } from 'sonner';
 import { Search } from 'lucide-react';
 import { useDebounce } from '@/hooks/useDebounce';
+import { Link } from 'react-router-dom';
 
 const ChatbotManager = () => {
   const queryClient = useQueryClient();
@@ -21,16 +22,38 @@ const ChatbotManager = () => {
     },
   });
 
+  // Owner profiles map
+  const { data: owners } = useQuery({
+    queryKey: ['admin-chatbot-owners'],
+    queryFn: async () => {
+      const { data } = await supabase.from('profiles').select('id, full_name');
+      const map: Record<string, string> = {};
+      (data ?? []).forEach((p: any) => { map[p.id] = p.full_name || 'Unnamed'; });
+      return map;
+    },
+  });
+
+  // FAQ counts per chatbot
+  const { data: faqCounts } = useQuery({
+    queryKey: ['admin-faq-counts'],
+    queryFn: async () => {
+      const { data } = await supabase.from('faqs').select('chatbot_id');
+      const counts: Record<string, number> = {};
+      (data ?? []).forEach((f: any) => { counts[f.chatbot_id] = (counts[f.chatbot_id] ?? 0) + 1; });
+      return counts;
+    },
+  });
+
   const filtered = useMemo(() => {
     let result = chatbots ?? [];
     if (debouncedSearch) {
       const q = debouncedSearch.toLowerCase();
-      result = result.filter((b: any) => b.name?.toLowerCase().includes(q));
+      result = result.filter((b: any) => b.name?.toLowerCase().includes(q) || owners?.[b.user_id]?.toLowerCase().includes(q));
     }
     if (statusFilter === 'active') result = result.filter((b: any) => b.is_active);
     if (statusFilter === 'inactive') result = result.filter((b: any) => !b.is_active);
     return result;
-  }, [chatbots, debouncedSearch, statusFilter]);
+  }, [chatbots, debouncedSearch, statusFilter, owners]);
 
   const toggleActive = useMutation({
     mutationFn: async ({ id, is_active }: { id: string; is_active: boolean }) => {
@@ -55,7 +78,7 @@ const ChatbotManager = () => {
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search by name..."
+            placeholder="Search by name or owner..."
             className="w-full rounded-md border border-border bg-card pl-9 pr-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none"
           />
         </div>
@@ -80,8 +103,10 @@ const ChatbotManager = () => {
             <thead>
               <tr className="border-b border-border bg-muted">
                 <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground">Bot</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground">Owner</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground">Status</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground">Conversations</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground">FAQs</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground">Convos</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground">Created</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground">Actions</th>
               </tr>
@@ -93,25 +118,32 @@ const ChatbotManager = () => {
                     <span className="mr-2">{bot.avatar_emoji}</span>
                     <span className="text-foreground">{bot.name}</span>
                   </td>
+                  <td className="px-4 py-3 text-muted-foreground">{owners?.[bot.user_id] ?? 'Unknown'}</td>
                   <td className="px-4 py-3">
                     <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${
                       bot.is_active ? 'bg-success/10 text-success' : 'bg-destructive/10 text-destructive'
                     }`}>{bot.is_active ? 'Active' : 'Inactive'}</span>
                   </td>
+                  <td className="px-4 py-3 text-muted-foreground">{faqCounts?.[bot.id] ?? 0}</td>
                   <td className="px-4 py-3 text-muted-foreground">{bot.total_conversations ?? 0}</td>
                   <td className="px-4 py-3 text-muted-foreground">{bot.created_at ? new Date(bot.created_at).toLocaleDateString() : '-'}</td>
                   <td className="px-4 py-3">
-                    <button
-                      onClick={() => toggleActive.mutate({ id: bot.id, is_active: bot.is_active })}
-                      className="text-xs font-medium text-primary hover:underline"
-                    >
-                      {bot.is_active ? 'Deactivate' : 'Activate'}
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => toggleActive.mutate({ id: bot.id, is_active: bot.is_active })}
+                        className="text-xs font-medium text-primary hover:underline"
+                      >
+                        {bot.is_active ? 'Deactivate' : 'Activate'}
+                      </button>
+                      <Link to="/admin/conversations" className="text-xs font-medium text-muted-foreground hover:text-foreground hover:underline">
+                        View Convos
+                      </Link>
+                    </div>
                   </td>
                 </tr>
               ))}
               {!filtered.length && (
-                <tr><td colSpan={5} className="px-4 py-8 text-center text-sm text-muted-foreground">No chatbots found</td></tr>
+                <tr><td colSpan={7} className="px-4 py-8 text-center text-sm text-muted-foreground">No chatbots found</td></tr>
               )}
             </tbody>
           </table>
