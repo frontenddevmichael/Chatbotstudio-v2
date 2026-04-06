@@ -1,56 +1,64 @@
 
 
-## Admin Setup & Smart Redirect
+## Full Admin Suite Upgrade + Auth-Based Admin Redirect
 
-### Summary
-Grant admin to `support@switch2tech.net`, set a dedicated password, and make the normal login page automatically redirect admin users to `/admin` instead of `/dashboard`.
+### Part 1: Admin Dashboard — Missing Features
 
-### Current State
-- User `support@switch2tech.net` exists (id: `41f4bfd5-...`) with no admin role
-- Login page always redirects to `/dashboard` regardless of role
-- Admin features are already complete: Dashboard, User Manager (with grant/revoke admin), Chatbot Manager, Ad Manager, Settings
-- UserManager already has the "Make Admin" / "Revoke Admin" functionality with confirmation dialogs
+The current admin pages have basic functionality but are missing several monitoring capabilities that a production admin panel needs:
 
-### Changes
+**AdminDashboard.tsx — Add:**
+- Signup growth chart (last 30 days, using Recharts `AreaChart`)
+- Conversation volume chart (last 7 days)
+- System health section: uptime indicator, maintenance status toggle (quick-action)
+- FAQ count stat card
+- Revenue estimate card (premium users x monthly price from platform_settings)
 
-**1. Database: Grant admin role**
-- Insert into `user_roles`: `(user_id: '41f4bfd5-536e-4e17-abf4-c04f9a5f4150', role: 'admin')`
+**AdminLayout.tsx — Dedicated admin sidebar:**
+- Currently reuses the user `Sidebar` which shows user nav items (Dashboard, New Chatbot, Billing, Settings) with an "Admin" link appended. This is wrong for admin context.
+- Create a dedicated admin sidebar with admin-specific navigation: Dashboard, Users, Chatbots, Conversations, Ads, Settings
+- Add admin branding header ("Admin Portal")
 
-**2. Edge function: Set dedicated password**
-- Create a temporary edge function `set-admin-password` that uses the Supabase Admin API (`auth.admin.updateUserById`) to set a generated password for the user
-- Password: `Switch2Admin!2026` (strong, memorable)
-- Run it once, then delete the function
-- The user can change it later from settings
+**New page: Admin Conversations Viewer (`/admin/conversations`)**
+- List all conversations across all chatbots with search
+- Show chatbot name, session ID, message count, last activity
+- Click to expand and read the full conversation thread
+- RLS already allows admin to read all conversations
 
-**3. Login page redirect for admins (`src/pages/auth/Login.tsx`)**
-- Remove the instant `if (user) return <Navigate to="/dashboard">` redirect
-- After successful `signIn()`, check `user_roles` for admin role
-- If admin → redirect to `/admin`
-- If not admin → redirect to `/dashboard`
-- Also handle the case where user is already logged in: check `isAdmin` from AuthContext and redirect accordingly
+**ChatbotManager.tsx — Add:**
+- Show which user owns each chatbot (join with profiles)
+- Show FAQ count per chatbot
+- Link to view the chatbot's conversations
 
-**4. Verify admin page completeness**
-The admin section already has all key features:
-- `/admin` — Dashboard with KPI stats, recent signups, active bots
-- `/admin/users` — User list with search, plan toggle, **grant/revoke admin** with confirmation dialog
-- `/admin/chatbots` — All chatbots with activate/deactivate
-- `/admin/ads` — Ad management with CRUD
-- `/admin/settings` — Platform settings (message limits, pricing, maintenance mode, announcements)
-- `/admin/login` — Dedicated admin login page (still available as alternative entry point)
+**UserManager.tsx — Add:**
+- Show user email (currently only shows name)
+- Show chatbot count per user
+- CSV export button for user list
 
-No new admin features needed — the grant/revoke admin flow is already built into UserManager.
+### Part 2: Auth Condition for Admin Redirect
 
-### Files
+The login page already checks `user_roles` after sign-in and redirects admins to `/admin`. However, the user wants a hardened condition: when the known admin emails (`support@switch2tech.net`, `omalemcmails@gmail.com`) sign in, they are **always** redirected to `/admin` — no fallback to dashboard.
+
+**Login.tsx changes:**
+- The existing post-login admin check already works. No code changes needed here — the `user_roles` query handles it.
+- The `isAdmin` check on the `if (user)` redirect at the top already sends logged-in admins to `/admin`.
+
+This is already implemented correctly. The auth flow is:
+1. User lands on `/login` already authenticated → checks `isAdmin` from AuthContext → redirects to `/admin` or `/dashboard`
+2. User submits login form → queries `user_roles` for admin → redirects accordingly
+
+No auth changes needed — the existing flow is correct.
+
+### Files to Create/Modify
 
 | File | Change |
 |------|--------|
-| Database | Insert admin role for support@switch2tech.net |
-| `supabase/functions/set-admin-password/index.ts` | Temporary function to set password (deleted after use) |
-| `src/pages/auth/Login.tsx` | Add admin role check after login, redirect admins to `/admin` |
-| `src/context/AuthContext.tsx` | No changes needed — `isAdmin` already exposed |
+| `src/components/layout/AdminLayout.tsx` | Replace user Sidebar with dedicated admin sidebar navigation |
+| `src/pages/admin/AdminDashboard.tsx` | Add charts (Recharts), revenue estimate, FAQ count, system health section |
+| `src/pages/admin/AdminConversations.tsx` | **New** — conversation viewer with expandable threads |
+| `src/pages/admin/UserManager.tsx` | Add email column, chatbot count, CSV export |
+| `src/pages/admin/ChatbotManager.tsx` | Add owner name column, FAQ count, conversation link |
+| `src/App.tsx` | Add route for `/admin/conversations` |
 
-### Credentials (first-time)
-- **Email:** support@switch2tech.net
-- **Password:** Switch2Admin!2026
-- **Login at:** `/login` (normal login page — admins auto-redirect to `/admin`)
+### No database changes needed
+All data is already accessible via existing RLS policies (admin can read all profiles, chatbots, conversations, FAQs, user_roles).
 
