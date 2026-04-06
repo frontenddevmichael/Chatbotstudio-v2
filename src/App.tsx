@@ -71,6 +71,7 @@ const App = () => (
                   <Route path="/admin" element={<ErrorBoundary><AdminDashboard /></ErrorBoundary>} />
                   <Route path="/admin/users" element={<ErrorBoundary><UserManager /></ErrorBoundary>} />
                   <Route path="/admin/chatbots" element={<ErrorBoundary><ChatbotManager /></ErrorBoundary>} />
+                  <Route path="/admin/conversations" element={<ErrorBoundary><AdminConversations /></ErrorBoundary>} />
                   <Route path="/admin/ads" element={<ErrorBoundary><AdManager /></ErrorBoundary>} />
                   <Route path="/admin/settings" element={<ErrorBoundary><AdminSettings /></ErrorBoundary>} />
                   <Route path="/privacy" element={<PrivacyPolicy />} />
