@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import AdminLayout from '@/components/layout/AdminLayout';
 import SEO from '@/components/ui/SEO';
 import { toast } from 'sonner';
-import { Search, ShieldCheck, ShieldOff } from 'lucide-react';
+import { Search, ShieldCheck, ShieldOff, Download } from 'lucide-react';
 import { useDebounce } from '@/hooks/useDebounce';
 import {
   AlertDialog,
@@ -37,6 +37,17 @@ const UserManager = () => {
     queryFn: async () => {
       const { data } = await supabase.from('user_roles').select('user_id, role').eq('role', 'admin');
       return new Set((data ?? []).map((r: any) => r.user_id));
+    },
+  });
+
+  // Chatbot counts per user
+  const { data: botCounts } = useQuery({
+    queryKey: ['admin-bot-counts'],
+    queryFn: async () => {
+      const { data } = await supabase.from('chatbots').select('user_id');
+      const counts: Record<string, number> = {};
+      (data ?? []).forEach((b: any) => { counts[b.user_id] = (counts[b.user_id] ?? 0) + 1; });
+      return counts;
     },
   });
 
@@ -87,10 +98,40 @@ const UserManager = () => {
     },
   });
 
+  const exportCSV = () => {
+    const rows = filtered.map((u: any) => ({
+      Name: u.full_name || 'Unnamed',
+      ID: u.id,
+      Plan: u.plan || 'free',
+      Messages: `${u.monthly_message_count ?? 0}/${u.message_limit ?? 500}`,
+      Chatbots: botCounts?.[u.id] ?? 0,
+      Admin: adminRoles?.has(u.id) ? 'Yes' : 'No',
+      Joined: u.created_at ? new Date(u.created_at).toLocaleDateString() : '',
+    }));
+    const header = Object.keys(rows[0] || {}).join(',');
+    const csv = [header, ...rows.map(r => Object.values(r).join(','))].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'users-export.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success('CSV exported');
+  };
+
   return (
     <AdminLayout>
       <SEO title="User Management" noIndex />
-      <h1 className="mb-6 font-display text-2xl font-bold text-foreground">Users</h1>
+      <div className="mb-6 flex items-center justify-between">
+        <h1 className="font-display text-2xl font-bold text-foreground">Users</h1>
+        <button
+          onClick={exportCSV}
+          className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-2 text-xs font-medium text-foreground hover:bg-muted transition-colors"
+        >
+          <Download className="h-3.5 w-3.5" /> Export CSV
+        </button>
+      </div>
 
       <div className="mb-4 flex flex-wrap items-center gap-3">
         <div className="relative flex-1">
@@ -98,7 +139,7 @@ const UserManager = () => {
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search by name..."
+            placeholder="Search by name or ID..."
             className="w-full rounded-md border border-border bg-card pl-9 pr-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none"
           />
         </div>
@@ -125,6 +166,7 @@ const UserManager = () => {
                 <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground">Name</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground">Role</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground">Plan</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground">Bots</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground">Messages</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground">Joined</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground">Actions</th>
@@ -135,7 +177,10 @@ const UserManager = () => {
                 const isUserAdmin = adminRoles?.has(u.id) ?? false;
                 return (
                   <tr key={u.id} className="border-b border-border last:border-0">
-                    <td className="px-4 py-3 text-foreground">{u.full_name || 'Unnamed'}</td>
+                    <td className="px-4 py-3">
+                      <div className="text-foreground font-medium">{u.full_name || 'Unnamed'}</div>
+                      <div className="text-[11px] text-muted-foreground truncate max-w-[200px]">{u.id}</div>
+                    </td>
                     <td className="px-4 py-3">
                       {isUserAdmin ? (
                         <span className="inline-flex items-center gap-1 rounded-full bg-destructive/10 px-2 py-0.5 text-xs font-medium text-destructive">
@@ -150,6 +195,7 @@ const UserManager = () => {
                         u.plan === 'premium' ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'
                       }`}>{u.plan}</span>
                     </td>
+                    <td className="px-4 py-3 text-muted-foreground">{botCounts?.[u.id] ?? 0}</td>
                     <td className="px-4 py-3 text-muted-foreground">{u.monthly_message_count ?? 0} / {u.message_limit ?? 500}</td>
                     <td className="px-4 py-3 text-muted-foreground">{u.created_at ? new Date(u.created_at).toLocaleDateString() : '-'}</td>
                     <td className="px-4 py-3">
@@ -174,7 +220,7 @@ const UserManager = () => {
                 );
               })}
               {!filtered.length && (
-                <tr><td colSpan={6} className="px-4 py-8 text-center text-sm text-muted-foreground">No users found</td></tr>
+                <tr><td colSpan={7} className="px-4 py-8 text-center text-sm text-muted-foreground">No users found</td></tr>
               )}
             </tbody>
           </table>
