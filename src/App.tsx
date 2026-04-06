@@ -29,6 +29,7 @@ const WidgetPage = React.lazy(() => import("./pages/widget/WidgetPage"));
 const AdminDashboard = React.lazy(() => import("./pages/admin/AdminDashboard"));
 const UserManager = React.lazy(() => import("./pages/admin/UserManager"));
 const ChatbotManager = React.lazy(() => import("./pages/admin/ChatbotManager"));
+const AdminConversations = React.lazy(() => import("./pages/admin/AdminConversations"));
 const AdManager = React.lazy(() => import("./pages/admin/AdManager"));
 const AdminSettings = React.lazy(() => import("./pages/admin/AdminSettings"));
 const AdminLogin = React.lazy(() => import("./pages/admin/AdminLogin"));
