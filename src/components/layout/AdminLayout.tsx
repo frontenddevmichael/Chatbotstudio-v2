@@ -22,20 +22,12 @@ const adminNav = [
 ];
 
 const AdminLayout = ({ children }: { children: ReactNode }) => {
-  const { user, loading, isAdmin } = useAuth();
   const { pathname } = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  if (loading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
-        <Spinner className="h-8 w-8" />
-      </div>
-    );
+  if (sessionStorage.getItem('admin_authenticated') !== 'true') {
+    return <Navigate to="/admin/login" replace />;
   }
-
-  if (!user) return <Navigate to="/admin/login" replace />;
-  if (!isAdmin) return <Navigate to="/dashboard" replace />;
 
   const sidebar = (
     <div className="flex h-full flex-col">

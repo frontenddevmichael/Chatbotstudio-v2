@@ -24,16 +24,6 @@ const Login = () => {
     setSubmitting(true);
     try {
       await signIn(email, password);
-      // Check if user is admin to redirect appropriately
-      const { data: { user: authedUser } } = await supabase.auth.getUser();
-      if (authedUser) {
-        const { data: roles } = await supabase.from('user_roles').select('role').eq('user_id', authedUser.id).eq('role', 'admin');
-        if (roles && roles.length > 0) {
-          toast.success('Welcome back, Admin!');
-          navigate('/admin', { replace: true });
-          return;
-        }
-      }
       toast.success('Welcome back!');
       navigate('/dashboard', { replace: true });
     } catch (err: any) {
