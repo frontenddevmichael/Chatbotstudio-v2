@@ -12,6 +12,11 @@ const SettingsPage = () => {
   const [fullName, setFullName] = useState(profile?.full_name || '');
   const [saving, setSaving] = useState(false);
 
+  // Password change state
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [changingPassword, setChangingPassword] = useState(false);
+
   const initial = (profile?.full_name || user?.email || '?')[0].toUpperCase();
   const usagePercent = profile?.message_limit
     ? Math.min(100, Math.round(((profile.monthly_message_count ?? 0) / profile.message_limit) * 100))
@@ -29,6 +34,24 @@ const SettingsPage = () => {
       toast.error('Failed to update profile');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handlePasswordChange = async () => {
+    if (!newPassword || !confirmPassword) { toast.error('Please fill in both password fields'); return; }
+    if (newPassword.length < 6) { toast.error('Password must be at least 6 characters'); return; }
+    if (newPassword !== confirmPassword) { toast.error('Passwords do not match'); return; }
+    setChangingPassword(true);
+    try {
+      const { error } = await supabase.auth.updateUser({ password: newPassword });
+      if (error) throw error;
+      toast.success('Password updated successfully');
+      setNewPassword('');
+      setConfirmPassword('');
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to update password');
+    } finally {
+      setChangingPassword(false);
     }
   };
 
@@ -75,6 +98,40 @@ const SettingsPage = () => {
               className="inline-flex items-center gap-2 rounded-[10px] bg-primary px-4 py-2 text-[13px] font-medium text-primary-foreground hover:bg-primary/90 active:scale-[0.97] disabled:opacity-50 transition-all"
             >
               {saving ? <Spinner /> : 'Save Changes'}
+            </button>
+          </div>
+        </div>
+
+        {/* Password change */}
+        <div className="rounded-[14px] border border-border bg-card p-5 mb-6" style={{ boxShadow: 'var(--shadow-sm)' }}>
+          <h3 className="text-[11px] font-medium tracking-[0.06em] uppercase text-muted-foreground mb-4">Change Password</h3>
+          <div className="space-y-4">
+            <div>
+              <label className="mb-1.5 block text-[13px] font-medium text-muted-foreground">New Password</label>
+              <input
+                type="password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                className="w-full rounded-[10px] border border-border bg-[hsl(var(--color-surface-3))] px-3 py-2 text-[14px] text-foreground outline-none transition-colors focus:border-primary"
+                placeholder="••••••••"
+              />
+            </div>
+            <div>
+              <label className="mb-1.5 block text-[13px] font-medium text-muted-foreground">Confirm New Password</label>
+              <input
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                className="w-full rounded-[10px] border border-border bg-[hsl(var(--color-surface-3))] px-3 py-2 text-[14px] text-foreground outline-none transition-colors focus:border-primary"
+                placeholder="••••••••"
+              />
+            </div>
+            <button
+              onClick={handlePasswordChange}
+              disabled={changingPassword}
+              className="inline-flex items-center gap-2 rounded-[10px] bg-primary px-4 py-2 text-[13px] font-medium text-primary-foreground hover:bg-primary/90 active:scale-[0.97] disabled:opacity-50 transition-all"
+            >
+              {changingPassword ? <Spinner /> : 'Update Password'}
             </button>
           </div>
         </div>

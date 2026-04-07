@@ -1,5 +1,5 @@
 import { ReactNode, useState } from 'react';
-import { Navigate, Link, useLocation } from 'react-router-dom';
+import { Navigate, Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard,
   Users,
@@ -9,7 +9,7 @@ import {
   Settings,
   Shield,
   Menu,
-  X,
+  LogOut,
 } from 'lucide-react';
 
 const adminNav = [
@@ -23,11 +23,17 @@ const adminNav = [
 
 const AdminLayout = ({ children }: { children: ReactNode }) => {
   const { pathname } = useLocation();
+  const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
 
   if (sessionStorage.getItem('admin_authenticated') !== 'true') {
     return <Navigate to="/admin/login" replace />;
   }
+
+  const handleLogout = () => {
+    sessionStorage.removeItem('admin_authenticated');
+    navigate('/admin/login', { replace: true });
+  };
 
   const sidebar = (
     <div className="flex h-full flex-col">
@@ -55,6 +61,15 @@ const AdminLayout = ({ children }: { children: ReactNode }) => {
           );
         })}
       </nav>
+      <div className="border-t border-border p-3">
+        <button
+          onClick={handleLogout}
+          className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
+        >
+          <LogOut className="h-4 w-4" />
+          Sign Out
+        </button>
+      </div>
     </div>
   );
 

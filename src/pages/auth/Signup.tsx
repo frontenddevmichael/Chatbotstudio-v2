@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { Link, Navigate } from 'react-router-dom';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Mail, RefreshCw } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import SEO from '@/components/ui/SEO';
 import Spinner from '@/components/ui/Spinner';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 import logo from '@/assets/logo.png';
 
 const Signup = () => {
@@ -13,6 +14,8 @@ const Signup = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [signedUp, setSignedUp] = useState(false);
+  const [resending, setResending] = useState(false);
 
   if (loading) return <div className="flex min-h-screen items-center justify-center bg-background"><Spinner className="h-6 w-6" /></div>;
   if (user) return <Navigate to="/dashboard" replace />;
@@ -24,13 +27,58 @@ const Signup = () => {
     setSubmitting(true);
     try {
       await signUp(email, password, fullName);
-      toast.success('Account created! Check your email to confirm.');
+      setSignedUp(true);
     } catch (err: any) {
       toast.error(err.message || 'Sign up failed');
     } finally {
       setSubmitting(false);
     }
   };
+
+  const handleResend = async () => {
+    setResending(true);
+    try {
+      const { error } = await supabase.auth.resend({ type: 'signup', email });
+      if (error) throw error;
+      toast.success('Verification email resent!');
+    } catch {
+      toast.error('Failed to resend. Please try again.');
+    } finally {
+      setResending(false);
+    }
+  };
+
+  if (signedUp) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background px-4">
+        <SEO title="Check Your Email" description="Verify your email to get started." noIndex />
+        <div className="w-full max-w-[400px] text-center">
+          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
+            <Mail className="h-8 w-8 text-primary" />
+          </div>
+          <h1 className="text-[22px] font-semibold text-foreground mb-2">Check your email</h1>
+          <p className="text-[14px] text-muted-foreground mb-1">
+            We sent a verification link to
+          </p>
+          <p className="text-[15px] font-medium text-foreground mb-6">{email}</p>
+          <p className="text-[13px] text-muted-foreground mb-6">
+            Click the link in the email to activate your account. If you don't see it, check your spam folder.
+          </p>
+          <button
+            onClick={handleResend}
+            disabled={resending}
+            className="inline-flex items-center gap-2 rounded-[10px] border border-border bg-card px-4 py-2.5 text-[14px] font-medium text-foreground hover:bg-muted transition-colors disabled:opacity-50"
+          >
+            {resending ? <Spinner /> : <><RefreshCw className="h-4 w-4" /> Resend verification email</>}
+          </button>
+          <p className="mt-6 text-[13px] text-muted-foreground">
+            Already verified?{' '}
+            <Link to="/login" className="font-medium text-primary hover:underline">Sign in</Link>
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
