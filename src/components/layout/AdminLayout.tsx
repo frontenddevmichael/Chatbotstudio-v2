@@ -1,8 +1,5 @@
 import { ReactNode, useState } from 'react';
 import { Navigate, Link, useLocation } from 'react-router-dom';
-import { useAuth } from '@/context/AuthContext';
-import Spinner from '@/components/ui/Spinner';
-import TopNav from './TopNav';
 import {
   LayoutDashboard,
   Users,
