@@ -6,17 +6,17 @@ import SEO from '@/components/ui/SEO';
 import Spinner from '@/components/ui/Spinner';
 import { toast } from 'sonner';
 import logo from '@/assets/logo.png';
-import { supabase } from '@/integrations/supabase/client';
+
 
 const Login = () => {
-  const { user, loading, signIn, isAdmin } = useAuth();
+  const { user, loading, signIn } = useAuth();
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
   if (loading) return <div className="flex min-h-screen items-center justify-center bg-background"><Spinner className="h-6 w-6" /></div>;
-  if (user) return <Navigate to={isAdmin ? '/admin' : '/dashboard'} replace />;
+  if (user) return <Navigate to="/dashboard" replace />;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -24,16 +24,6 @@ const Login = () => {
     setSubmitting(true);
     try {
       await signIn(email, password);
-      // Check if user is admin to redirect appropriately
-      const { data: { user: authedUser } } = await supabase.auth.getUser();
-      if (authedUser) {
-        const { data: roles } = await supabase.from('user_roles').select('role').eq('user_id', authedUser.id).eq('role', 'admin');
-        if (roles && roles.length > 0) {
-          toast.success('Welcome back, Admin!');
-          navigate('/admin', { replace: true });
-          return;
-        }
-      }
       toast.success('Welcome back!');
       navigate('/dashboard', { replace: true });
     } catch (err: any) {

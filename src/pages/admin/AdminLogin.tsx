@@ -1,72 +1,38 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { Shield } from 'lucide-react';
-import { useAuth } from '@/context/AuthContext';
 import SEO from '@/components/ui/SEO';
 import Spinner from '@/components/ui/Spinner';
-import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import logo from '@/assets/logo.png';
 
+const ADMIN_EMAIL = 'admin@chatbotstudio.dev';
+const ADMIN_PASSWORD = 'Studio@Admin2026!';
+
 const AdminLogin = () => {
-  const { user, loading, isAdmin, signIn, signOut } = useAuth();
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [submitting, setSubmitting] = useState(false);
-  const isSubmittingRef = useRef(false);
 
-  useEffect(() => {
-    // Only auto-redirect if not in the middle of a login submission
-    if (!loading && user && isAdmin && !isSubmittingRef.current) {
-      navigate('/admin', { replace: true });
-    }
-  }, [loading, user, isAdmin, navigate]);
-
-  if (loading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
-        <Spinner className="h-6 w-6" />
-      </div>
-    );
+  if (sessionStorage.getItem('admin_authenticated') === 'true') {
+    return <Navigate to="/admin" replace />;
   }
-
-  if (user && isAdmin && !isSubmittingRef.current) return <Navigate to="/admin" replace />;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email || !password) {
-      toast.error('Please fill in all fields');
-      return;
-    }
+    if (!email || !password) { toast.error('Please fill in all fields'); return; }
     setSubmitting(true);
-    isSubmittingRef.current = true;
-    try {
-      await signIn(email, password);
-      // Wait a tick for auth state to settle
-      const { data: { user: authUser } } = await supabase.auth.getUser();
-      if (!authUser) throw new Error('Authentication failed');
-
-      const { data: roles } = await supabase
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', authUser.id)
-        .eq('role', 'admin');
-
-      if (!roles || roles.length === 0) {
-        await signOut();
-        toast.error('You do not have admin access');
-        return;
-      }
-
+    // Simulate brief delay
+    await new Promise(r => setTimeout(r, 400));
+    if (email.toLowerCase() === ADMIN_EMAIL && password === ADMIN_PASSWORD) {
+      sessionStorage.setItem('admin_authenticated', 'true');
       toast.success('Welcome, Admin!');
       navigate('/admin', { replace: true });
-    } catch (err: any) {
-      toast.error(err.message || 'Sign in failed');
-    } finally {
-      setSubmitting(false);
-      isSubmittingRef.current = false;
+    } else {
+      toast.error('Invalid admin credentials');
     }
+    setSubmitting(false);
   };
 
   return (
@@ -88,15 +54,10 @@ const AdminLogin = () => {
           </p>
         </div>
 
-        <div
-          className="rounded-[14px] border border-border bg-card p-6"
-          style={{ boxShadow: 'var(--shadow-md)' }}
-        >
+        <div className="rounded-[14px] border border-border bg-card p-6" style={{ boxShadow: 'var(--shadow-md)' }}>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="mb-1.5 block text-[13px] font-medium text-muted-foreground">
-                Email
-              </label>
+              <label className="mb-1.5 block text-[13px] font-medium text-muted-foreground">Email</label>
               <input
                 type="email"
                 value={email}
@@ -106,9 +67,7 @@ const AdminLogin = () => {
               />
             </div>
             <div>
-              <label className="mb-1.5 block text-[13px] font-medium text-muted-foreground">
-                Password
-              </label>
+              <label className="mb-1.5 block text-[13px] font-medium text-muted-foreground">Password</label>
               <input
                 type="password"
                 value={password}
