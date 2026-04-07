@@ -9,7 +9,7 @@ import logo from '@/assets/logo.png';
 import { supabase } from '@/integrations/supabase/client';
 
 const Login = () => {
-  const { user, loading, signIn, isAdmin } = useAuth();
+  const { user, loading, signIn } = useAuth();
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
