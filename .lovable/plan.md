@@ -1,64 +1,46 @@
 
 
-## Full Admin Suite Upgrade + Auth-Based Admin Redirect
+## Frontend-Only Admin Login + Premium Whitelist
 
-### Part 1: Admin Dashboard — Missing Features
+### Summary
+Replace the current server-validated admin login with a purely frontend credential check. When `admin@chatbotstudio.dev` + a hardcoded password is entered, the user bypasses all backend auth and goes straight to `/admin`. Separately, whitelist `Projects@cloudcraves.com` to premium.
 
-The current admin pages have basic functionality but are missing several monitoring capabilities that a production admin panel needs:
+### Admin Credentials (your first-time password)
+- **Email:** `admin@chatbotstudio.dev`
+- **Password:** `Studio@Admin2026!`
 
-**AdminDashboard.tsx — Add:**
-- Signup growth chart (last 30 days, using Recharts `AreaChart`)
-- Conversation volume chart (last 7 days)
-- System health section: uptime indicator, maintenance status toggle (quick-action)
-- FAQ count stat card
-- Revenue estimate card (premium users x monthly price from platform_settings)
+### Changes
 
-**AdminLayout.tsx — Dedicated admin sidebar:**
-- Currently reuses the user `Sidebar` which shows user nav items (Dashboard, New Chatbot, Billing, Settings) with an "Admin" link appended. This is wrong for admin context.
-- Create a dedicated admin sidebar with admin-specific navigation: Dashboard, Users, Chatbots, Conversations, Ads, Settings
-- Add admin branding header ("Admin Portal")
+**1. `src/pages/admin/AdminLogin.tsx` — Frontend-only login**
+- Remove all Supabase `signIn`, `signOut`, `getUser`, `user_roles` checks
+- Remove `useAuth` dependency entirely (no server-side auth needed)
+- On submit: compare email === `admin@chatbotstudio.dev` and password === `Studio@Admin2026!`
+- If match: store a flag in `sessionStorage` (e.g. `admin_authenticated = true`), navigate to `/admin`
+- If no match: show "Invalid admin credentials" toast
+- Remove the auto-redirect `useEffect` that checks `isAdmin`
 
-**New page: Admin Conversations Viewer (`/admin/conversations`)**
-- List all conversations across all chatbots with search
-- Show chatbot name, session ID, message count, last activity
-- Click to expand and read the full conversation thread
-- RLS already allows admin to read all conversations
+**2. `src/components/layout/AdminLayout.tsx` — Guard via sessionStorage**
+- Remove `useAuth` dependency for admin gate
+- Instead check `sessionStorage.getItem('admin_authenticated') === 'true'`
+- If not set, redirect to `/admin/login`
+- Remove the `isAdmin` and `user` checks entirely
 
-**ChatbotManager.tsx — Add:**
-- Show which user owns each chatbot (join with profiles)
-- Show FAQ count per chatbot
-- Link to view the chatbot's conversations
+**3. `src/context/AuthContext.tsx` — No changes needed**
+- The normal user auth flow stays intact for regular users
 
-**UserManager.tsx — Add:**
-- Show user email (currently only shows name)
-- Show chatbot count per user
-- CSV export button for user list
+**4. `src/pages/auth/Login.tsx` — Remove admin redirect logic**
+- Remove the post-login `user_roles` admin check and redirect to `/admin`
+- All logins from `/login` go to `/dashboard` only
+- Remove the `isAdmin` ternary on the `if (user)` redirect — always go to `/dashboard`
 
-### Part 2: Auth Condition for Admin Redirect
+**5. Database: Whitelist `Projects@cloudcraves.com` to premium**
+- Update `profiles` for user `f771a3e2-86e0-47ef-85a5-b2dc0a190c8d`: set `plan = 'premium'`, `message_limit = 10000`
 
-The login page already checks `user_roles` after sign-in and redirects admins to `/admin`. However, the user wants a hardened condition: when the known admin emails (`support@switch2tech.net`, `omalemcmails@gmail.com`) sign in, they are **always** redirected to `/admin` — no fallback to dashboard.
-
-**Login.tsx changes:**
-- The existing post-login admin check already works. No code changes needed here — the `user_roles` query handles it.
-- The `isAdmin` check on the `if (user)` redirect at the top already sends logged-in admins to `/admin`.
-
-This is already implemented correctly. The auth flow is:
-1. User lands on `/login` already authenticated → checks `isAdmin` from AuthContext → redirects to `/admin` or `/dashboard`
-2. User submits login form → queries `user_roles` for admin → redirects accordingly
-
-No auth changes needed — the existing flow is correct.
-
-### Files to Create/Modify
-
+### Files
 | File | Change |
 |------|--------|
-| `src/components/layout/AdminLayout.tsx` | Replace user Sidebar with dedicated admin sidebar navigation |
-| `src/pages/admin/AdminDashboard.tsx` | Add charts (Recharts), revenue estimate, FAQ count, system health section |
-| `src/pages/admin/AdminConversations.tsx` | **New** — conversation viewer with expandable threads |
-| `src/pages/admin/UserManager.tsx` | Add email column, chatbot count, CSV export |
-| `src/pages/admin/ChatbotManager.tsx` | Add owner name column, FAQ count, conversation link |
-| `src/App.tsx` | Add route for `/admin/conversations` |
-
-### No database changes needed
-All data is already accessible via existing RLS policies (admin can read all profiles, chatbots, conversations, FAQs, user_roles).
+| `src/pages/admin/AdminLogin.tsx` | Replace with frontend-only credential check |
+| `src/components/layout/AdminLayout.tsx` | Guard via sessionStorage instead of auth context |
+| `src/pages/auth/Login.tsx` | Remove admin redirect, always go to `/dashboard` |
+| Database | Set `Projects@cloudcraves.com` to premium plan |
 
