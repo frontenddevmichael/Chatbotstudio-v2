@@ -80,12 +80,12 @@ export const useUpdateChatbot = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, ...data }: Partial<Chatbot> & { id: string }) => {
-      const updates: Record<string, any> = { ...data };
+      const updates = { ...data } as any;
       if (data.name) updates.name = sanitizeText(data.name);
       if (data.welcome_message) updates.welcome_message = sanitizeText(data.welcome_message);
       const { data: result, error } = await supabase
         .from('chatbots')
-        .update(updates)
+        .update(updates as any)
         .eq('id', id)
         .select()
         .single();
