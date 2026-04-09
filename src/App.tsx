@@ -32,7 +32,7 @@ const ChatbotManager = React.lazy(() => import("./pages/admin/ChatbotManager"));
 const AdminConversations = React.lazy(() => import("./pages/admin/AdminConversations"));
 const AdManager = React.lazy(() => import("./pages/admin/AdManager"));
 const AdminSettings = React.lazy(() => import("./pages/admin/AdminSettings"));
-const AdminLogin = React.lazy(() => import("./pages/admin/AdminLogin"));
+
 const PrivacyPolicy = React.lazy(() => import("./pages/legal/PrivacyPolicy"));
 const TermsOfService = React.lazy(() => import("./pages/legal/TermsOfService"));
 const CookiePolicy = React.lazy(() => import("./pages/legal/CookiePolicy"));
