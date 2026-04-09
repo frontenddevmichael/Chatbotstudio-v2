@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
+import { adminFetch } from '@/lib/adminApi';
 import AdminLayout from '@/components/layout/AdminLayout';
 import SEO from '@/components/ui/SEO';
 import { toast } from 'sonner';
@@ -11,10 +11,7 @@ const AdminSettings = () => {
   const queryClient = useQueryClient();
   const { data: settings, isLoading } = useQuery({
     queryKey: ['platform-settings'],
-    queryFn: async () => {
-      const { data } = await supabase.from('platform_settings').select('*').single();
-      return data;
-    },
+    queryFn: () => adminFetch('get-settings'),
   });
 
   const [freeLimit, setFreeLimit] = useState(500);
@@ -32,16 +29,13 @@ const AdminSettings = () => {
   }, [settings]);
 
   const updateSettings = useMutation({
-    mutationFn: async () => {
-      const { error } = await supabase.from('platform_settings').update({
+    mutationFn: () =>
+      adminFetch('update-settings', {
         free_message_limit: freeLimit,
         premium_price_monthly: premiumPrice,
         maintenance_mode: maintenance,
         announcement_text: sanitizeText(announcement),
-        updated_at: new Date().toISOString(),
-      }).eq('id', 1);
-      if (error) throw error;
-    },
+      }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['platform-settings'] });
       toast.success('Settings saved');

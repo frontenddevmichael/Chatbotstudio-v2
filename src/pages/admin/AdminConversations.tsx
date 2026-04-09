@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
+import { adminFetch } from '@/lib/adminApi';
 import AdminLayout from '@/components/layout/AdminLayout';
 import SEO from '@/components/ui/SEO';
 import { Search, ChevronDown, ChevronUp, MessageSquare } from 'lucide-react';
@@ -14,24 +14,12 @@ const AdminConversations = () => {
 
   const { data: chatbots } = useQuery({
     queryKey: ['admin-chatbots-map'],
-    queryFn: async () => {
-      const { data } = await supabase.from('chatbots').select('id, name, avatar_emoji');
-      const map: Record<string, { name: string; emoji: string }> = {};
-      (data ?? []).forEach((b: any) => { map[b.id] = { name: b.name, emoji: b.avatar_emoji }; });
-      return map;
-    },
+    queryFn: () => adminFetch('get-chatbot-map'),
   });
 
   const { data: conversations, isLoading } = useQuery({
     queryKey: ['admin-conversations'],
-    queryFn: async () => {
-      const { data } = await supabase
-        .from('conversations')
-        .select('*')
-        .order('last_message_at', { ascending: false })
-        .limit(200);
-      return data ?? [];
-    },
+    queryFn: () => adminFetch('get-conversations'),
   });
 
   const filtered = useMemo(() => {
@@ -43,10 +31,7 @@ const AdminConversations = () => {
     });
   }, [conversations, chatbots, debouncedSearch]);
 
-  const getMessageCount = (msgs: any) => {
-    if (Array.isArray(msgs)) return msgs.length;
-    return 0;
-  };
+  const getMessageCount = (msgs: any) => Array.isArray(msgs) ? msgs.length : 0;
 
   return (
     <AdminLayout>

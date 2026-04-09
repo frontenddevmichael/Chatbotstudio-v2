@@ -1,10 +1,10 @@
 import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
+import { adminFetch } from '@/lib/adminApi';
 import AdminLayout from '@/components/layout/AdminLayout';
 import SEO from '@/components/ui/SEO';
 import { toast } from 'sonner';
-import { Search, ShieldCheck, ShieldOff, Download } from 'lucide-react';
+import { Search, ShieldCheck, ShieldOff, Download, Trash2 } from 'lucide-react';
 import { useDebounce } from '@/hooks/useDebounce';
 import {
   AlertDialog,
@@ -23,39 +23,31 @@ const UserManager = () => {
   const [planFilter, setPlanFilter] = useState<string>('all');
   const debouncedSearch = useDebounce(search, 300);
   const [roleConfirm, setRoleConfirm] = useState<{ id: string; name: string; isAdmin: boolean } | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; name: string } | null>(null);
 
   const { data: users, isLoading } = useQuery({
     queryKey: ['admin-users'],
-    queryFn: async () => {
-      const { data } = await supabase.from('profiles').select('*').order('created_at', { ascending: false }).limit(500);
-      return data ?? [];
-    },
+    queryFn: () => adminFetch('get-users'),
   });
 
-  const { data: adminRoles } = useQuery({
+  const { data: adminRolesList } = useQuery({
     queryKey: ['admin-roles'],
-    queryFn: async () => {
-      const { data } = await supabase.from('user_roles').select('user_id, role').eq('role', 'admin');
-      return new Set((data ?? []).map((r: any) => r.user_id));
-    },
+    queryFn: () => adminFetch('get-roles'),
   });
+  const adminRoles = useMemo(() => new Set(adminRolesList ?? []), [adminRolesList]);
 
-  // Chatbot counts per user
   const { data: botCounts } = useQuery({
     queryKey: ['admin-bot-counts'],
-    queryFn: async () => {
-      const { data } = await supabase.from('chatbots').select('user_id');
-      const counts: Record<string, number> = {};
-      (data ?? []).forEach((b: any) => { counts[b.user_id] = (counts[b.user_id] ?? 0) + 1; });
-      return counts;
-    },
+    queryFn: () => adminFetch('get-bot-counts'),
   });
 
   const filtered = useMemo(() => {
     let result = users ?? [];
     if (debouncedSearch) {
       const q = debouncedSearch.toLowerCase();
-      result = result.filter((u: any) => u.full_name?.toLowerCase().includes(q) || u.id?.includes(q));
+      result = result.filter((u: any) =>
+        u.full_name?.toLowerCase().includes(q) || u.email?.toLowerCase().includes(q) || u.id?.includes(q)
+      );
     }
     if (planFilter !== 'all') {
       result = result.filter((u: any) => u.plan === planFilter);
@@ -64,12 +56,7 @@ const UserManager = () => {
   }, [users, debouncedSearch, planFilter]);
 
   const togglePlan = useMutation({
-    mutationFn: async ({ id, plan }: { id: string; plan: string }) => {
-      const newPlan = plan === 'premium' ? 'free' : 'premium';
-      const newLimit = newPlan === 'premium' ? 10000 : 500;
-      const { error } = await supabase.from('profiles').update({ plan: newPlan, message_limit: newLimit }).eq('id', id);
-      if (error) throw error;
-    },
+    mutationFn: ({ id, plan }: { id: string; plan: string }) => adminFetch('toggle-plan', { id, plan }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-users'] });
       toast.success('Plan updated');
@@ -78,15 +65,7 @@ const UserManager = () => {
   });
 
   const toggleAdmin = useMutation({
-    mutationFn: async ({ id, isAdmin }: { id: string; isAdmin: boolean }) => {
-      if (isAdmin) {
-        const { error } = await supabase.from('user_roles').delete().eq('user_id', id).eq('role', 'admin');
-        if (error) throw error;
-      } else {
-        const { error } = await supabase.from('user_roles').insert({ user_id: id, role: 'admin' });
-        if (error) throw error;
-      }
-    },
+    mutationFn: ({ id, isAdmin }: { id: string; isAdmin: boolean }) => adminFetch('toggle-admin-role', { id, isAdmin }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-roles'] });
       toast.success('Admin role updated');
@@ -98,9 +77,23 @@ const UserManager = () => {
     },
   });
 
+  const deleteUser = useMutation({
+    mutationFn: ({ id }: { id: string }) => adminFetch('delete-user', { id }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-users'] });
+      toast.success('User deleted');
+      setDeleteConfirm(null);
+    },
+    onError: () => {
+      toast.error('Failed to delete user');
+      setDeleteConfirm(null);
+    },
+  });
+
   const exportCSV = () => {
     const rows = filtered.map((u: any) => ({
       Name: u.full_name || 'Unnamed',
+      Email: u.email || '',
       ID: u.id,
       Plan: u.plan || 'free',
       Messages: `${u.monthly_message_count ?? 0}/${u.message_limit ?? 500}`,
@@ -139,7 +132,7 @@ const UserManager = () => {
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search by name or ID..."
+            placeholder="Search by name, email, or ID..."
             className="w-full rounded-md border border-border bg-card pl-9 pr-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none"
           />
         </div>
@@ -164,6 +157,7 @@ const UserManager = () => {
             <thead>
               <tr className="border-b border-border bg-muted">
                 <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground">Name</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground">Email</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground">Role</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground">Plan</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground">Bots</th>
@@ -179,8 +173,9 @@ const UserManager = () => {
                   <tr key={u.id} className="border-b border-border last:border-0">
                     <td className="px-4 py-3">
                       <div className="text-foreground font-medium">{u.full_name || 'Unnamed'}</div>
-                      <div className="text-[11px] text-muted-foreground truncate max-w-[200px]">{u.id}</div>
+                      <div className="text-[11px] text-muted-foreground truncate max-w-[160px]">{u.id}</div>
                     </td>
+                    <td className="px-4 py-3 text-muted-foreground text-xs truncate max-w-[180px]">{u.email || '-'}</td>
                     <td className="px-4 py-3">
                       {isUserAdmin ? (
                         <span className="inline-flex items-center gap-1 rounded-full bg-destructive/10 px-2 py-0.5 text-xs font-medium text-destructive">
@@ -212,7 +207,13 @@ const UserManager = () => {
                             isUserAdmin ? 'text-destructive' : 'text-foreground'
                           }`}
                         >
-                          {isUserAdmin ? <><ShieldOff className="h-3 w-3" /> Revoke</> : <><ShieldCheck className="h-3 w-3" /> Make Admin</>}
+                          {isUserAdmin ? <><ShieldOff className="h-3 w-3" /> Revoke</> : <><ShieldCheck className="h-3 w-3" /> Admin</>}
+                        </button>
+                        <button
+                          onClick={() => setDeleteConfirm({ id: u.id, name: u.full_name || 'Unnamed' })}
+                          className="text-xs text-muted-foreground hover:text-destructive"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
                         </button>
                       </div>
                     </td>
@@ -220,7 +221,7 @@ const UserManager = () => {
                 );
               })}
               {!filtered.length && (
-                <tr><td colSpan={7} className="px-4 py-8 text-center text-sm text-muted-foreground">No users found</td></tr>
+                <tr><td colSpan={8} className="px-4 py-8 text-center text-sm text-muted-foreground">No users found</td></tr>
               )}
             </tbody>
           </table>
@@ -235,8 +236,8 @@ const UserManager = () => {
             </AlertDialogTitle>
             <AlertDialogDescription>
               {roleConfirm?.isAdmin
-                ? `Remove admin privileges from ${roleConfirm.name}? They will lose access to the admin portal.`
-                : `Make ${roleConfirm?.name} an admin? They will have full access to the admin portal.`}
+                ? `Remove admin privileges from ${roleConfirm.name}?`
+                : `Make ${roleConfirm?.name} an admin?`}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -245,6 +246,26 @@ const UserManager = () => {
               onClick={() => roleConfirm && toggleAdmin.mutate({ id: roleConfirm.id, isAdmin: roleConfirm.isAdmin })}
             >
               {roleConfirm?.isAdmin ? 'Revoke' : 'Grant Admin'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={!!deleteConfirm} onOpenChange={(open) => !open && setDeleteConfirm(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete User</AlertDialogTitle>
+            <AlertDialogDescription>
+              Permanently delete {deleteConfirm?.name}? This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => deleteConfirm && deleteUser.mutate({ id: deleteConfirm.id })}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

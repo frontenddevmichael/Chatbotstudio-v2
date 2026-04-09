@@ -27,12 +27,12 @@ const AdminLayout = ({ children }: { children: ReactNode }) => {
   const [mobileOpen, setMobileOpen] = useState(false);
 
   if (sessionStorage.getItem('admin_authenticated') !== 'true') {
-    return <Navigate to="/admin/login" replace />;
+    return <Navigate to="/login" replace />;
   }
 
   const handleLogout = () => {
     sessionStorage.removeItem('admin_authenticated');
-    navigate('/admin/login', { replace: true });
+    navigate('/login', { replace: true });
   };
 
   const sidebar = (

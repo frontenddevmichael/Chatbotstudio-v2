@@ -1,8 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
+import { adminFetch } from '@/lib/adminApi';
 import AdminLayout from '@/components/layout/AdminLayout';
 import SEO from '@/components/ui/SEO';
-import { Users, Bot, MessageSquare, Mail, Crown, HelpCircle, DollarSign, Activity } from 'lucide-react';
+import { Users, Bot, MessageSquare, Mail, Crown, HelpCircle, DollarSign, Activity, RefreshCw } from 'lucide-react';
 import { formatDistanceToNow, subDays, format } from 'date-fns';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
 import { toast } from 'sonner';
@@ -21,31 +21,14 @@ const AdminDashboard = () => {
 
   const { data: stats } = useQuery({
     queryKey: ['admin-stats'],
-    queryFn: async () => {
-      const [{ count: userCount }, { count: botCount }, { count: convoCount }, { count: waitlistCount }, { count: faqCount }, { data: settings }] = await Promise.all([
-        supabase.from('profiles').select('*', { count: 'exact', head: true }),
-        supabase.from('chatbots').select('*', { count: 'exact', head: true }),
-        supabase.from('conversations').select('*', { count: 'exact', head: true }),
-        supabase.from('waitlist').select('*', { count: 'exact', head: true }),
-        supabase.from('faqs').select('*', { count: 'exact', head: true }),
-        supabase.from('platform_settings').select('*').single(),
-      ]);
-      const { count: premiumCount } = await supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('plan', 'premium');
-      const revenue = (premiumCount ?? 0) * (settings?.premium_price_monthly ?? 19.99);
-      return {
-        userCount: userCount ?? 0, botCount: botCount ?? 0, convoCount: convoCount ?? 0,
-        waitlistCount: waitlistCount ?? 0, faqCount: faqCount ?? 0, premiumCount: premiumCount ?? 0,
-        revenue, settings,
-      };
-    },
+    queryFn: () => adminFetch('get-stats'),
   });
 
-  // Signup growth (last 30 days)
   const { data: signupChart } = useQuery({
     queryKey: ['admin-signup-chart'],
     queryFn: async () => {
       const since = subDays(new Date(), 30).toISOString();
-      const { data } = await supabase.from('profiles').select('created_at').gte('created_at', since).order('created_at');
+      const data = await adminFetch('get-signup-chart', { since });
       const buckets: Record<string, number> = {};
       for (let i = 29; i >= 0; i--) {
         buckets[format(subDays(new Date(), i), 'MMM dd')] = 0;
@@ -58,12 +41,11 @@ const AdminDashboard = () => {
     },
   });
 
-  // Conversation volume (last 7 days)
   const { data: convoChart } = useQuery({
     queryKey: ['admin-convo-chart'],
     queryFn: async () => {
       const since = subDays(new Date(), 7).toISOString();
-      const { data } = await supabase.from('conversations').select('started_at').gte('started_at', since).order('started_at');
+      const data = await adminFetch('get-convo-chart', { since });
       const buckets: Record<string, number> = {};
       for (let i = 6; i >= 0; i--) {
         buckets[format(subDays(new Date(), i), 'EEE')] = 0;
@@ -78,40 +60,43 @@ const AdminDashboard = () => {
 
   const { data: recentUsers } = useQuery({
     queryKey: ['admin-recent-users'],
-    queryFn: async () => {
-      const { data } = await supabase.from('profiles').select('*').order('created_at', { ascending: false }).limit(8);
-      return data ?? [];
-    },
+    queryFn: () => adminFetch('get-recent-users'),
   });
 
   const { data: activeBots } = useQuery({
     queryKey: ['admin-active-bots'],
-    queryFn: async () => {
-      const { data } = await supabase.from('chatbots').select('*').order('total_conversations', { ascending: false }).limit(5);
-      return data ?? [];
-    },
+    queryFn: () => adminFetch('get-active-bots'),
   });
 
   const toggleMaintenance = useMutation({
-    mutationFn: async () => {
-      const current = stats?.settings?.maintenance_mode ?? false;
-      const { error } = await supabase.from('platform_settings').update({ maintenance_mode: !current }).eq('id', 1);
-      if (error) throw error;
-    },
+    mutationFn: () => adminFetch('toggle-maintenance'),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-stats'] });
       toast.success('Maintenance mode toggled');
     },
   });
 
+  const refreshAll = () => {
+    queryClient.invalidateQueries({ queryKey: ['admin-stats'] });
+    queryClient.invalidateQueries({ queryKey: ['admin-signup-chart'] });
+    queryClient.invalidateQueries({ queryKey: ['admin-convo-chart'] });
+    queryClient.invalidateQueries({ queryKey: ['admin-recent-users'] });
+    queryClient.invalidateQueries({ queryKey: ['admin-active-bots'] });
+    toast.success('Data refreshed');
+  };
+
   const maxConvos = activeBots?.length ? Math.max(...activeBots.map((b: any) => b.total_conversations ?? 0), 1) : 1;
 
   return (
     <AdminLayout>
       <SEO title="Admin Dashboard" noIndex />
-      <h1 className="mb-6 font-display text-2xl font-bold text-foreground">Admin Dashboard</h1>
+      <div className="mb-6 flex items-center justify-between">
+        <h1 className="font-display text-2xl font-bold text-foreground">Admin Dashboard</h1>
+        <button onClick={refreshAll} className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-2 text-xs font-medium text-foreground hover:bg-muted transition-colors">
+          <RefreshCw className="h-3.5 w-3.5" /> Refresh
+        </button>
+      </div>
 
-      {/* System health */}
       <div className="mb-6 flex flex-wrap items-center gap-3">
         <div className="flex items-center gap-2 rounded-lg border border-border bg-card px-4 py-2.5">
           <Activity className="h-4 w-4 text-success" />
@@ -131,9 +116,12 @@ const AdminDashboard = () => {
           <DollarSign className="h-4 w-4 text-primary" />
           <span className="text-sm text-foreground">Est. MRR: <strong>${stats?.revenue?.toFixed(2) ?? '0.00'}</strong></span>
         </div>
+        <div className="flex items-center gap-2 rounded-lg border border-border bg-card px-4 py-2.5">
+          <Bot className="h-4 w-4 text-primary" />
+          <span className="text-sm text-foreground">Avg Bots/User: <strong>{stats?.userCount ? (stats.botCount / stats.userCount).toFixed(1) : '0'}</strong></span>
+        </div>
       </div>
 
-      {/* Stat cards */}
       <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-6">
         {statConfig.map(({ key, icon: Icon, label, color }) => (
           <div key={key} className="rounded-lg border border-border bg-card p-4">
@@ -150,7 +138,6 @@ const AdminDashboard = () => {
         ))}
       </div>
 
-      {/* Charts */}
       <div className="mb-6 grid gap-6 lg:grid-cols-2">
         <div className="rounded-lg border border-border bg-card p-4">
           <h3 className="mb-3 text-sm font-semibold text-foreground">Signup Growth (30d)</h3>
@@ -182,7 +169,6 @@ const AdminDashboard = () => {
         </div>
       </div>
 
-      {/* Recent users + active bots */}
       <div className="grid gap-6 lg:grid-cols-2">
         <div className="rounded-lg border border-border bg-card p-4">
           <h3 className="mb-3 text-sm font-semibold text-foreground">Recent Signups</h3>

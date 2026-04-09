@@ -32,7 +32,7 @@ const ChatbotManager = React.lazy(() => import("./pages/admin/ChatbotManager"));
 const AdminConversations = React.lazy(() => import("./pages/admin/AdminConversations"));
 const AdManager = React.lazy(() => import("./pages/admin/AdManager"));
 const AdminSettings = React.lazy(() => import("./pages/admin/AdminSettings"));
-const AdminLogin = React.lazy(() => import("./pages/admin/AdminLogin"));
+
 const PrivacyPolicy = React.lazy(() => import("./pages/legal/PrivacyPolicy"));
 const TermsOfService = React.lazy(() => import("./pages/legal/TermsOfService"));
 const CookiePolicy = React.lazy(() => import("./pages/legal/CookiePolicy"));
@@ -67,7 +67,7 @@ const App = () => (
                   <Route path="/billing" element={<ErrorBoundary><BillingPage /></ErrorBoundary>} />
                   <Route path="/settings" element={<ErrorBoundary><SettingsPage /></ErrorBoundary>} />
                   <Route path="/widget/:embedToken" element={<ErrorBoundary><WidgetPage /></ErrorBoundary>} />
-                  <Route path="/admin/login" element={<AdminLogin />} />
+                  
                   <Route path="/admin" element={<ErrorBoundary><AdminDashboard /></ErrorBoundary>} />
                   <Route path="/admin/users" element={<ErrorBoundary><UserManager /></ErrorBoundary>} />
                   <Route path="/admin/chatbots" element={<ErrorBoundary><ChatbotManager /></ErrorBoundary>} />

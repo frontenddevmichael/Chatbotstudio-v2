@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
+import { adminFetch } from '@/lib/adminApi';
 import AdminLayout from '@/components/layout/AdminLayout';
 import SEO from '@/components/ui/SEO';
 import { toast } from 'sonner';
@@ -12,10 +12,7 @@ const AdManager = () => {
   const queryClient = useQueryClient();
   const { data: ads, isLoading } = useQuery({
     queryKey: ['admin-ads'],
-    queryFn: async () => {
-      const { data } = await supabase.from('ads').select('*').order('created_at', { ascending: false }).limit(200);
-      return data ?? [];
-    },
+    queryFn: () => adminFetch('get-ads'),
   });
 
   const [form, setForm] = useState({ title: '', description: '', cta_text: '', cta_url: '', placement: 'sidebar', is_active: true });
@@ -25,7 +22,7 @@ const AdManager = () => {
     mutationFn: async () => {
       if (!form.title) throw new Error('Title required');
       if (form.cta_url && !isValidUrl(form.cta_url)) throw new Error('Invalid URL');
-      const { error } = await supabase.from('ads').insert({
+      return adminFetch('create-ad', {
         title: sanitizeText(form.title),
         description: sanitizeText(form.description),
         cta_text: sanitizeText(form.cta_text),
@@ -33,7 +30,6 @@ const AdManager = () => {
         placement: form.placement,
         is_active: form.is_active,
       });
-      if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-ads'] });
@@ -45,10 +41,7 @@ const AdManager = () => {
   });
 
   const deleteAd = useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase.from('ads').delete().eq('id', id);
-      if (error) throw error;
-    },
+    mutationFn: (id: string) => adminFetch('delete-ad', { id }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-ads'] });
       toast.success('Ad deleted');
@@ -56,10 +49,7 @@ const AdManager = () => {
   });
 
   const toggleActive = useMutation({
-    mutationFn: async ({ id, is_active }: { id: string; is_active: boolean }) => {
-      const { error } = await supabase.from('ads').update({ is_active: !is_active }).eq('id', id);
-      if (error) throw error;
-    },
+    mutationFn: ({ id, is_active }: { id: string; is_active: boolean }) => adminFetch('toggle-ad', { id, is_active }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-ads'] });
     },
