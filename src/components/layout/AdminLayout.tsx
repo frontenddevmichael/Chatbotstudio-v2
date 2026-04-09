@@ -27,7 +27,7 @@ const AdminLayout = ({ children }: { children: ReactNode }) => {
   const [mobileOpen, setMobileOpen] = useState(false);
 
   if (sessionStorage.getItem('admin_authenticated') !== 'true') {
-    return <Navigate to="/admin/login" replace />;
+    return <Navigate to="/login" replace />;
   }
 
   const handleLogout = () => {
