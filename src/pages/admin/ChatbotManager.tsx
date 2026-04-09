@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
+import { adminFetch } from '@/lib/adminApi';
 import AdminLayout from '@/components/layout/AdminLayout';
 import SEO from '@/components/ui/SEO';
 import { toast } from 'sonner';
@@ -16,32 +16,17 @@ const ChatbotManager = () => {
 
   const { data: chatbots, isLoading } = useQuery({
     queryKey: ['admin-chatbots'],
-    queryFn: async () => {
-      const { data } = await supabase.from('chatbots').select('*').order('created_at', { ascending: false }).limit(500);
-      return data ?? [];
-    },
+    queryFn: () => adminFetch('get-chatbots'),
   });
 
-  // Owner profiles map
   const { data: owners } = useQuery({
     queryKey: ['admin-chatbot-owners'],
-    queryFn: async () => {
-      const { data } = await supabase.from('profiles').select('id, full_name');
-      const map: Record<string, string> = {};
-      (data ?? []).forEach((p: any) => { map[p.id] = p.full_name || 'Unnamed'; });
-      return map;
-    },
+    queryFn: () => adminFetch('get-owners'),
   });
 
-  // FAQ counts per chatbot
   const { data: faqCounts } = useQuery({
     queryKey: ['admin-faq-counts'],
-    queryFn: async () => {
-      const { data } = await supabase.from('faqs').select('chatbot_id');
-      const counts: Record<string, number> = {};
-      (data ?? []).forEach((f: any) => { counts[f.chatbot_id] = (counts[f.chatbot_id] ?? 0) + 1; });
-      return counts;
-    },
+    queryFn: () => adminFetch('get-faq-counts'),
   });
 
   const filtered = useMemo(() => {
@@ -56,10 +41,7 @@ const ChatbotManager = () => {
   }, [chatbots, debouncedSearch, statusFilter, owners]);
 
   const toggleActive = useMutation({
-    mutationFn: async ({ id, is_active }: { id: string; is_active: boolean }) => {
-      const { error } = await supabase.from('chatbots').update({ is_active: !is_active }).eq('id', id);
-      if (error) throw error;
-    },
+    mutationFn: ({ id, is_active }: { id: string; is_active: boolean }) => adminFetch('toggle-bot-active', { id, is_active }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-chatbots'] });
       toast.success('Chatbot updated');
