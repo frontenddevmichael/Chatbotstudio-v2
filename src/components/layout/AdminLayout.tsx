@@ -32,7 +32,7 @@ const AdminLayout = ({ children }: { children: ReactNode }) => {
 
   const handleLogout = () => {
     sessionStorage.removeItem('admin_authenticated');
-    navigate('/admin/login', { replace: true });
+    navigate('/login', { replace: true });
   };
 
   const sidebar = (
