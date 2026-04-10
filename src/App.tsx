@@ -32,6 +32,7 @@ const ChatbotManager = React.lazy(() => import("./pages/admin/ChatbotManager"));
 const AdminConversations = React.lazy(() => import("./pages/admin/AdminConversations"));
 const AdManager = React.lazy(() => import("./pages/admin/AdManager"));
 const AdminSettings = React.lazy(() => import("./pages/admin/AdminSettings"));
+const WaitlistManager = React.lazy(() => import("./pages/admin/WaitlistManager"));
 
 const PrivacyPolicy = React.lazy(() => import("./pages/legal/PrivacyPolicy"));
 const TermsOfService = React.lazy(() => import("./pages/legal/TermsOfService"));
