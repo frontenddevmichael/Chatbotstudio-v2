@@ -2,26 +2,48 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { adminFetch } from '@/lib/adminApi';
 import AdminLayout from '@/components/layout/AdminLayout';
 import SEO from '@/components/ui/SEO';
-import { Users, Bot, MessageSquare, Mail, Crown, HelpCircle, DollarSign, Activity, RefreshCw } from 'lucide-react';
+import { Users, Bot, MessageSquare, Mail, Crown, HelpCircle, DollarSign, Activity, RefreshCw, TrendingUp, TrendingDown, Minus, UserPlus, Zap } from 'lucide-react';
 import { formatDistanceToNow, subDays, format } from 'date-fns';
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, FunnelChart, Funnel, LabelList } from 'recharts';
 import { toast } from 'sonner';
+import { useState } from 'react';
 
 const statConfig = [
-  { key: 'userCount', icon: Users, label: 'Total Users', color: 'bg-primary/10 text-primary' },
-  { key: 'botCount', icon: Bot, label: 'Chatbots', color: 'bg-success/10 text-success' },
-  { key: 'convoCount', icon: MessageSquare, label: 'Conversations', color: 'bg-accent/10 text-accent' },
-  { key: 'faqCount', icon: HelpCircle, label: 'FAQs', color: 'bg-warning/10 text-warning' },
-  { key: 'premiumCount', icon: Crown, label: 'Premium', color: 'bg-secondary/10 text-secondary' },
-  { key: 'waitlistCount', icon: Mail, label: 'Waitlist', color: 'bg-muted text-muted-foreground' },
+  { key: 'userCount', deltaKey: 'users', icon: Users, label: 'Total Users', color: 'bg-primary/10 text-primary' },
+  { key: 'botCount', deltaKey: 'bots', icon: Bot, label: 'Chatbots', color: 'bg-success/10 text-success' },
+  { key: 'convoCount', deltaKey: 'convos', icon: MessageSquare, label: 'Conversations', color: 'bg-accent/10 text-accent' },
+  { key: 'faqCount', deltaKey: null, icon: HelpCircle, label: 'FAQs', color: 'bg-warning/10 text-warning' },
+  { key: 'premiumCount', deltaKey: null, icon: Crown, label: 'Premium', color: 'bg-secondary/10 text-secondary' },
+  { key: 'waitlistCount', deltaKey: null, icon: Mail, label: 'Waitlist', color: 'bg-muted text-muted-foreground' },
 ];
+
+const DeltaBadge = ({ current, previous }: { current: number; previous: number }) => {
+  if (previous === 0 && current === 0) return <span className="text-[10px] text-muted-foreground flex items-center gap-0.5"><Minus className="h-2.5 w-2.5" /> 0%</span>;
+  if (previous === 0) return <span className="text-[10px] text-success flex items-center gap-0.5"><TrendingUp className="h-2.5 w-2.5" /> New</span>;
+  const pct = Math.round(((current - previous) / previous) * 100);
+  if (pct > 0) return <span className="text-[10px] text-success flex items-center gap-0.5"><TrendingUp className="h-2.5 w-2.5" /> +{pct}%</span>;
+  if (pct < 0) return <span className="text-[10px] text-destructive flex items-center gap-0.5"><TrendingDown className="h-2.5 w-2.5" /> {pct}%</span>;
+  return <span className="text-[10px] text-muted-foreground flex items-center gap-0.5"><Minus className="h-2.5 w-2.5" /> 0%</span>;
+};
 
 const AdminDashboard = () => {
   const queryClient = useQueryClient();
+  const [lastRefreshed, setLastRefreshed] = useState<Date>(new Date());
 
   const { data: stats } = useQuery({
     queryKey: ['admin-stats'],
     queryFn: () => adminFetch('get-stats'),
+  });
+
+  const { data: deltaStats } = useQuery({
+    queryKey: ['admin-delta-stats'],
+    queryFn: () => adminFetch('get-delta-stats'),
+  });
+
+  const { data: activityFeed } = useQuery({
+    queryKey: ['admin-activity-feed'],
+    queryFn: () => adminFetch('get-activity-feed'),
+    refetchInterval: 30000,
   });
 
   const { data: signupChart } = useQuery({
@@ -78,20 +100,39 @@ const AdminDashboard = () => {
 
   const refreshAll = () => {
     queryClient.invalidateQueries({ queryKey: ['admin-stats'] });
+    queryClient.invalidateQueries({ queryKey: ['admin-delta-stats'] });
+    queryClient.invalidateQueries({ queryKey: ['admin-activity-feed'] });
     queryClient.invalidateQueries({ queryKey: ['admin-signup-chart'] });
     queryClient.invalidateQueries({ queryKey: ['admin-convo-chart'] });
     queryClient.invalidateQueries({ queryKey: ['admin-recent-users'] });
     queryClient.invalidateQueries({ queryKey: ['admin-active-bots'] });
+    setLastRefreshed(new Date());
     toast.success('Data refreshed');
   };
 
   const maxConvos = activeBots?.length ? Math.max(...activeBots.map((b: any) => b.total_conversations ?? 0), 1) : 1;
 
+  const funnelData = stats ? [
+    { name: 'Waitlist', value: stats.waitlistCount, fill: 'hsl(var(--muted-foreground))' },
+    { name: 'Signups', value: stats.userCount, fill: 'hsl(var(--primary))' },
+    { name: 'Created Bot', value: stats.botCount, fill: 'hsl(var(--accent))' },
+    { name: 'Had Convo', value: stats.convoCount, fill: 'hsl(var(--success))' },
+  ] : [];
+
+  const activityIcons: Record<string, any> = {
+    signup: UserPlus,
+    bot: Bot,
+    conversation: Zap,
+  };
+
   return (
     <AdminLayout>
       <SEO title="Admin Dashboard" noIndex />
       <div className="mb-6 flex items-center justify-between">
-        <h1 className="font-display text-2xl font-bold text-foreground">Admin Dashboard</h1>
+        <div>
+          <h1 className="font-display text-2xl font-bold text-foreground">Admin Dashboard</h1>
+          <p className="text-xs text-muted-foreground mt-1">Last refreshed: {format(lastRefreshed, 'HH:mm:ss')}</p>
+        </div>
         <button onClick={refreshAll} className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-2 text-xs font-medium text-foreground hover:bg-muted transition-colors">
           <RefreshCw className="h-3.5 w-3.5" /> Refresh
         </button>
@@ -116,14 +157,11 @@ const AdminDashboard = () => {
           <DollarSign className="h-4 w-4 text-primary" />
           <span className="text-sm text-foreground">Est. MRR: <strong>${stats?.revenue?.toFixed(2) ?? '0.00'}</strong></span>
         </div>
-        <div className="flex items-center gap-2 rounded-lg border border-border bg-card px-4 py-2.5">
-          <Bot className="h-4 w-4 text-primary" />
-          <span className="text-sm text-foreground">Avg Bots/User: <strong>{stats?.userCount ? (stats.botCount / stats.userCount).toFixed(1) : '0'}</strong></span>
-        </div>
       </div>
 
+      {/* KPI cards with deltas */}
       <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-6">
-        {statConfig.map(({ key, icon: Icon, label, color }) => (
+        {statConfig.map(({ key, deltaKey, icon: Icon, label, color }) => (
           <div key={key} className="rounded-lg border border-border bg-card p-4">
             <div className="flex items-center gap-3">
               <div className={`flex h-9 w-9 items-center justify-center rounded-lg ${color.split(' ')[0]}`}>
@@ -132,12 +170,45 @@ const AdminDashboard = () => {
               <div>
                 <p className="text-xs text-muted-foreground">{label}</p>
                 <p className="font-display text-2xl font-bold text-foreground">{(stats as any)?.[key] ?? 0}</p>
+                {deltaKey && deltaStats && (
+                  <DeltaBadge
+                    current={(deltaStats as any)?.[`${deltaKey}ThisWeek`] ?? 0}
+                    previous={(deltaStats as any)?.[`${deltaKey}LastWeek`] ?? 0}
+                  />
+                )}
               </div>
             </div>
           </div>
         ))}
       </div>
 
+      {/* Conversion Funnel */}
+      {stats && (
+        <div className="mb-6 rounded-lg border border-border bg-card p-4">
+          <h3 className="mb-3 text-sm font-semibold text-foreground">Conversion Funnel</h3>
+          <div className="flex items-center gap-2">
+            {funnelData.map((step, i) => {
+              const maxVal = Math.max(...funnelData.map(s => s.value), 1);
+              const width = Math.max((step.value / maxVal) * 100, 15);
+              return (
+                <div key={step.name} className="flex-1">
+                  <div className="relative">
+                    <div
+                      className="h-10 rounded-md flex items-center justify-center text-xs font-medium"
+                      style={{ background: step.fill, opacity: 0.8 + (i * 0.05), width: `${width}%`, minWidth: '60px' }}
+                    >
+                      <span className="text-primary-foreground drop-shadow-sm">{step.value}</span>
+                    </div>
+                  </div>
+                  <p className="mt-1 text-[10px] text-muted-foreground text-center">{step.name}</p>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Charts */}
       <div className="mb-6 grid gap-6 lg:grid-cols-2">
         <div className="rounded-lg border border-border bg-card p-4">
           <h3 className="mb-3 text-sm font-semibold text-foreground">Signup Growth (30d)</h3>
@@ -169,11 +240,37 @@ const AdminDashboard = () => {
         </div>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid gap-6 lg:grid-cols-3">
+        {/* Activity Feed */}
+        <div className="rounded-lg border border-border bg-card p-4">
+          <h3 className="mb-3 text-sm font-semibold text-foreground">Live Activity</h3>
+          {activityFeed?.length ? (
+            <div className="space-y-2 max-h-72 overflow-y-auto">
+              {activityFeed.map((item: any, i: number) => {
+                const IconComp = activityIcons[item.type] || Activity;
+                return (
+                  <div key={i} className="flex items-center gap-2.5 rounded-md bg-muted/50 p-2 text-sm">
+                    <div className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10">
+                      <IconComp className="h-3 w-3 text-primary" />
+                    </div>
+                    <span className="flex-1 truncate text-foreground text-xs">{item.label}</span>
+                    <span className="text-[10px] text-muted-foreground shrink-0">
+                      {item.time ? formatDistanceToNow(new Date(item.time), { addSuffix: true }) : ''}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">No recent activity</p>
+          )}
+        </div>
+
+        {/* Recent Signups */}
         <div className="rounded-lg border border-border bg-card p-4">
           <h3 className="mb-3 text-sm font-semibold text-foreground">Recent Signups</h3>
           {recentUsers?.length ? (
-            <div className="space-y-2">
+            <div className="space-y-2 max-h-72 overflow-y-auto">
               {recentUsers.map((u: any) => {
                 const initial = (u.full_name || 'U')[0].toUpperCase();
                 return (
@@ -197,10 +294,11 @@ const AdminDashboard = () => {
           )}
         </div>
 
+        {/* Most Active Chatbots */}
         <div className="rounded-lg border border-border bg-card p-4">
           <h3 className="mb-3 text-sm font-semibold text-foreground">Most Active Chatbots</h3>
           {activeBots?.length ? (
-            <div className="space-y-2">
+            <div className="space-y-2 max-h-72 overflow-y-auto">
               {activeBots.map((bot: any) => (
                 <div key={bot.id} className="flex items-center gap-3 rounded-md bg-muted/50 p-2.5 text-sm">
                   <span className={`relative inline-block h-2 w-2 rounded-full ${bot.is_active ? 'bg-success' : 'bg-muted-foreground'}`} />
