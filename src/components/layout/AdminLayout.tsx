@@ -10,16 +10,30 @@ import {
   Shield,
   Menu,
   LogOut,
+  Mail,
+  ChevronRight,
 } from 'lucide-react';
+import ThemeToggle from '@/components/ui/ThemeToggle';
 
 const adminNav = [
   { to: '/admin', icon: LayoutDashboard, label: 'Dashboard' },
   { to: '/admin/users', icon: Users, label: 'Users' },
   { to: '/admin/chatbots', icon: Bot, label: 'Chatbots' },
   { to: '/admin/conversations', icon: MessageSquare, label: 'Conversations' },
+  { to: '/admin/waitlist', icon: Mail, label: 'Waitlist' },
   { to: '/admin/ads', icon: Megaphone, label: 'Ads' },
   { to: '/admin/settings', icon: Settings, label: 'Settings' },
 ];
+
+const labelMap: Record<string, string> = {
+  '/admin': 'Dashboard',
+  '/admin/users': 'Users',
+  '/admin/chatbots': 'Chatbots',
+  '/admin/conversations': 'Conversations',
+  '/admin/waitlist': 'Waitlist',
+  '/admin/ads': 'Ads',
+  '/admin/settings': 'Settings',
+};
 
 const AdminLayout = ({ children }: { children: ReactNode }) => {
   const { pathname } = useLocation();
@@ -34,6 +48,8 @@ const AdminLayout = ({ children }: { children: ReactNode }) => {
     sessionStorage.removeItem('admin_authenticated');
     navigate('/login', { replace: true });
   };
+
+  const currentLabel = labelMap[pathname] || 'Admin';
 
   const sidebar = (
     <div className="flex h-full flex-col">
@@ -61,7 +77,11 @@ const AdminLayout = ({ children }: { children: ReactNode }) => {
           );
         })}
       </nav>
-      <div className="border-t border-border p-3">
+      <div className="border-t border-border p-3 space-y-2">
+        <div className="flex items-center justify-between px-3">
+          <span className="text-xs text-muted-foreground">Theme</span>
+          <ThemeToggle />
+        </div>
         <button
           onClick={handleLogout}
           className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
@@ -91,11 +111,20 @@ const AdminLayout = ({ children }: { children: ReactNode }) => {
       )}
 
       <div className="flex flex-1 flex-col">
-        <header className="flex h-14 items-center gap-3 border-b border-border px-4 md:hidden">
-          <button onClick={() => setMobileOpen(true)} className="text-muted-foreground">
+        <header className="flex h-14 items-center gap-3 border-b border-border px-4">
+          <button onClick={() => setMobileOpen(true)} className="text-muted-foreground md:hidden">
             <Menu className="h-5 w-5" />
           </button>
-          <span className="font-display text-sm font-bold text-foreground">Admin Portal</span>
+          {/* Breadcrumb */}
+          <nav className="flex items-center gap-1 text-sm text-muted-foreground">
+            <Link to="/admin" className="hover:text-foreground transition-colors">Admin</Link>
+            {pathname !== '/admin' && (
+              <>
+                <ChevronRight className="h-3 w-3" />
+                <span className="font-medium text-foreground">{currentLabel}</span>
+              </>
+            )}
+          </nav>
         </header>
         <main className="flex-1 overflow-y-auto p-4 md:p-6">{children}</main>
       </div>

@@ -32,6 +32,7 @@ const ChatbotManager = React.lazy(() => import("./pages/admin/ChatbotManager"));
 const AdminConversations = React.lazy(() => import("./pages/admin/AdminConversations"));
 const AdManager = React.lazy(() => import("./pages/admin/AdManager"));
 const AdminSettings = React.lazy(() => import("./pages/admin/AdminSettings"));
+const WaitlistManager = React.lazy(() => import("./pages/admin/WaitlistManager"));
 
 const PrivacyPolicy = React.lazy(() => import("./pages/legal/PrivacyPolicy"));
 const TermsOfService = React.lazy(() => import("./pages/legal/TermsOfService"));
@@ -74,6 +75,7 @@ const App = () => (
                   <Route path="/admin/conversations" element={<ErrorBoundary><AdminConversations /></ErrorBoundary>} />
                   <Route path="/admin/ads" element={<ErrorBoundary><AdManager /></ErrorBoundary>} />
                   <Route path="/admin/settings" element={<ErrorBoundary><AdminSettings /></ErrorBoundary>} />
+                  <Route path="/admin/waitlist" element={<ErrorBoundary><WaitlistManager /></ErrorBoundary>} />
                   <Route path="/privacy" element={<PrivacyPolicy />} />
                   <Route path="/terms" element={<TermsOfService />} />
                   <Route path="/cookies" element={<CookiePolicy />} />

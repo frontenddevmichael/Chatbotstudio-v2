@@ -65,6 +65,58 @@ Deno.serve(async (req) => {
         break;
       }
 
+      case "get-delta-stats": {
+        const now = new Date();
+        const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
+        const twoWeeksAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000).toISOString();
+
+        const [
+          { count: usersThisWeek },
+          { count: usersLastWeek },
+          { count: botsThisWeek },
+          { count: botsLastWeek },
+          { count: convosThisWeek },
+          { count: convosLastWeek },
+        ] = await Promise.all([
+          supabase.from("profiles").select("*", { count: "exact", head: true }).gte("created_at", weekAgo),
+          supabase.from("profiles").select("*", { count: "exact", head: true }).gte("created_at", twoWeeksAgo).lt("created_at", weekAgo),
+          supabase.from("chatbots").select("*", { count: "exact", head: true }).gte("created_at", weekAgo),
+          supabase.from("chatbots").select("*", { count: "exact", head: true }).gte("created_at", twoWeeksAgo).lt("created_at", weekAgo),
+          supabase.from("conversations").select("*", { count: "exact", head: true }).gte("started_at", weekAgo),
+          supabase.from("conversations").select("*", { count: "exact", head: true }).gte("started_at", twoWeeksAgo).lt("started_at", weekAgo),
+        ]);
+
+        result = {
+          usersThisWeek: usersThisWeek ?? 0,
+          usersLastWeek: usersLastWeek ?? 0,
+          botsThisWeek: botsThisWeek ?? 0,
+          botsLastWeek: botsLastWeek ?? 0,
+          convosThisWeek: convosThisWeek ?? 0,
+          convosLastWeek: convosLastWeek ?? 0,
+        };
+        break;
+      }
+
+      case "get-activity-feed": {
+        const [
+          { data: recentUsers },
+          { data: recentBots },
+          { data: recentConvos },
+        ] = await Promise.all([
+          supabase.from("profiles").select("id, full_name, created_at").order("created_at", { ascending: false }).limit(5),
+          supabase.from("chatbots").select("id, name, avatar_emoji, created_at").order("created_at", { ascending: false }).limit(5),
+          supabase.from("conversations").select("id, chatbot_id, started_at").order("started_at", { ascending: false }).limit(5),
+        ]);
+
+        const feed: any[] = [];
+        (recentUsers ?? []).forEach((u: any) => feed.push({ type: 'signup', label: u.full_name || 'New user', time: u.created_at }));
+        (recentBots ?? []).forEach((b: any) => feed.push({ type: 'bot', label: `${b.avatar_emoji || '🤖'} ${b.name}`, time: b.created_at }));
+        (recentConvos ?? []).forEach((c: any) => feed.push({ type: 'conversation', label: 'New conversation', time: c.started_at }));
+        feed.sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime());
+        result = feed.slice(0, 10);
+        break;
+      }
+
       case "get-signup-chart": {
         const { data } = await supabase
           .from("profiles")
@@ -111,7 +163,6 @@ Deno.serve(async (req) => {
           .select("*")
           .order("created_at", { ascending: false })
           .limit(500);
-        // Fetch emails from auth
         const { data: authData } = await supabase.auth.admin.listUsers({ perPage: 1000 });
         const emailMap: Record<string, string> = {};
         (authData?.users ?? []).forEach((u: any) => {
@@ -243,6 +294,18 @@ Deno.serve(async (req) => {
         break;
       }
 
+      case "bulk-toggle-plan": {
+        const { ids, targetPlan } = payload;
+        const newLimit = targetPlan === "premium" ? 10000 : 500;
+        const { error } = await supabase
+          .from("profiles")
+          .update({ plan: targetPlan, message_limit: newLimit })
+          .in("id", ids);
+        if (error) throw error;
+        result = { ok: true };
+        break;
+      }
+
       case "toggle-bot-active": {
         const { id, is_active } = payload;
         const { error } = await supabase
@@ -269,6 +332,54 @@ Deno.serve(async (req) => {
             .insert({ user_id: id, role: "admin" });
           if (error) throw error;
         }
+        result = { ok: true };
+        break;
+      }
+
+      case "reset-user-messages": {
+        const { id } = payload;
+        const { error } = await supabase
+          .from("profiles")
+          .update({ monthly_message_count: 0 })
+          .eq("id", id);
+        if (error) throw error;
+        result = { ok: true };
+        break;
+      }
+
+      case "reset-all-messages": {
+        const { error } = await supabase
+          .from("profiles")
+          .update({ monthly_message_count: 0 })
+          .neq("id", "00000000-0000-0000-0000-000000000000");
+        if (error) throw error;
+        result = { ok: true };
+        break;
+      }
+
+      case "delete-chatbot": {
+        const { id } = payload;
+        await supabase.from("faqs").delete().eq("chatbot_id", id);
+        await supabase.from("conversations").delete().eq("chatbot_id", id);
+        const { error } = await supabase.from("chatbots").delete().eq("id", id);
+        if (error) throw error;
+        result = { ok: true };
+        break;
+      }
+
+      case "delete-conversation": {
+        const { id } = payload;
+        const { error } = await supabase.from("conversations").delete().eq("id", id);
+        if (error) throw error;
+        result = { ok: true };
+        break;
+      }
+
+      case "purge-old-conversations": {
+        const { olderThanDays } = payload;
+        const cutoff = new Date(Date.now() - olderThanDays * 24 * 60 * 60 * 1000).toISOString();
+        const { error } = await supabase.from("conversations").delete().lt("last_message_at", cutoff);
+        if (error) throw error;
         result = { ok: true };
         break;
       }
@@ -300,12 +411,28 @@ Deno.serve(async (req) => {
 
       case "delete-user": {
         const userId = payload.id;
-        // Delete profile (cascading will handle related data via FK)
         const { error } = await supabase.from("profiles").delete().eq("id", userId);
         if (error) throw error;
-        // Also delete from auth
         const { error: authError } = await supabase.auth.admin.deleteUser(userId);
         if (authError) console.error("Auth delete error:", authError);
+        result = { ok: true };
+        break;
+      }
+
+      case "get-waitlist": {
+        const { data } = await supabase
+          .from("waitlist")
+          .select("*")
+          .order("created_at", { ascending: false })
+          .limit(500);
+        result = data ?? [];
+        break;
+      }
+
+      case "delete-waitlist-entry": {
+        const { id } = payload;
+        const { error } = await supabase.from("waitlist").delete().eq("id", id);
+        if (error) throw error;
         result = { ok: true };
         break;
       }
