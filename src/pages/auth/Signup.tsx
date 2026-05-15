@@ -99,9 +99,11 @@ const Signup = () => {
         <div className="rounded-[14px] border border-border bg-card p-6" style={{ boxShadow: 'var(--shadow-md)' }}>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="mb-1.5 block text-[13px] font-medium text-muted-foreground">Full Name</label>
+              <label htmlFor="signup-name" className="mb-1.5 block text-[13px] font-medium text-muted-foreground">Full Name</label>
               <input
+                id="signup-name"
                 type="text"
+                autoComplete="name"
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
                 className="w-full rounded-[10px] border border-border bg-[hsl(var(--color-surface-3))] px-3 py-2 text-[15px] text-foreground placeholder:text-muted-foreground outline-none transition-colors focus:border-primary"
@@ -109,9 +111,11 @@ const Signup = () => {
               />
             </div>
             <div>
-              <label className="mb-1.5 block text-[13px] font-medium text-muted-foreground">Email</label>
+              <label htmlFor="signup-email" className="mb-1.5 block text-[13px] font-medium text-muted-foreground">Email</label>
               <input
+                id="signup-email"
                 type="email"
+                autoComplete="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="w-full rounded-[10px] border border-border bg-[hsl(var(--color-surface-3))] px-3 py-2 text-[15px] text-foreground placeholder:text-muted-foreground outline-none transition-colors focus:border-primary"
@@ -119,9 +123,11 @@ const Signup = () => {
               />
             </div>
             <div>
-              <label className="mb-1.5 block text-[13px] font-medium text-muted-foreground">Password</label>
+              <label htmlFor="signup-password" className="mb-1.5 block text-[13px] font-medium text-muted-foreground">Password</label>
               <input
+                id="signup-password"
                 type="password"
+                autoComplete="new-password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="w-full rounded-[10px] border border-border bg-[hsl(var(--color-surface-3))] px-3 py-2 text-[15px] text-foreground placeholder:text-muted-foreground outline-none transition-colors focus:border-primary"
