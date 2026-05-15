@@ -59,20 +59,23 @@ const Login = () => {
         <div className="rounded-[14px] border border-border bg-card p-6" style={{ boxShadow: 'var(--shadow-md)' }}>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="mb-1.5 block text-[13px] font-medium text-muted-foreground">Email</label>
+              <label htmlFor="login-email" className="mb-1.5 block text-[13px] font-medium text-muted-foreground">Email</label>
               <input
+                id="login-email"
                 type="email"
+                autoComplete="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="w-full rounded-[10px] border border-border bg-[hsl(var(--color-surface-3))] px-3 py-2 text-[15px] text-foreground placeholder:text-muted-foreground outline-none transition-colors focus:border-primary"
-                
                 placeholder="you@example.com"
               />
             </div>
             <div>
-              <label className="mb-1.5 block text-[13px] font-medium text-muted-foreground">Password</label>
+              <label htmlFor="login-password" className="mb-1.5 block text-[13px] font-medium text-muted-foreground">Password</label>
               <input
+                id="login-password"
                 type="password"
+                autoComplete="current-password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="w-full rounded-[10px] border border-border bg-[hsl(var(--color-surface-3))] px-3 py-2 text-[15px] text-foreground placeholder:text-muted-foreground outline-none transition-colors focus:border-primary"
