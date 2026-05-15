@@ -33,8 +33,8 @@ const Login = () => {
       await signIn(email, password);
       toast.success('Welcome back!');
       navigate('/dashboard', { replace: true });
-    } catch (err: any) {
-      toast.error(err.message || 'Sign in failed');
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Sign in failed');
     } finally {
       setSubmitting(false);
     }
