@@ -53,9 +53,11 @@ const ForgotPassword = () => {
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="mb-1.5 block text-[13px] font-medium text-muted-foreground">Email</label>
+                <label htmlFor="forgot-email" className="mb-1.5 block text-[13px] font-medium text-muted-foreground">Email</label>
                 <input
+                  id="forgot-email"
                   type="email"
+                  autoComplete="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="w-full rounded-[10px] border border-border bg-[hsl(var(--color-surface-3))] px-3 py-2 text-[15px] text-foreground placeholder:text-muted-foreground outline-none transition-colors focus:border-primary"
