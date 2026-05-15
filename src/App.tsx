@@ -76,9 +76,9 @@ const App = () => (
                   <Route path="/admin/ads" element={<ErrorBoundary><AdManager /></ErrorBoundary>} />
                   <Route path="/admin/settings" element={<ErrorBoundary><AdminSettings /></ErrorBoundary>} />
                   <Route path="/admin/waitlist" element={<ErrorBoundary><WaitlistManager /></ErrorBoundary>} />
-                  <Route path="/privacy" element={<PrivacyPolicy />} />
-                  <Route path="/terms" element={<TermsOfService />} />
-                  <Route path="/cookies" element={<CookiePolicy />} />
+                  <Route path="/privacy" element={<ErrorBoundary><PrivacyPolicy /></ErrorBoundary>} />
+                  <Route path="/terms" element={<ErrorBoundary><TermsOfService /></ErrorBoundary>} />
+                  <Route path="/cookies" element={<ErrorBoundary><CookiePolicy /></ErrorBoundary>} />
                   <Route path="*" element={<NotFound />} />
                 </Routes>
               </Suspense>
