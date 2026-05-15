@@ -53,11 +53,11 @@ const App = () => (
             <BrowserRouter>
               <Suspense fallback={<PageLoader />}>
                 <Routes>
-                  <Route path="/" element={<Landing />} />
-                  <Route path="/login" element={<Login />} />
-                  <Route path="/signup" element={<Signup />} />
-                  <Route path="/forgot-password" element={<ForgotPassword />} />
-                  <Route path="/reset-password" element={<ResetPassword />} />
+                  <Route path="/" element={<ErrorBoundary><Landing /></ErrorBoundary>} />
+                  <Route path="/login" element={<ErrorBoundary><Login /></ErrorBoundary>} />
+                  <Route path="/signup" element={<ErrorBoundary><Signup /></ErrorBoundary>} />
+                  <Route path="/forgot-password" element={<ErrorBoundary><ForgotPassword /></ErrorBoundary>} />
+                  <Route path="/reset-password" element={<ErrorBoundary><ResetPassword /></ErrorBoundary>} />
                   <Route path="/dashboard" element={<ErrorBoundary><Dashboard /></ErrorBoundary>} />
                   <Route path="/builder/new" element={<ErrorBoundary><ChatbotBuilder /></ErrorBoundary>} />
                   <Route path="/builder/:id/edit" element={<ErrorBoundary><ChatbotBuilder /></ErrorBoundary>} />
@@ -76,9 +76,9 @@ const App = () => (
                   <Route path="/admin/ads" element={<ErrorBoundary><AdManager /></ErrorBoundary>} />
                   <Route path="/admin/settings" element={<ErrorBoundary><AdminSettings /></ErrorBoundary>} />
                   <Route path="/admin/waitlist" element={<ErrorBoundary><WaitlistManager /></ErrorBoundary>} />
-                  <Route path="/privacy" element={<PrivacyPolicy />} />
-                  <Route path="/terms" element={<TermsOfService />} />
-                  <Route path="/cookies" element={<CookiePolicy />} />
+                  <Route path="/privacy" element={<ErrorBoundary><PrivacyPolicy /></ErrorBoundary>} />
+                  <Route path="/terms" element={<ErrorBoundary><TermsOfService /></ErrorBoundary>} />
+                  <Route path="/cookies" element={<ErrorBoundary><CookiePolicy /></ErrorBoundary>} />
                   <Route path="*" element={<NotFound />} />
                 </Routes>
               </Suspense>

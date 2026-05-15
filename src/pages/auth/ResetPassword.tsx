@@ -76,9 +76,11 @@ const ResetPassword = () => {
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="mb-1.5 block text-[13px] font-medium text-muted-foreground">New Password</label>
+                <label htmlFor="reset-password" className="mb-1.5 block text-[13px] font-medium text-muted-foreground">New Password</label>
                 <input
+                  id="reset-password"
                   type="password"
+                  autoComplete="new-password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="w-full rounded-[10px] border border-border bg-[hsl(var(--color-surface-3))] px-3 py-2 text-[15px] text-foreground placeholder:text-muted-foreground outline-none transition-colors focus:border-primary"
@@ -87,9 +89,11 @@ const ResetPassword = () => {
                 />
               </div>
               <div>
-                <label className="mb-1.5 block text-[13px] font-medium text-muted-foreground">Confirm Password</label>
+                <label htmlFor="reset-confirm" className="mb-1.5 block text-[13px] font-medium text-muted-foreground">Confirm Password</label>
                 <input
+                  id="reset-confirm"
                   type="password"
+                  autoComplete="new-password"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   className="w-full rounded-[10px] border border-border bg-[hsl(var(--color-surface-3))] px-3 py-2 text-[15px] text-foreground placeholder:text-muted-foreground outline-none transition-colors focus:border-primary"
