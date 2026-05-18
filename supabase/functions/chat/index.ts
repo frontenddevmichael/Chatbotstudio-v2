@@ -21,10 +21,24 @@ serve(async (req) => {
   }
 
   try {
-    const { chatbot_id, session_id, messages, new_message } = await req.json();
+    const body = await req.json().catch(() => null);
+    if (!body || typeof body !== "object") {
+      return jsonResponse({ error: "invalid_body" }, 400);
+    }
+    const { chatbot_id, session_id, messages, new_message } = body as Record<string, unknown>;
 
-    if (!chatbot_id || !session_id || !new_message) {
-      return jsonResponse({ error: "missing_fields" }, 400);
+    // Validate field types
+    if (typeof chatbot_id !== "string" || !/^[0-9a-f-]{36}$/i.test(chatbot_id)) {
+      return jsonResponse({ error: "invalid_chatbot_id" }, 400);
+    }
+    if (typeof session_id !== "string" || session_id.length < 1 || session_id.length > 128) {
+      return jsonResponse({ error: "invalid_session_id" }, 400);
+    }
+    if (typeof new_message !== "string") {
+      return jsonResponse({ error: "invalid_message" }, 400);
+    }
+    if (messages !== undefined && !Array.isArray(messages)) {
+      return jsonResponse({ error: "invalid_messages" }, 400);
     }
 
     // Sanitize: strip HTML tags and limit to 2000 chars
