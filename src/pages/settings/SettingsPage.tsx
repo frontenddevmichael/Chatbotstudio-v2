@@ -48,8 +48,8 @@ const SettingsPage = () => {
       toast.success('Password updated successfully');
       setNewPassword('');
       setConfirmPassword('');
-    } catch (err: any) {
-      toast.error(err.message || 'Failed to update password');
+    } catch (err: unknown) {
+      toast.error((err instanceof Error ? err.message : null) || 'Failed to update password');
     } finally {
       setChangingPassword(false);
     }

@@ -28,8 +28,8 @@ const Signup = () => {
     try {
       await signUp(email, password, fullName);
       setSignedUp(true);
-    } catch (err: any) {
-      toast.error(err.message || 'Sign up failed');
+    } catch (err: unknown) {
+      toast.error((err instanceof Error ? err.message : null) || 'Sign up failed');
     } finally {
       setSubmitting(false);
     }
