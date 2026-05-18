@@ -2,11 +2,13 @@ import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
 
+import type { ChatMessage } from '@/types/admin';
+
 export interface Conversation {
   id: string;
   chatbot_id: string;
   session_id: string | null;
-  messages: any[];
+  messages: ChatMessage[];
   started_at: string | null;
   last_message_at: string | null;
 }
