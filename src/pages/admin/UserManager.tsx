@@ -6,6 +6,7 @@ import SEO from '@/components/ui/SEO';
 import { toast } from 'sonner';
 import { Search, ShieldCheck, ShieldOff, Download, Trash2, RotateCcw, ChevronUp, ChevronDown, CheckSquare, Square } from 'lucide-react';
 import { useDebounce } from '@/hooks/useDebounce';
+import type { AdminUser } from '@/types/admin';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -31,25 +32,25 @@ const UserManager = () => {
   const debouncedSearch = useDebounce(search, 300);
   const [roleConfirm, setRoleConfirm] = useState<{ id: string; name: string; isAdmin: boolean } | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; name: string } | null>(null);
-  const [detailUser, setDetailUser] = useState<any>(null);
+  const [detailUser, setDetailUser] = useState<AdminUser | null>(null);
 
-  const { data: users, isLoading } = useQuery({ queryKey: ['admin-users'], queryFn: () => adminFetch('get-users') });
-  const { data: adminRolesList } = useQuery({ queryKey: ['admin-roles'], queryFn: () => adminFetch('get-roles') });
+  const { data: users, isLoading } = useQuery({ queryKey: ['admin-users'], queryFn: () => adminFetch<AdminUser[]>('get-users') });
+  const { data: adminRolesList } = useQuery({ queryKey: ['admin-roles'], queryFn: () => adminFetch<string[]>('get-roles') });
   const adminRoles = useMemo(() => new Set(adminRolesList ?? []), [adminRolesList]);
-  const { data: botCounts } = useQuery({ queryKey: ['admin-bot-counts'], queryFn: () => adminFetch('get-bot-counts') });
+  const { data: botCounts } = useQuery({ queryKey: ['admin-bot-counts'], queryFn: () => adminFetch<Record<string, number>>('get-bot-counts') });
 
-  const filtered = useMemo(() => {
-    let result = users ?? [];
+  const filtered = useMemo<AdminUser[]>(() => {
+    let result: AdminUser[] = users ?? [];
     if (debouncedSearch) {
       const q = debouncedSearch.toLowerCase();
-      result = result.filter((u: any) => u.full_name?.toLowerCase().includes(q) || u.email?.toLowerCase().includes(q) || u.id?.includes(q));
+      result = result.filter((u) => u.full_name?.toLowerCase().includes(q) || u.email?.toLowerCase().includes(q) || u.id?.includes(q));
     }
-    if (planFilter !== 'all') result = result.filter((u: any) => u.plan === planFilter);
-    if (roleFilter === 'admin') result = result.filter((u: any) => adminRoles.has(u.id));
-    if (roleFilter === 'user') result = result.filter((u: any) => !adminRoles.has(u.id));
+    if (planFilter !== 'all') result = result.filter((u) => u.plan === planFilter);
+    if (roleFilter === 'admin') result = result.filter((u) => adminRoles.has(u.id));
+    if (roleFilter === 'user') result = result.filter((u) => !adminRoles.has(u.id));
 
-    result = [...result].sort((a: any, b: any) => {
-      let aVal: any, bVal: any;
+    result = [...result].sort((a, b) => {
+      let aVal: string | number = '', bVal: string | number = '';
       if (sortKey === 'bots') { aVal = botCounts?.[a.id] ?? 0; bVal = botCounts?.[b.id] ?? 0; }
       else if (sortKey === 'created_at') { aVal = a.created_at ?? ''; bVal = b.created_at ?? ''; }
       else if (sortKey === 'monthly_message_count') { aVal = a.monthly_message_count ?? 0; bVal = b.monthly_message_count ?? 0; }
@@ -77,7 +78,7 @@ const UserManager = () => {
   const toggleSelect = (id: string) => setSelected(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
   const toggleSelectAll = () => {
     if (selected.size === paged.length) setSelected(new Set());
-    else setSelected(new Set(paged.map((u: any) => u.id)));
+    else setSelected(new Set(paged.map((u) => u.id)));
   };
 
   const togglePlan = useMutation({
@@ -111,7 +112,7 @@ const UserManager = () => {
   });
 
   const exportCSV = () => {
-    const rows = filtered.map((u: any) => ({
+    const rows = filtered.map((u) => ({
       Name: u.full_name || 'Unnamed', Email: u.email || '', ID: u.id, Plan: u.plan || 'free',
       Messages: `${u.monthly_message_count ?? 0}/${u.message_limit ?? 500}`, Chatbots: botCounts?.[u.id] ?? 0,
       Admin: adminRoles?.has(u.id) ? 'Yes' : 'No', Joined: u.created_at ? new Date(u.created_at).toLocaleDateString() : '',
@@ -185,7 +186,7 @@ const UserManager = () => {
                 </tr>
               </thead>
               <tbody>
-                {paged.map((u: any) => {
+                {paged.map((u) => {
                   const isUserAdmin = adminRoles?.has(u.id) ?? false;
                   return (
                     <tr key={u.id} className="border-b border-border last:border-0 hover:bg-muted/30 cursor-pointer" onClick={() => setDetailUser(u)}>
