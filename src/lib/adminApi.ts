@@ -1,6 +1,6 @@
 const ADMIN_SECRET = 'Studio@Admin2026!';
 
-export async function adminFetch(action: string, payload?: any) {
+export async function adminFetch<T = unknown>(action: string, payload?: Record<string, unknown>): Promise<T> {
   const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
   const url = `https://${projectId}.supabase.co/functions/v1/admin-data`;
 
@@ -18,5 +18,5 @@ export async function adminFetch(action: string, payload?: any) {
     throw new Error(err.error || 'Admin API error');
   }
 
-  return res.json();
+  return res.json() as Promise<T>;
 }

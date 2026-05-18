@@ -12,7 +12,7 @@ const AdManager = () => {
   const queryClient = useQueryClient();
   const { data: ads, isLoading } = useQuery({
     queryKey: ['admin-ads'],
-    queryFn: () => adminFetch('get-ads'),
+    queryFn: () => adminFetch<any[]>('get-ads'),
   });
 
   const [form, setForm] = useState({ title: '', description: '', cta_text: '', cta_url: '', placement: 'sidebar', is_active: true });

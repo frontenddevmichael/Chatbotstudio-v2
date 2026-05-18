@@ -15,7 +15,7 @@ import {
 
 const AdminSettings = () => {
   const queryClient = useQueryClient();
-  const { data: settings, isLoading } = useQuery({ queryKey: ['platform-settings'], queryFn: () => adminFetch('get-settings') });
+  const { data: settings, isLoading } = useQuery({ queryKey: ['platform-settings'], queryFn: () => adminFetch<any>('get-settings') });
 
   const [freeLimit, setFreeLimit] = useState(500);
   const [premiumPrice, setPremiumPrice] = useState(19.99);

@@ -32,17 +32,17 @@ const AdminDashboard = () => {
 
   const { data: stats } = useQuery({
     queryKey: ['admin-stats'],
-    queryFn: () => adminFetch('get-stats'),
+    queryFn: () => adminFetch<any>('get-stats'),
   });
 
   const { data: deltaStats } = useQuery({
     queryKey: ['admin-delta-stats'],
-    queryFn: () => adminFetch('get-delta-stats'),
+    queryFn: () => adminFetch<any>('get-delta-stats'),
   });
 
   const { data: activityFeed } = useQuery({
     queryKey: ['admin-activity-feed'],
-    queryFn: () => adminFetch('get-activity-feed'),
+    queryFn: () => adminFetch<any[]>('get-activity-feed'),
     refetchInterval: 30000,
   });
 
@@ -50,7 +50,7 @@ const AdminDashboard = () => {
     queryKey: ['admin-signup-chart'],
     queryFn: async () => {
       const since = subDays(new Date(), 30).toISOString();
-      const data = await adminFetch('get-signup-chart', { since });
+      const data = await adminFetch<any[]>('get-signup-chart', { since });
       const buckets: Record<string, number> = {};
       for (let i = 29; i >= 0; i--) {
         buckets[format(subDays(new Date(), i), 'MMM dd')] = 0;
@@ -67,7 +67,7 @@ const AdminDashboard = () => {
     queryKey: ['admin-convo-chart'],
     queryFn: async () => {
       const since = subDays(new Date(), 7).toISOString();
-      const data = await adminFetch('get-convo-chart', { since });
+      const data = await adminFetch<any[]>('get-convo-chart', { since });
       const buckets: Record<string, number> = {};
       for (let i = 6; i >= 0; i--) {
         buckets[format(subDays(new Date(), i), 'EEE')] = 0;
@@ -82,12 +82,12 @@ const AdminDashboard = () => {
 
   const { data: recentUsers } = useQuery({
     queryKey: ['admin-recent-users'],
-    queryFn: () => adminFetch('get-recent-users'),
+    queryFn: () => adminFetch<any[]>('get-recent-users'),
   });
 
   const { data: activeBots } = useQuery({
     queryKey: ['admin-active-bots'],
-    queryFn: () => adminFetch('get-active-bots'),
+    queryFn: () => adminFetch<any[]>('get-active-bots'),
   });
 
   const toggleMaintenance = useMutation({

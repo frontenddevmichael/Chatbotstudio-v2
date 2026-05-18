@@ -15,7 +15,7 @@ const WaitlistManager = () => {
 
   const { data: entries, isLoading } = useQuery({
     queryKey: ['admin-waitlist'],
-    queryFn: () => adminFetch('get-waitlist'),
+    queryFn: () => adminFetch<any[]>('get-waitlist'),
   });
 
   const filtered = useMemo(() => {
