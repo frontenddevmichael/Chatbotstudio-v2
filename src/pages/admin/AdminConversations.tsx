@@ -21,8 +21,8 @@ const AdminConversations = () => {
   const [expanded, setExpanded] = useState<string | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
 
-  const { data: chatbots } = useQuery({ queryKey: ['admin-chatbots-map'], queryFn: () => adminFetch('get-chatbot-map') });
-  const { data: conversations, isLoading } = useQuery({ queryKey: ['admin-conversations'], queryFn: () => adminFetch('get-conversations') });
+  const { data: chatbots } = useQuery({ queryKey: ['admin-chatbots-map'], queryFn: () => adminFetch<Record<string,{name:string;emoji:string|null}>>('get-chatbot-map') });
+  const { data: conversations, isLoading } = useQuery({ queryKey: ['admin-conversations'], queryFn: () => adminFetch<any[]>('get-conversations') });
 
   const filtered = useMemo(() => {
     let result = conversations ?? [];

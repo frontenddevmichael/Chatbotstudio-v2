@@ -26,9 +26,9 @@ const ChatbotManager = () => {
   const [detailBot, setDetailBot] = useState<any>(null);
   const debouncedSearch = useDebounce(search, 300);
 
-  const { data: chatbots, isLoading } = useQuery({ queryKey: ['admin-chatbots'], queryFn: () => adminFetch('get-chatbots') });
-  const { data: owners } = useQuery({ queryKey: ['admin-chatbot-owners'], queryFn: () => adminFetch('get-owners') });
-  const { data: faqCounts } = useQuery({ queryKey: ['admin-faq-counts'], queryFn: () => adminFetch('get-faq-counts') });
+  const { data: chatbots, isLoading } = useQuery({ queryKey: ['admin-chatbots'], queryFn: () => adminFetch<any[]>('get-chatbots') });
+  const { data: owners } = useQuery({ queryKey: ['admin-chatbot-owners'], queryFn: () => adminFetch<Record<string,string>>('get-owners') });
+  const { data: faqCounts } = useQuery({ queryKey: ['admin-faq-counts'], queryFn: () => adminFetch<Record<string,number>>('get-faq-counts') });
 
   const filtered = useMemo(() => {
     let result = chatbots ?? [];
