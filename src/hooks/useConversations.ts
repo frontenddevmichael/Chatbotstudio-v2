@@ -24,7 +24,7 @@ export const useConversations = (chatbotId: string) => {
         .order('last_message_at', { ascending: false })
         .limit(50);
       if (error) throw error;
-      return data as Conversation[];
+      return data as unknown as Conversation[];
     },
     enabled: !!chatbotId,
   });
