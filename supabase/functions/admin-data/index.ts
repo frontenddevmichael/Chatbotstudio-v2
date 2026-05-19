@@ -8,27 +8,51 @@ const corsHeaders = {
 
 const ADMIN_SECRET = "Studio@Admin2026!";
 
+// Constant-time string comparison to mitigate timing attacks on the admin secret.
+function safeEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return diff === 0;
+}
+
+const jsonError = (error: string, status: number, code?: string) =>
+  new Response(JSON.stringify({ error, code }), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
 
   try {
-    const authHeader = req.headers.get("x-admin-secret");
-    if (authHeader !== ADMIN_SECRET) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+    const authHeader = req.headers.get("x-admin-secret") ?? "";
+    if (!safeEqual(authHeader, ADMIN_SECRET)) {
+      return jsonError("Unauthorized", 401, "unauthorized");
     }
 
-    const { action, payload } = await req.json();
+    let body: { action?: unknown; payload?: unknown };
+    try {
+      body = await req.json();
+    } catch {
+      return jsonError("Invalid JSON body", 400, "invalid_json");
+    }
+    const { action, payload } = body;
+
+    if (typeof action !== "string" || action.length === 0 || action.length > 64) {
+      return jsonError("Missing or invalid action", 400, "invalid_action");
+    }
+    if (payload !== undefined && (typeof payload !== "object" || payload === null || Array.isArray(payload))) {
+      return jsonError("Invalid payload", 400, "invalid_payload");
+    }
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, serviceRoleKey);
 
-    let result: any = null;
+    let result: unknown = null;
 
     switch (action) {
       case "get-stats": {
@@ -438,21 +462,15 @@ Deno.serve(async (req) => {
       }
 
       default:
-        return new Response(JSON.stringify({ error: `Unknown action: ${action}` }), {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+        return jsonError(`Unknown action: ${action}`, 400, "unknown_action");
     }
 
     return new Response(JSON.stringify(result), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,
     });
-  } catch (err: any) {
+  } catch (err) {
     console.error("Admin data error:", err);
-    return new Response(JSON.stringify({ error: err.message }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return jsonError(err instanceof Error ? err.message : "Internal error", 500, "internal_error");
   }
 });

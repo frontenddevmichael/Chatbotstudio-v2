@@ -3,30 +3,24 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { useCreateChatbot, useUpdateChatbot, useChatbot, useChatbots } from '@/hooks/useChatbot';
 import { useCreateFAQ } from '@/hooks/useFAQs';
-import { supabase } from '@/integrations/supabase/client';
 import PageWrapper from '@/components/layout/PageWrapper';
 import SEO from '@/components/ui/SEO';
 import Spinner from '@/components/ui/Spinner';
 import { toast } from 'sonner';
-import { ChevronLeft, Smile, Briefcase, Coffee, Crown, Sparkles, Copy, ExternalLink, Trash2, Upload, Wand2, FileText } from 'lucide-react';
+import { ChevronLeft } from 'lucide-react';
 import { canCreateChatbot } from '@/lib/plans';
 import { sanitizeText } from '@/lib/sanitize';
 import { chatbotNameSchema } from '@/lib/validations';
 import ReactConfetti from 'react-confetti';
-import AvatarPicker from '@/components/chatbot/AvatarPicker';
-import BotAvatar from '@/components/chatbot/BotAvatar';
-import ColorPicker from '@/components/chatbot/ColorPicker';
-
-const TONES = [
-  { value: 'friendly', label: 'Friendly', icon: Smile, desc: 'Warm, approachable' },
-  { value: 'professional', label: 'Professional', icon: Briefcase, desc: 'Formal, precise' },
-  { value: 'casual', label: 'Casual', icon: Coffee, desc: 'Like a smart friend' },
-  { value: 'formal', label: 'Formal', icon: Crown, desc: 'Corporate, authoritative' },
-];
-
-interface FAQPair { question: string; answer: string; }
+import Step1Identity from './steps/Step1Identity';
+import Step2Personality from './steps/Step2Personality';
+import Step3Knowledge from './steps/Step3Knowledge';
+import Step4Appearance from './steps/Step4Appearance';
+import Step5Deploy from './steps/Step5Deploy';
+import type { FAQPair } from './hooks/useFAQImport';
 
 const STEP_NAMES = ['Identity', 'Personality', 'Knowledge', 'Appearance', 'Deploy'];
+const INPUT_CLASS = "w-full rounded-[10px] border border-border bg-[hsl(var(--color-surface-3))] px-3 py-2 text-[15px] text-foreground placeholder:text-muted-foreground outline-none transition-colors focus:border-primary";
 
 const ChatbotBuilder = () => {
   const { id } = useParams();
@@ -51,7 +45,6 @@ const ChatbotBuilder = () => {
   const [embedToken, setEmbedToken] = useState('');
   const [showConfetti, setShowConfetti] = useState(false);
   const savedFaqsRef = useRef<Set<string>>(new Set());
-  const [generatingFaqs, setGeneratingFaqs] = useState(false);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -83,20 +76,19 @@ const ChatbotBuilder = () => {
         const result = await updateMutation.mutateAsync({ id: botId, ...payload });
         if (result.embed_token) setEmbedToken(result.embed_token);
         return botId;
-      } else {
-        const currentCount = chatbots?.length ?? 0;
-        if (!canCreateChatbot(profile, currentCount)) {
-          toast.error('Upgrade to create more chatbots');
-          return null;
-        }
-        const result = await createMutation.mutateAsync(payload);
-        setBotId(result.id);
-        if (result.embed_token) setEmbedToken(result.embed_token);
-        return result.id;
       }
-    } catch (err: any) {
+      const currentCount = chatbots?.length ?? 0;
+      if (!canCreateChatbot(profile, currentCount)) {
+        toast.error('Upgrade to create more chatbots');
+        return null;
+      }
+      const result = await createMutation.mutateAsync(payload);
+      setBotId(result.id);
+      if (result.embed_token) setEmbedToken(result.embed_token);
+      return result.id;
+    } catch (err: unknown) {
       console.error('saveDraft failed:', err);
-      toast.error(err?.message || 'Failed to save chatbot');
+      toast.error(err instanceof Error ? err.message : 'Failed to save chatbot');
       return null;
     }
   };
@@ -113,23 +105,17 @@ const ChatbotBuilder = () => {
       if (!savedId) return;
 
       if (step === 3) {
-        const validFaqs = faqs.filter((f) => f.question.trim() && f.answer.trim());
-        const newFaqs = validFaqs.filter(faq => !savedFaqsRef.current.has(`${faq.question}::${faq.answer}`));
-        if (newFaqs.length > 0) {
+        const valid = faqs.filter(f => f.question.trim() && f.answer.trim());
+        const newOnes = valid.filter(f => !savedFaqsRef.current.has(`${f.question}::${f.answer}`));
+        if (newOnes.length) {
           const results = await Promise.allSettled(
-            newFaqs.map(faq =>
-              createFAQMutation.mutateAsync({ chatbot_id: savedId, ...faq })
-            )
+            newOnes.map(f => createFAQMutation.mutateAsync({ chatbot_id: savedId, ...f }))
           );
-          results.forEach((result, i) => {
-            if (result.status === 'fulfilled') {
-              savedFaqsRef.current.add(`${newFaqs[i].question}::${newFaqs[i].answer}`);
-            }
+          results.forEach((r, i) => {
+            if (r.status === 'fulfilled') savedFaqsRef.current.add(`${newOnes[i].question}::${newOnes[i].answer}`);
           });
           const failed = results.filter(r => r.status === 'rejected').length;
-          if (failed > 0) {
-            toast.warning(`${failed} FAQ(s) failed to save, but you can continue`);
-          }
+          if (failed > 0) toast.warning(`${failed} FAQ(s) failed to save, but you can continue`);
         }
       }
 
@@ -142,109 +128,19 @@ const ChatbotBuilder = () => {
           toast.success('🎉 Chatbot created successfully!');
         }
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('handleNext error:', err);
-      toast.error(err?.message || 'Something went wrong. Please try again.');
+      toast.error(err instanceof Error ? err.message : 'Something went wrong. Please try again.');
     } finally {
       setSaving(false);
     }
   };
-
-  const addFAQ = () => setFaqs([...faqs, { question: '', answer: '' }]);
-  const removeFAQ = (i: number) => { if (faqs.length <= 1) return; setFaqs(faqs.filter((_, idx) => idx !== i)); };
-  const updateFAQField = (i: number, field: 'question' | 'answer', value: string) => { const u = [...faqs]; u[i][field] = value; setFaqs(u); };
-
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      const text = ev.target?.result as string;
-      if (!text) return;
-      const newFaqs: FAQPair[] = [];
-      if (file.name.endsWith('.csv')) {
-        text.split('\n').filter(l => l.trim()).forEach(line => {
-          const [q, ...rest] = line.split(',');
-          const a = rest.join(',').trim();
-          if (q?.trim() && a) newFaqs.push({ question: q.trim().replace(/^"|"$/g, ''), answer: a.replace(/^"|"$/g, '') });
-        });
-      } else {
-        const lines = text.split('\n').filter(l => l.trim());
-        for (let i = 0; i < lines.length - 1; i += 2) {
-          const q = lines[i].replace(/^Q:\s*/i, '').trim();
-          const a = lines[i + 1]?.replace(/^A:\s*/i, '').trim();
-          if (q && a) newFaqs.push({ question: q, answer: a });
-        }
-      }
-      if (newFaqs.length) { setFaqs(prev => [...prev.filter(f => f.question || f.answer), ...newFaqs]); toast.success(`Imported ${newFaqs.length} FAQs`); }
-      else toast.error('No FAQs found in file');
-    };
-    reader.readAsText(file);
-    e.target.value = '';
-  };
-
-  const handleAIGenerate = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    e.target.value = '';
-
-    const text = await new Promise<string>((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = (ev) => resolve(ev.target?.result as string || '');
-      reader.onerror = () => reject(new Error('Failed to read file'));
-      reader.readAsText(file);
-    });
-
-    if (text.trim().length < 50) {
-      toast.error('Document is too short. Please upload a more detailed file.');
-      return;
-    }
-
-    setGeneratingFaqs(true);
-    try {
-      const { data, error } = await supabase.functions.invoke('generate-faqs', {
-        body: { document_text: text },
-      });
-
-      if (error) throw error;
-      if (data?.error) { toast.error(data.error); return; }
-
-      const generated: FAQPair[] = data.faqs;
-      if (generated?.length) {
-        setFaqs(prev => [...prev.filter(f => f.question || f.answer), ...generated]);
-        toast.success(`Generated ${generated.length} FAQs from your document`);
-      } else {
-        toast.error('No FAQs could be extracted. Try a different document.');
-      }
-    } catch (err: any) {
-      console.error('AI FAQ generation failed:', err);
-      toast.error('Failed to generate FAQs. Please try again.');
-    } finally {
-      setGeneratingFaqs(false);
-    }
-  };
-
-  const getPublishedOrigin = () => {
-    const origin = window.location.origin;
-    if (origin.includes('-preview--') && origin.includes('.lovable.app')) return 'https://ideaweave-bot.lovable.app';
-    return origin;
-  };
-
-  const baseUrl = getPublishedOrigin();
-  const widgetUrl = embedToken ? `${baseUrl}/widget/${embedToken}` : '';
-  const embedJsUrl = `${baseUrl}/embed.js`;
-  const sdkSnippet = embedToken
-    ? `<!-- ChatBot Studio Embed -->\n<script>\n  window.$chatbot = {\n    id: "${embedToken}",\n    color: "${primaryColor}",\n    position: "bottom-right"\n  };\n</script>\n<script src="${embedJsUrl}" async></script>`
-    : '';
-
-  const inputClass = "w-full rounded-[10px] border border-border bg-[hsl(var(--color-surface-3))] px-3 py-2 text-[15px] text-foreground placeholder:text-muted-foreground outline-none transition-colors focus:border-primary";
 
   return (
     <PageWrapper>
       <SEO title={isEdit ? `Edit ${name}` : 'New Chatbot'} noIndex />
       {showConfetti && <ReactConfetti recycle={false} numberOfPieces={300} />}
 
-      {/* Step indicator */}
       <div className="mb-8 flex items-center justify-between">
         <div>
           <p className="text-[12px] text-muted-foreground">Step {step} of 5</p>
@@ -258,174 +154,30 @@ const ChatbotBuilder = () => {
       </div>
 
       <div className="mx-auto max-w-[480px]">
-        {/* Step 1 */}
         {step === 1 && (
-          <div className="space-y-5">
-            <div>
-              <label className="mb-1.5 block text-[13px] font-medium text-muted-foreground">Chatbot Name</label>
-              <input type="text" value={name} onChange={(e) => setName(e.target.value)} className={inputClass} placeholder="e.g. Support Bot" maxLength={100} />
-            </div>
-            <div>
-              <label className="mb-1.5 block text-[13px] font-medium text-muted-foreground">Welcome Message</label>
-              <textarea value={welcomeMessage} onChange={(e) => setWelcomeMessage(e.target.value)} rows={3} maxLength={500} className={inputClass} />
-            </div>
-            <div>
-              <label className="mb-2 block text-[13px] font-medium text-muted-foreground">Avatar</label>
-              <AvatarPicker value={avatarEmoji} avatarType={avatarType} botName={name} accentColor={primaryColor} onChangeType={setAvatarType} onChangeIcon={setAvatarEmoji} />
-            </div>
-          </div>
+          <Step1Identity
+            name={name} setName={setName}
+            welcomeMessage={welcomeMessage} setWelcomeMessage={setWelcomeMessage}
+            avatarEmoji={avatarEmoji} setAvatarEmoji={setAvatarEmoji}
+            avatarType={avatarType} setAvatarType={setAvatarType}
+            primaryColor={primaryColor} inputClass={INPUT_CLASS}
+          />
         )}
-
-        {/* Step 2 */}
-        {step === 2 && (
-          <div className="space-y-4">
-            <div className="grid gap-3 sm:grid-cols-2">
-              {TONES.map(({ value, label, icon: Icon, desc }) => (
-                <button
-                  key={value}
-                  onClick={() => setTone(value)}
-                  className={`rounded-[14px] border p-4 text-left transition-all ${
-                    tone === value ? 'border-primary bg-primary/5' : 'border-border hover:border-[hsl(var(--border)/0.18)]'
-                  }`}
-                >
-                  <Icon className={`mb-2 h-4 w-4 ${tone === value ? 'text-primary' : 'text-muted-foreground'}`} />
-                  <p className="text-[14px] font-medium text-foreground">{label}</p>
-                  <p className="text-[12px] text-muted-foreground">{desc}</p>
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Step 3 — Knowledge */}
-        {step === 3 && (
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <p className="text-[13px] text-muted-foreground">Teach your chatbot about your business</p>
-              <div className="flex gap-1.5">
-                <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-[6px] border border-border px-2.5 py-1 text-[11px] font-medium text-muted-foreground hover:text-foreground transition-colors">
-                  <Upload className="h-3 w-3" /> Import
-                  <input type="file" accept=".txt,.csv" onChange={handleFileUpload} className="hidden" />
-                </label>
-              </div>
-            </div>
-
-            {/* AI Generate FAQs card */}
-            <div className="rounded-[14px] border border-dashed border-primary/30 bg-primary/5 p-4">
-              <div className="flex items-start gap-3">
-                <div className="rounded-[10px] bg-primary/10 p-2">
-                  <Wand2 className="h-4 w-4 text-primary" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-[14px] font-medium text-foreground">Auto-Generate FAQs</p>
-                  <p className="text-[12px] text-muted-foreground mt-0.5">Upload a company document (.txt, .csv) and AI will generate FAQs automatically</p>
-                  <label className={`mt-3 inline-flex cursor-pointer items-center gap-1.5 rounded-[8px] bg-primary px-3 py-1.5 text-[12px] font-medium text-primary-foreground hover:bg-primary/90 transition-all active:scale-[0.97] ${generatingFaqs ? 'opacity-50 pointer-events-none' : ''}`}>
-                    {generatingFaqs ? (
-                      <><Spinner className="h-3 w-3" /> Generating...</>
-                    ) : (
-                      <><FileText className="h-3 w-3" /> Upload Document</>
-                    )}
-                    <input type="file" accept=".txt,.csv" onChange={handleAIGenerate} className="hidden" disabled={generatingFaqs} />
-                  </label>
-                </div>
-              </div>
-            </div>
-
-            {faqs.map((faq, i) => (
-              <div key={i} className="space-y-2 rounded-[14px] border border-border bg-card p-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-medium text-muted-foreground">FAQ {i + 1}</span>
-                  {faqs.length > 1 && (
-                    <button onClick={() => removeFAQ(i)} className="rounded-[6px] p-1 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors">
-                      <Trash2 className="h-3 w-3" />
-                    </button>
-                  )}
-                </div>
-                <input type="text" value={faq.question} onChange={(e) => updateFAQField(i, 'question', e.target.value)} placeholder="Question" maxLength={500} className={inputClass} />
-                <textarea value={faq.answer} onChange={(e) => updateFAQField(i, 'answer', e.target.value)} placeholder="Answer" rows={2} maxLength={2000} className={inputClass} />
-              </div>
-            ))}
-            <button onClick={addFAQ} className="text-[13px] font-medium text-primary hover:underline">+ Add another FAQ</button>
-          </div>
-        )}
-
-        {/* Step 4 — Appearance with full-theme preview */}
+        {step === 2 && <Step2Personality tone={tone} setTone={setTone} />}
+        {step === 3 && <Step3Knowledge faqs={faqs} setFaqs={setFaqs} inputClass={INPUT_CLASS} />}
         {step === 4 && (
-          <div className="space-y-5">
-            <div>
-              <label className="mb-2 block text-[13px] font-medium text-muted-foreground">Primary Color</label>
-              <ColorPicker value={primaryColor} onChange={setPrimaryColor} />
-            </div>
-            <div className="rounded-[14px] border border-border bg-card p-5">
-              <p className="mb-3 text-[11px] font-medium tracking-[0.06em] uppercase text-muted-foreground">Preview</p>
-              <div className="mx-auto w-64 rounded-[14px] border border-border overflow-hidden" style={{ background: 'hsl(var(--background))' }}>
-                {/* Themed header */}
-                <div className="flex items-center gap-2 px-3 py-2.5" style={{ background: `${primaryColor}0F`, borderBottom: `1px solid ${primaryColor}1A` }}>
-                  <BotAvatar avatarEmoji={avatarType === 'initials' ? 'initials' : avatarEmoji} botName={name} accentColor={primaryColor} size="sm" />
-                  <div className="flex-1 min-w-0">
-                    <span className="text-[12px] font-semibold text-foreground truncate block">{name || 'Your Bot'}</span>
-                    <div className="flex items-center gap-1">
-                      <span className="h-1 w-1 rounded-full" style={{ background: primaryColor }} />
-                      <span className="text-[9px] text-muted-foreground">Online</span>
-                    </div>
-                  </div>
-                </div>
-                {/* Messages */}
-                <div className="p-2.5 space-y-1.5">
-                  <div className="rounded-[8px] bg-[hsl(var(--color-surface-2))] p-2 text-[11px] text-foreground">{welcomeMessage || 'Hello!'}</div>
-                  <div className="flex justify-end">
-                    <div className="rounded-[8px] px-2 py-1.5 text-[11px] text-white" style={{ background: primaryColor }}>How does it work?</div>
-                  </div>
-                </div>
-                {/* Input */}
-                <div className="px-2.5 pb-2.5">
-                  <div className="flex gap-1.5">
-                    <div className="flex-1 rounded-full border border-border bg-[hsl(var(--color-surface-3))] px-2.5 py-1 text-[10px] text-muted-foreground" style={{ borderColor: `${primaryColor}30` }}>Message...</div>
-                    <button className="rounded-full px-2.5 py-1 text-[10px] font-medium text-white" style={{ backgroundColor: primaryColor }}>Send</button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
+          <Step4Appearance
+            primaryColor={primaryColor} setPrimaryColor={setPrimaryColor}
+            name={name} welcomeMessage={welcomeMessage}
+            avatarEmoji={avatarEmoji} avatarType={avatarType}
+          />
         )}
+        {step === 5 && <Step5Deploy embedToken={embedToken} primaryColor={primaryColor} botId={botId} />}
 
-        {/* Step 5 — Deploy with SDK snippet */}
-        {step === 5 && (
-          <div className="space-y-6 text-center">
-            <Sparkles className="mx-auto h-10 w-10 text-primary" />
-            <h2 className="text-[22px] font-semibold text-foreground">Your chatbot is ready!</h2>
-            <p className="text-[13px] text-muted-foreground">Deploy it anywhere with the SDK embed code</p>
-            {embedToken ? (
-              <>
-                <div className="rounded-[14px] border border-border bg-card p-4 text-left">
-                  <p className="mb-2 text-[11px] font-medium tracking-[0.06em] uppercase text-muted-foreground">SDK Embed Code</p>
-                  <pre className="overflow-x-auto rounded-[10px] bg-[hsl(var(--color-surface-3))] p-3 font-mono text-[12px] text-foreground whitespace-pre-wrap">{sdkSnippet}</pre>
-                  <button onClick={() => { navigator.clipboard.writeText(sdkSnippet); toast.success('Copied!'); }} className="mt-2 inline-flex items-center gap-1 text-[12px] font-medium text-primary hover:underline">
-                    <Copy className="h-3 w-3" /> Copy code
-                  </button>
-                </div>
-                <a href={widgetUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-[13px] font-medium text-primary hover:underline">
-                  <ExternalLink className="h-3.5 w-3.5" /> Open live preview
-                </a>
-              </>
-            ) : (
-              <p className="text-[13px] text-muted-foreground">Embed code will be available after saving.</p>
-            )}
-            <div>
-              <button
-                onClick={() => navigate(botId ? `/chatbot/${botId}` : '/dashboard')}
-                className="rounded-[10px] bg-primary px-6 py-2.5 text-[15px] font-medium text-primary-foreground hover:bg-primary/90 active:scale-[0.97] transition-all"
-              >
-                Go to Dashboard
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Navigation */}
         {step < 5 && (
           <div className="mt-8 flex justify-between">
             <button
+              type="button"
               onClick={() => step > 1 && setStep(step - 1)}
               disabled={step === 1 || saving}
               className="inline-flex items-center gap-1 rounded-[10px] border border-border px-4 py-2 text-[13px] font-medium text-foreground transition-colors hover:bg-[hsl(var(--color-surface-1))] disabled:opacity-25"
@@ -433,6 +185,7 @@ const ChatbotBuilder = () => {
               <ChevronLeft className="h-3.5 w-3.5" /> Back
             </button>
             <button
+              type="button"
               onClick={handleNext}
               disabled={saving}
               className="rounded-[10px] bg-primary px-5 py-2 text-[13px] font-medium text-primary-foreground hover:bg-primary/90 active:scale-[0.97] disabled:opacity-50 transition-all"

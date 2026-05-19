@@ -29,9 +29,16 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: "unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    const { faq_id } = await req.json();
-    if (!faq_id) {
-      return new Response(JSON.stringify({ error: "missing_faq_id" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    let parsedBody: { faq_id?: unknown };
+    try {
+      parsedBody = await req.json();
+    } catch {
+      return new Response(JSON.stringify({ error: "invalid_json" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+    const { faq_id } = parsedBody;
+    const uuidRe = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (typeof faq_id !== "string" || !uuidRe.test(faq_id)) {
+      return new Response(JSON.stringify({ error: "invalid_faq_id" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     const supabase = createClient(supabaseUrl, serviceKey);
