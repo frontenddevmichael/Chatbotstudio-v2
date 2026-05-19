@@ -1,100 +1,72 @@
+# Final Audit Wave — Production Hardening
 
+Close out the remaining items from the original ruthless audit in one comprehensive pass.
 
-## Admin Suite Enhancement Plan
+## 1. Edge function hardening (parity with `chat`)
 
-After reviewing all 6 admin pages and the layout, here are the improvements organized by impact:
+Apply the same input-validation + structured-error pattern already used in `supabase/functions/chat/index.ts` to the other three functions:
 
----
+- **`admin-data`** — validate `action` against a whitelist of allowed strings, validate `payload` shape per action, return `{ error, code }` with 400 on invalid input. Confirm `x-admin-secret` check is constant-time-ish and rejects early.
+- **`generate-faqs`** — enforce `document_text` is a string, length bounds (e.g. 50–50 000 chars), strip control chars, rate-limit per IP via `check_and_increment_rate_limit`.
+- **`supercharge`** — validate `faq_id` as UUID, ensure caller owns the FAQ via JWT, keep existing rate limit.
+- **`reset-monthly-messages`** — confirm it only accepts scheduled/cron invocations (reject if no service-role / cron secret header).
 
-### 1. Dashboard Enhancements
+All four: ensure CORS headers on every response (including errors) and consistent `{ error: string, code?: string }` shape.
 
-**Current gaps**: No percentage changes, no quick-action links, no real-time status indicators.
+## 2. SEO sweep (per-route)
 
-- Add **delta indicators** (e.g. "+12% vs last week") on KPI cards by comparing current vs previous period counts
-- Add **quick-action cards** at the top: "Ban a user", "Toggle maintenance", "Send announcement" as icon buttons
-- Add a **real-time activity feed** panel showing the last 10 actions across the platform (new signups, new conversations, new bots) with live timestamps
-- Add **conversion funnel**: Waitlist → Signup → Created Bot → Had Conversation (as a horizontal funnel chart)
-- Show **top users by message count** alongside top chatbots
+Currently only the landing page has rich head tags. Add a `<SEO>` component call to every public/auth route with route-appropriate title + description + `noIndex` where applicable:
 
-### 2. User Manager Improvements
+- `/login`, `/signup`, `/forgot-password`, `/reset-password` — titled, `noIndex`
+- `/privacy`, `/terms`, `/cookies` — titled, indexed, real descriptions
+- `/dashboard`, `/settings`, `/billing`, `/deploy`, `/chatbot/:id`, `/chatbot/:id/analytics`, `/chatbot/:id/faqs` — titled, `noIndex` (authed surfaces)
+- `/admin/*` — already mostly covered; verify all have `noIndex`
 
-**Current gaps**: No pagination, no bulk actions, no user detail view, no ability to reset passwords or impersonate.
+Also add a single canonical `<link rel="canonical">` to `index.html` pointing at `https://ideaweave-bot.lovable.app/`.
 
-- Add **pagination** (25 users per page) with page controls
-- Add **bulk actions**: select multiple users via checkboxes, then bulk upgrade/downgrade or bulk delete
-- Add **user detail drawer/dialog** — click a user row to see full profile: all their chatbots, total conversations, message history, join date, last active
-- Add **reset message count** action per user
-- Add **role filter** dropdown (All / Admin / User) alongside the plan filter
-- Add **sort controls** on table headers (by name, join date, messages, bots)
+## 3. `ChatbotBuilder.tsx` refactor (carefully)
 
-### 3. Chatbot Manager Improvements
+Split the 449-line file without changing behavior:
 
-**Current gaps**: No delete bot, no detail view, no ability to edit bot settings.
+```
+src/pages/builder/
+  ChatbotBuilder.tsx              (state machine + nav only, ~150 lines)
+  steps/
+    Step1Identity.tsx
+    Step2Personality.tsx
+    Step3Knowledge.tsx            (FAQ list + import + AI generate)
+    Step4Appearance.tsx           (color + preview)
+    Step5Deploy.tsx               (SDK snippet)
+  hooks/
+    useBuilderDraft.ts            (saveDraft + mutations)
+    useFAQImport.ts               (CSV/TXT parse + AI generate)
+```
 
-- Add **delete chatbot** action with confirmation dialog
-- Add **chatbot detail dialog** — click a row to see: all FAQs, recent conversations, embed token, configuration (tone, color, welcome message)
-- Add **export chatbots CSV**
-- Add **sort by** conversations count, FAQ count, or created date
+Each step receives typed props; parent owns state. No logic changes — only structural.
 
-### 4. Conversations Page Improvements
+## 4. Responsive QA pass
 
-**Current gaps**: No date filter, no bot filter dropdown, no export.
+Walk the key routes at 375×812 and verify no horizontal scroll / overflowing tables / clipped CTAs:
 
-- Add **chatbot filter dropdown** — filter conversations by specific bot
-- Add **date range filter** (today, 7d, 30d, all time)
-- Add **export conversations** as JSON or CSV
-- Add **delete conversation** action
-- Show **sentiment indicator** (positive/negative/neutral) based on message content keywords
+- Landing (hero, pricing, footer)
+- Dashboard, Settings, Billing
+- Builder steps 1–5
+- Admin tables (already have `overflow-x-auto`, verify on real viewport)
+- Widget page
 
-### 5. Settings Page Improvements
+Fix any issues found by adjusting Tailwind responsive classes only (no logic).
 
-**Current gaps**: Very basic, no sections, no danger zone.
+## 5. Verification
 
-- Reorganize into **tabbed sections**: General, Limits, Notifications, Danger Zone
-- Add **Danger Zone** section: "Purge all conversations older than X days", "Reset all message counts", "Export all data"
-- Add **email templates** preview section (see what emails look like)
-- Add **API rate limit** configuration (currently hardcoded)
-- Add **waitlist management** — view waitlist entries, export, delete
+- Run `supabase--linter` and address any new findings.
+- Run `security--run_security_scan` and triage.
+- Re-read modified files to confirm no regressions.
 
-### 6. Layout & UX Improvements
+## Out of scope
 
-**Current gaps**: No breadcrumbs, no global search, no notifications, no theme toggle.
+- Bundle-size analysis (would require running build artifacts beyond what this loop supports).
+- Visual redesign (separate request).
 
-- Add **breadcrumb navigation** below the mobile header
-- Add **global admin search** (Cmd+K) — search across users, bots, conversations from anywhere
-- Add **notification badge** on sidebar items showing counts (e.g. new users today)
-- Add **dark/light theme toggle** in the admin sidebar footer
-- Add **"last refreshed" timestamp** on dashboard
+## Deliverable
 
-### 7. New Admin Page: Waitlist Manager
-
-Currently waitlist count shows on dashboard but there's no page to manage it.
-
-- New **Waitlist page** (`/admin/waitlist`) — list all waitlist entries with email, date, delete action, export CSV
-- Add to sidebar navigation
-
-### 8. New Admin Page: System Logs
-
-- New **Logs page** (`/admin/logs`) — show recent edge function calls, errors, response times
-- Fetched via a new `get-logs` action in the admin-data edge function that queries recent function invocations
-
----
-
-### Files to Create/Modify
-
-| File | Change |
-|------|--------|
-| `src/components/layout/AdminLayout.tsx` | Add breadcrumbs, notification badges, theme toggle, waitlist + logs nav items |
-| `src/pages/admin/AdminDashboard.tsx` | Delta indicators, activity feed, conversion funnel, top users panel |
-| `src/pages/admin/UserManager.tsx` | Pagination, bulk actions, user detail drawer, sort controls, role filter, reset messages |
-| `src/pages/admin/ChatbotManager.tsx` | Delete bot, detail dialog, CSV export, sort controls |
-| `src/pages/admin/AdminConversations.tsx` | Bot filter dropdown, date range filter, delete conversation, export |
-| `src/pages/admin/AdminSettings.tsx` | Tabbed layout, danger zone actions, waitlist management, rate limit config |
-| `src/pages/admin/AdManager.tsx` | Minor polish — ad preview, click count display |
-| `src/pages/admin/WaitlistManager.tsx` | **New** — waitlist CRUD page |
-| `supabase/functions/admin-data/index.ts` | Add actions: `get-waitlist`, `delete-waitlist-entry`, `reset-user-messages`, `bulk-toggle-plan`, `delete-chatbot`, `delete-conversation`, `get-activity-feed`, `get-delta-stats` |
-| `src/App.tsx` | Add routes for `/admin/waitlist` |
-
-### No database changes needed
-All operations go through the service-role edge function.
-
+After execution: a summary listing files changed per section, any findings from linter/security scan, and confirmation of mobile QA results.
