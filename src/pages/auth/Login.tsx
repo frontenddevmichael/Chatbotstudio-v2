@@ -120,6 +120,22 @@ const Login = () => {
           </form>
         </div>
 
+        {needsVerify && (
+          <div className="mt-4 rounded-[12px] border border-border bg-card p-4 text-center">
+            <p className="text-[13px] text-muted-foreground mb-3">
+              Your email isn't verified yet. We can resend the verification link to <span className="font-medium text-foreground">{email}</span>.
+            </p>
+            <button
+              type="button"
+              onClick={handleResendVerify}
+              disabled={resending}
+              className="inline-flex items-center gap-2 rounded-[10px] border border-border bg-background px-4 py-2 text-[13px] font-medium text-foreground hover:bg-muted transition-colors disabled:opacity-50"
+            >
+              {resending ? <Spinner /> : <><RefreshCw className="h-4 w-4" /> Resend verification email</>}
+            </button>
+          </div>
+        )}
+
         <p className="mt-4 text-center text-[13px] text-muted-foreground">
           Don't have an account?{' '}
           <Link to="/signup" className="font-medium text-primary hover:underline">Get started</Link>
