@@ -38,7 +38,8 @@ const Signup = () => {
   const handleResend = async () => {
     setResending(true);
     try {
-      const { error } = await supabase.auth.resend({ type: 'signup', email });
+      const emailRedirectTo = `${window.location.origin}/auth/callback`;
+      const { error } = await supabase.auth.resend({ type: 'signup', email, options: { emailRedirectTo } });
       if (error) throw error;
       toast.success('Verification email resent!');
     } catch {
