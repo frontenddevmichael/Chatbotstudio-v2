@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, RefreshCw } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import SEO from '@/components/ui/SEO';
 import Spinner from '@/components/ui/Spinner';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 import logo from '@/assets/logo.png';
 
 
@@ -14,14 +15,32 @@ const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [needsVerify, setNeedsVerify] = useState(false);
+  const [resending, setResending] = useState(false);
 
   if (loading) return <div className="flex min-h-screen items-center justify-center bg-background"><Spinner className="h-6 w-6" /></div>;
   if (user) return <Navigate to="/dashboard" replace />;
+
+  const handleResendVerify = async () => {
+    if (!email) { toast.error('Enter your email above first'); return; }
+    setResending(true);
+    try {
+      const emailRedirectTo = `${window.location.origin}/auth/callback`;
+      const { error } = await supabase.auth.resend({ type: 'signup', email, options: { emailRedirectTo } });
+      if (error) throw error;
+      toast.success('Verification email sent — check your inbox.');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Could not resend verification email');
+    } finally {
+      setResending(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email || !password) { toast.error('Please fill in all fields'); return; }
     setSubmitting(true);
+    setNeedsVerify(false);
     if (email.toLowerCase() === 'admin@chatbotstudio.dev' && password === 'Studio@Admin2026!') {
       sessionStorage.setItem('admin_authenticated', 'true');
       toast.success('Welcome, Admin!');
@@ -34,7 +53,13 @@ const Login = () => {
       toast.success('Welcome back!');
       navigate('/dashboard', { replace: true });
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : 'Sign in failed');
+      const msg = err instanceof Error ? err.message : 'Sign in failed';
+      if (/not confirmed|not verified|email.*confirm/i.test(msg)) {
+        setNeedsVerify(true);
+        toast.error('Please verify your email first.');
+      } else {
+        toast.error(msg);
+      }
     } finally {
       setSubmitting(false);
     }
