@@ -17,6 +17,7 @@ const Login = React.lazy(() => import("./pages/auth/Login"));
 const Signup = React.lazy(() => import("./pages/auth/Signup"));
 const ForgotPassword = React.lazy(() => import("./pages/auth/ForgotPassword"));
 const ResetPassword = React.lazy(() => import("./pages/auth/ResetPassword"));
+const AuthCallback = React.lazy(() => import("./pages/auth/AuthCallback"));
 const Dashboard = React.lazy(() => import("./pages/dashboard/Dashboard"));
 const ChatbotBuilder = React.lazy(() => import("./pages/builder/ChatbotBuilder"));
 const ChatbotDetail = React.lazy(() => import("./pages/chatbot/ChatbotDetail"));
@@ -58,6 +59,7 @@ const App = () => (
                   <Route path="/signup" element={<ErrorBoundary><Signup /></ErrorBoundary>} />
                   <Route path="/forgot-password" element={<ErrorBoundary><ForgotPassword /></ErrorBoundary>} />
                   <Route path="/reset-password" element={<ErrorBoundary><ResetPassword /></ErrorBoundary>} />
+                  <Route path="/auth/callback" element={<ErrorBoundary><AuthCallback /></ErrorBoundary>} />
                   <Route path="/dashboard" element={<ErrorBoundary><Dashboard /></ErrorBoundary>} />
                   <Route path="/builder/new" element={<ErrorBoundary><ChatbotBuilder /></ErrorBoundary>} />
                   <Route path="/builder/:id/edit" element={<ErrorBoundary><ChatbotBuilder /></ErrorBoundary>} />
