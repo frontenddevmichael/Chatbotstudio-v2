@@ -196,6 +196,26 @@ Deno.serve(async (req) => {
         break;
       }
 
+      case "export-auth-users": {
+        const { data: authData, error } = await supabase.auth.admin.listUsers({ perPage: 1000 });
+        if (error) throw error;
+        result = (authData?.users ?? []).map((u: any) => ({
+          id: u.id,
+          email: u.email,
+          phone: u.phone,
+          email_confirmed_at: u.email_confirmed_at,
+          phone_confirmed_at: u.phone_confirmed_at,
+          last_sign_in_at: u.last_sign_in_at,
+          created_at: u.created_at,
+          updated_at: u.updated_at,
+          providers: u.app_metadata?.providers ?? [u.app_metadata?.provider].filter(Boolean),
+          user_metadata: u.user_metadata,
+          app_metadata: u.app_metadata,
+        }));
+        break;
+      }
+
+
       case "get-roles": {
         const { data } = await supabase
           .from("user_roles")
