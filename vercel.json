@@ -1,5 +1,11 @@
 {
   "rewrites": [
     { "source": "/(.*)", "destination": "/" }
-  ]
+  ],
+  "env": {
+    "VITE_SUPABASE_URL": "https://rtnhlmmgvvfupbibyrhu.supabase.co",
+    "VITE_SUPABASE_PUBLISHABLE_KEY": "sb_publishable_PCqrObYuYzFKW9_bhlmMbA_P-yoIq4B",
+    "VITE_SUPABASE_PROJECT_ID": "rtnhlmmgvvfupbibyrhu",
+    "VITE_ENABLE_VOICE": "true"
+  }
 }
