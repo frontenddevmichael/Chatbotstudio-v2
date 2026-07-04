@@ -10,9 +10,8 @@ import {
   CommandItem,
   CommandSeparator,
 } from '@/components/ui/command';
-import {
-  LayoutDashboard, Bot, Plus, CreditCard, Settings, BarChart3, Rocket, FileQuestion,
-} from 'lucide-react';
+import { CreditCard } from 'lucide-react';
+import { DashboardIcon, BotIcon, SettingsIcon, PlusIcon, AnalyticsIcon, LaunchIcon, FAQIcon } from '@/components/ui/icons';
 
 const CommandPalette = () => {
   const [open, setOpen] = useState(false);
@@ -43,16 +42,16 @@ const CommandPalette = () => {
         <CommandEmpty>No results found.</CommandEmpty>
         <CommandGroup heading="Navigation">
           <CommandItem onSelect={() => go('/dashboard')}>
-            <LayoutDashboard className="mr-2 h-4 w-4" /> Dashboard
+            <DashboardIcon className="mr-2 h-4 w-4" /> Dashboard
           </CommandItem>
           <CommandItem onSelect={() => go('/builder/new')}>
-            <Plus className="mr-2 h-4 w-4" /> New Chatbot
+            <PlusIcon className="mr-2 h-4 w-4" /> New Chatbot
           </CommandItem>
           <CommandItem onSelect={() => go('/billing')}>
             <CreditCard className="mr-2 h-4 w-4" /> Billing
           </CommandItem>
           <CommandItem onSelect={() => go('/settings')}>
-            <Settings className="mr-2 h-4 w-4" /> Settings
+            <SettingsIcon className="mr-2 h-4 w-4" /> Settings
           </CommandItem>
         </CommandGroup>
         {chatbots?.length ? (
@@ -61,7 +60,7 @@ const CommandPalette = () => {
             <CommandGroup heading="Your Chatbots">
               {chatbots.map((bot) => (
                 <CommandItem key={bot.id} onSelect={() => go(`/chatbot/${bot.id}`)}>
-                  <Bot className="mr-2 h-4 w-4" /> {bot.name}
+                  <BotIcon className="mr-2 h-4 w-4" /> {bot.name}
                 </CommandItem>
               ))}
             </CommandGroup>

@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Send } from 'lucide-react';
+import { LaunchIcon } from '@/components/ui/icons';
 import { supabase } from '@/integrations/supabase/client';
 import BotAvatar from '@/components/chatbot/BotAvatar';
 
@@ -33,7 +33,7 @@ const TypingDots = () => (
     {[0, 1, 2].map(i => (
       <motion.div
         key={i}
-        className="w-[5px] h-[5px] rounded-full bg-white/30"
+        className="w-[5px] h-[5px] rounded-full bg-ink-muted/30"
         animate={{ scale: [1, 1.3, 1] }}
         transition={{ duration: 0.6, repeat: Infinity, delay: i * 0.15 }}
       />
@@ -41,7 +41,12 @@ const TypingDots = () => (
   </div>
 );
 
-const LiveChatDemo = () => {
+interface Props {
+  botName?: string;
+  welcomeMessage?: string;
+}
+
+const LiveChatDemo = ({ botName = 'ShopBot', welcomeMessage = 'Hi! How can I help you today?' }: Props) => {
   const [messages, setMessages] = useState<Msg[]>([]);
   const [phase, setPhase] = useState<'playing' | 'typing' | 'interactive'>('playing');
   const [showTyping, setShowTyping] = useState(false);
@@ -49,34 +54,47 @@ const LiveChatDemo = () => {
   const [sending, setSending] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const startedRef = useRef(false);
+  const isDefault = botName === 'ShopBot';
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
   }, [messages, showTyping]);
 
   useEffect(() => {
-    if (startedRef.current || phase !== 'playing') return;
+    const timers: ReturnType<typeof setTimeout>[] = [];
+    if (startedRef.current) return;
     startedRef.current = true;
+    if (!isDefault) {
+      setMessages([{ role: 'assistant', content: welcomeMessage }]);
+      setPhase('interactive');
+      return;
+    }
+    if (phase !== 'playing') return;
     const play = (idx: number) => {
       if (idx >= SCRIPT.length) { setPhase('interactive'); return; }
       const msg = SCRIPT[idx];
       if (msg.role === 'user') {
-        setTimeout(() => {
+        const t1 = setTimeout(() => {
           setMessages(prev => [...prev, msg]);
-          setTimeout(() => {
+          const t2 = setTimeout(() => {
             setShowTyping(true);
-            setTimeout(() => {
+            const t3 = setTimeout(() => {
               setShowTyping(false);
               if (idx + 1 < SCRIPT.length) {
                 setMessages(prev => [...prev, SCRIPT[idx + 1]]);
               }
-              setTimeout(() => play(idx + 2), 1200);
+              const t4 = setTimeout(() => play(idx + 2), 1200);
+              timers.push(t4);
             }, 1500);
+            timers.push(t3);
           }, 600);
+          timers.push(t2);
         }, idx === 0 ? 1000 : 800);
+        timers.push(t1);
       }
     };
     play(0);
+    return () => timers.forEach(clearTimeout);
   }, [phase]);
 
   const sendReal = async () => {
@@ -109,21 +127,21 @@ const LiveChatDemo = () => {
 
   return (
     <div className="w-full max-w-[360px] mx-auto">
-      <div className="rounded-[20px] bg-[#0a0a0a] border border-white/[0.08] shadow-xl overflow-hidden">
+      <div className="rounded-[20px] bg-surface border border-border/10 shadow-card overflow-hidden">
         {/* Header */}
-        <div className="px-4 py-3 border-b border-white/[0.06] flex items-center gap-3 bg-black/60 backdrop-blur-xl">
-          <BotAvatar avatarEmoji="headphones" botName="ShopBot" accentColor="#0a84ff" size="sm" />
+        <div className="px-4 py-3 border-b border-border/10 flex items-center gap-3 bg-surface/80 backdrop-blur-xl">
+          <BotAvatar avatarEmoji="headphones" botName={botName} accentColor="hsl(var(--primary))" size="sm" />
           <div className="flex-1 min-w-0">
-            <div className="text-[14px] font-semibold text-white/90">ShopBot</div>
+            <div className="text-[14px] font-semibold text-ink">{botName}</div>
             <div className="flex items-center gap-1.5">
-              <span className="w-[6px] h-[6px] rounded-full bg-[#30d158]" />
-              <span className="text-[11px] text-white/38">Online</span>
+              <span className="w-[6px] h-[6px] rounded-full bg-success-dot" />
+              <span className="text-[11px] text-label-muted">Online</span>
             </div>
           </div>
         </div>
 
         {/* Messages */}
-        <div ref={scrollRef} className="h-[280px] overflow-y-auto p-4 space-y-3">
+        <div ref={scrollRef} className="h-[280px] overflow-y-auto p-4 space-y-3 bg-surface">
           <AnimatePresence mode="popLayout">
             {messages.map((msg, i) => (
               <motion.div
@@ -135,8 +153,8 @@ const LiveChatDemo = () => {
               >
                 <div className={`max-w-[80%] px-[14px] py-[10px] text-[14px] whitespace-pre-line leading-relaxed ${
                   msg.role === 'user'
-                    ? 'bg-[#0a84ff] text-white rounded-[18px] rounded-br-[4px]'
-                    : 'bg-[#1c1c1c] border border-white/[0.06] text-white/80 rounded-[18px] rounded-bl-[4px]'
+                    ? 'bg-blue-fill text-ink rounded-[18px] rounded-br-[4px]'
+                    : 'bg-surface border border-border/10 text-ink-muted rounded-[18px] rounded-bl-[4px]'
                 }`}>
                   {msg.role === 'assistant' && i === messages.length - 1 && phase === 'playing' ? (
                     <Typewriter text={msg.content} speed={20} />
@@ -147,7 +165,7 @@ const LiveChatDemo = () => {
           </AnimatePresence>
           {showTyping && (
             <div className="flex justify-start">
-              <div className="bg-[#1c1c1c] border border-white/[0.06] rounded-[18px] rounded-bl-[4px] px-[14px]">
+              <div className="bg-surface border border-border/10 rounded-[18px] rounded-bl-[4px] px-[14px]">
                 <TypingDots />
               </div>
             </div>
@@ -155,7 +173,7 @@ const LiveChatDemo = () => {
         </div>
 
         {/* Input */}
-        <div className="p-3 border-t border-white/[0.06] bg-[#0a0a0a]">
+        <div className="p-3 border-t border-border/10 bg-surface">
           {phase === 'interactive' ? (
             <div className="flex gap-2">
               <input
@@ -163,19 +181,25 @@ const LiveChatDemo = () => {
                 onChange={e => setInput(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && sendReal()}
                 placeholder="Try asking something..."
-                className="flex-1 h-9 bg-[#1c1c1c] border border-white/[0.06] rounded-full px-4 text-[14px] text-white/90 placeholder:text-white/25 focus:outline-none focus:border-[#0a84ff]/40"
+                className="flex-1 h-9 bg-surface-3 border border-border/10 rounded-full px-4 text-[14px] text-ink placeholder:text-label-muted/50 focus:outline-none focus:border-primary/40"
               />
               <button
                 onClick={sendReal}
                 disabled={sending}
-                className="w-9 h-9 rounded-full bg-[#0a84ff] flex items-center justify-center text-white hover:bg-[#409cff] transition-colors disabled:opacity-40"
+                className="w-9 h-9 rounded-full bg-primary flex items-center justify-center text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-40"
               >
-                <Send size={14} />
+                <LaunchIcon className="h-3.5 w-3.5" />
               </button>
             </div>
           ) : (
-            <div className="text-center text-[11px] text-white/25 py-2">
-              Watching live demo...
+            <div className="flex items-center justify-center gap-3 py-2">
+              <span className="text-[11px] text-label-muted/50">Watching live demo...</span>
+              <button
+                onClick={() => { startedRef.current = true; setPhase('interactive'); }}
+                className="text-[11px] font-medium text-primary hover:text-primary/80 transition-colors"
+              >
+                Skip
+              </button>
             </div>
           )}
         </div>

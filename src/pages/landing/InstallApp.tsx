@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useInView } from 'react-intersection-observer';
-import { Download, Wifi, Zap, Bell, Smartphone, Monitor } from 'lucide-react';
+import { Download, Wifi, Bell, Smartphone, Monitor } from 'lucide-react';
+import { SuperchargeIcon } from '@/components/ui/icons';
 
 interface BeforeInstallPromptEvent extends Event {
   prompt(): Promise<void>;
@@ -10,7 +11,7 @@ interface BeforeInstallPromptEvent extends Event {
 
 const BENEFITS = [
   { icon: Wifi, title: 'Offline Access', desc: 'Manage your bots even without an internet connection.' },
-  { icon: Zap, title: 'Instant Launch', desc: 'Open from your home screen — no browser needed.' },
+  { icon: SuperchargeIcon, title: 'Instant Launch', desc: 'Open from your home screen — no browser needed.' },
   { icon: Bell, title: 'Push Notifications', desc: 'Get alerted when conversations need attention.' },
 ];
 
@@ -64,7 +65,7 @@ const InstallApp = () => {
           <span className="inline-block text-[11px] font-medium tracking-[0.15em] uppercase text-muted-foreground/60 mb-3">
             Install the App
           </span>
-          <h2 className="font-serif text-[clamp(28px,4vw,44px)] italic leading-[1.1] text-foreground/90">
+          <h2 className="font-display text-[clamp(28px,4vw,44px)] italic leading-[1.1] text-ink">
             Your pocket command center
           </h2>
           <p className="mt-4 text-[15px] text-muted-foreground max-w-lg mx-auto leading-relaxed">

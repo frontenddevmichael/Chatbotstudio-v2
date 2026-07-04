@@ -1,5 +1,5 @@
 import { useAuth } from '@/context/AuthContext';
-import { LogOut, Plus, ChevronRight } from 'lucide-react';
+import { LogOutIcon, PlusIcon, ChevronRightIcon } from '@/components/ui/icons';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import ThemeToggle from '@/components/ui/ThemeToggle';
@@ -41,7 +41,7 @@ const TopNav = () => {
           <div className="flex items-center gap-1 text-[12px] text-muted-foreground">
             {breadcrumbs.map((crumb, i) => (
               <span key={i} className="flex items-center gap-1">
-                {i > 0 && <ChevronRight className="h-3 w-3 text-muted-foreground/40" />}
+                {i > 0 && <ChevronRightIcon className="h-3 w-3 text-muted-foreground/40" />}
                 <span className={i === breadcrumbs.length - 1 ? 'text-foreground font-medium' : ''}>{crumb}</span>
               </span>
             ))}
@@ -54,7 +54,7 @@ const TopNav = () => {
           to="/builder/new"
           className="hidden items-center gap-1.5 rounded-[6px] border border-border px-3 py-1.5 text-[12px] font-medium text-muted-foreground transition-colors hover:text-foreground hover:border-[hsl(var(--border)/0.18)] sm:flex"
         >
-          <Plus className="h-3 w-3" /> New
+          <PlusIcon className="h-3 w-3" /> New
         </Link>
         <ThemeToggle />
         <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[hsl(var(--color-surface-3))] text-[11px] font-semibold text-foreground">
@@ -65,7 +65,7 @@ const TopNav = () => {
           className="rounded-[6px] p-1.5 text-muted-foreground transition-colors hover:text-foreground hover:bg-[hsl(var(--color-surface-1))]"
           title="Sign out"
         >
-          <LogOut className="h-3.5 w-3.5" />
+          <LogOutIcon className="h-3.5 w-3.5" />
         </button>
       </div>
     </header>

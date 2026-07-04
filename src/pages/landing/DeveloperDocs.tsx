@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useInView } from 'react-intersection-observer';
-import { Monitor, Link as LinkIcon, Copy, Check, ArrowRight } from 'lucide-react';
+import { Monitor, Link as LinkIcon, ArrowRight } from 'lucide-react';
+import { CopyIcon, CheckIcon } from '@/components/ui/icons';
 import { toast } from 'sonner';
 
 type EmbedTab = 'sdk' | 'link';
@@ -16,12 +17,12 @@ const SNIPPETS: Record<EmbedTab, string> = {
 <script>
   window.$chatbot = {
     id: "YOUR_EMBED_TOKEN",
-    color: "#0a84ff",
+    color: "#9A3D22",
     position: "bottom-right"
   };
 </script>
-<script src="https://ideaweave-bot.lovable.app/embed.js" async></script>`,
-  link: `https://ideaweave-bot.lovable.app/widget/YOUR_EMBED_TOKEN
+<script src="https://chatbotstudio.dev/embed.js" async></script>`,
+  link: `https://chatbotstudio.dev/widget/YOUR_EMBED_TOKEN
 
 Share this URL directly — no code needed.
 Users can chat with your bot from any browser.`,
@@ -49,15 +50,15 @@ const DeveloperDocs = () => {
     <section id="developers" ref={ref} className="relative py-28 px-6 bg-background">
       <div className="max-w-5xl mx-auto">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={inView ? { opacity: 1, y: 0 } : {}} transition={{ duration: 0.5 }} className="text-center mb-16">
-          <span className="inline-block text-[11px] font-medium tracking-[0.15em] uppercase text-muted-foreground/60 mb-3">For Developers</span>
-          <h2 className="font-serif text-[clamp(28px,4vw,44px)] italic leading-[1.1] text-foreground/90">Embed in minutes</h2>
+          <span className="inline-block text-[11px] font-medium tracking-[0.15em] uppercase text-primary mb-3">For Developers</span>
+          <h2 className="font-display text-[clamp(28px,4vw,44px)] italic leading-[1.1] text-ink">Embed in minutes</h2>
           <p className="mt-4 text-[15px] text-muted-foreground max-w-lg mx-auto leading-relaxed">Two simple ways to add your AI chatbot to any website. Copy, paste, done.</p>
         </motion.div>
 
         <motion.div initial={{ opacity: 0, y: 16 }} animate={inView ? { opacity: 1, y: 0 } : {}} transition={{ duration: 0.5, delay: 0.1 }} className="grid sm:grid-cols-3 gap-6 mb-16">
           {STEPS.map((step, i) => (
             <div key={step.num} className="flex items-start gap-3">
-              <span className="font-serif text-[28px] italic text-muted-foreground/30 leading-none shrink-0">{step.num}</span>
+              <span className="font-display text-[28px] italic text-muted-foreground/30 leading-none shrink-0">{step.num}</span>
               <div>
                 <p className="text-[14px] font-medium text-foreground/80">{step.title}</p>
                 <p className="text-[12px] text-muted-foreground/70 mt-0.5 leading-relaxed">{step.desc}</p>
@@ -87,7 +88,7 @@ const DeveloperDocs = () => {
           <div className="relative">
             <pre className="p-5 text-[12px] leading-[1.7] text-muted-foreground font-mono overflow-x-auto whitespace-pre">{SNIPPETS[active]}</pre>
             <button onClick={copy} className="absolute top-3 right-3 flex items-center gap-1.5 rounded-[8px] bg-muted/70 hover:bg-muted px-3 py-1.5 text-[11px] font-medium text-muted-foreground hover:text-foreground/80 transition-colors">
-              {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+              {copied ? <CheckIcon className="h-3 w-3" /> : <CopyIcon className="h-3 w-3" />}
               {copied ? 'Copied' : 'Copy'}
             </button>
           </div>

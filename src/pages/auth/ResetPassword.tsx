@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
+import { useNavigate, Link } from 'react-router-dom';
+import { supabase, initialAuthHash } from '@/integrations/supabase/client';
 import SEO from '@/components/ui/SEO';
 import Spinner from '@/components/ui/Spinner';
 import { toast } from 'sonner';
+import { getErrorMessage } from '@/lib/errors';
 
 const ResetPassword = () => {
   const navigate = useNavigate();
@@ -11,10 +12,10 @@ const ResetPassword = () => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [ready, setReady] = useState(false);
+  const [linkExpired, setLinkExpired] = useState(false);
 
   useEffect(() => {
-    // Check for recovery token in URL hash (multiple formats)
-    const hash = window.location.hash;
+    const hash = window.location.hash || initialAuthHash || '';
     const params = new URLSearchParams(hash.replace('#', ''));
     const type = params.get('type');
     const accessToken = params.get('access_token');
@@ -24,22 +25,18 @@ const ResetPassword = () => {
       return;
     }
 
-    // Listen for auth state change with recovery event
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
       if (event === 'PASSWORD_RECOVERY') {
         setReady(true);
       }
     });
 
-    // Fallback: if hash exists but in a different format, give it time
-    if (hash.length > 1) {
-      setTimeout(() => setReady(true), 1500);
-    } else {
-      // No hash at all — still show the form after a brief wait
-      setTimeout(() => setReady(true), 500);
-    }
+    const t1 = setTimeout(() => setReady(true), hash.length > 1 ? 1500 : 500);
 
-    return () => subscription.unsubscribe();
+    return () => {
+      subscription.unsubscribe();
+      clearTimeout(t1);
+    };
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -53,10 +50,19 @@ const ResetPassword = () => {
       toast.success('Password updated successfully');
       navigate('/dashboard');
     } catch (err: unknown) {
-      toast.error((err instanceof Error ? err.message : null) || 'Failed to update password');
+      const msg = getErrorMessage(err, 'Failed to update password');
+      // Detect expired/invalid recovery session
+      if (/expired|invalid.*session|not authenticated/i.test(msg)) {
+        setLinkExpired(true);
+      }
+      toast.error(msg);
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const handleRetryLink = () => {
+    navigate('/forgot-password');
   };
 
   return (
@@ -71,7 +77,20 @@ const ResetPassword = () => {
         </div>
 
         <div className="rounded-[14px] border border-border bg-card p-6" style={{ boxShadow: 'var(--shadow-md)' }}>
-          {!ready ? (
+          {linkExpired ? (
+            <div className="text-center space-y-4 py-4">
+              <p className="text-[14px] text-foreground font-medium">Link expired</p>
+              <p className="text-[13px] text-muted-foreground">
+                This password reset link is no longer valid. Request a new one.
+              </p>
+              <button
+                onClick={handleRetryLink}
+                className="inline-flex items-center gap-2 rounded-[10px] bg-primary px-4 py-2.5 text-[15px] font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
+              >
+                Request New Link
+              </button>
+            </div>
+          ) : !ready ? (
             <div className="flex justify-center py-8"><Spinner className="h-6 w-6" /></div>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4">
@@ -111,6 +130,10 @@ const ResetPassword = () => {
             </form>
           )}
         </div>
+
+        <p className="mt-4 text-center text-[13px] text-muted-foreground">
+          <Link to="/login" className="font-medium text-primary hover:underline">Back to sign in</Link>
+        </p>
       </div>
     </div>
   );

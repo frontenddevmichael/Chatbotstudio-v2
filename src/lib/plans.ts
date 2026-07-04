@@ -39,7 +39,9 @@ export interface Profile {
   full_name: string | null;
   avatar_url: string | null;
   plan: string | null;
-  stripe_customer_id: string | null;
+  flutterwave_customer_id: string | null;
+  payment_provider: string | null;
+  payment_status: string | null;
   monthly_message_count: number | null;
   message_limit: number | null;
   created_at: string | null;
@@ -49,6 +51,7 @@ export const isPremium = (profile: Profile | null): boolean =>
   profile?.plan === 'premium';
 
 export const canCreateChatbot = (profile: Profile | null, currentCount: number): boolean => {
+  if (!profile) return false;
   const limit = isPremium(profile) ? PLANS.premium.chatbotLimit : PLANS.free.chatbotLimit;
   return currentCount < limit;
 };

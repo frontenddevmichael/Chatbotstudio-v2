@@ -195,7 +195,7 @@
 
     iframe.addEventListener('load', function () {
       iframeLoaded = true;
-      sendToWidget({ type: 'cbs:init', theme: cfg.theme || 'light', user: userMeta });
+      sendToWidget({ type: 'cbs:init', theme: cfg.theme || 'light', user: userMeta, voiceEnabled: cfg.voiceEnabled !== false });
     });
   }
 
@@ -282,10 +282,43 @@
     sendToWidget({ type: 'cbs:expanded', expanded: false });
   }
 
-  // ---- Auto-open ----
+  // ---- Proactive: Auto-open on delay ----
   if (cfg.autoOpen && typeof cfg.autoOpen === 'number' && cfg.autoOpen > 0) {
-    setTimeout(function () { if (!isOpen) open(); }, cfg.autoOpen);
+    setTimeout(function () { if (!isOpen && !hasBeenClosed()) open(); }, cfg.autoOpen);
   }
+
+  // ---- Proactive: Exit-intent ----
+  var exitIntentFired = false;
+  function hasBeenClosed() { return sessionStorage.getItem('cbs_closed_' + cfg.id) === '1'; }
+
+  if (cfg.exitIntent !== false) {
+    document.addEventListener('mouseleave', function (e) {
+      if (exitIntentFired || isOpen || hasBeenClosed()) return;
+      if (e.clientY > 0) return; // Only trigger when mouse leaves top
+      exitIntentFired = true;
+      setTimeout(function () { if (!isOpen) open(); }, 200);
+    });
+  }
+
+  // ---- Proactive: Scroll trigger ----
+  if (cfg.scrollTrigger && typeof cfg.scrollTrigger === 'number' && cfg.scrollTrigger > 0) {
+    var scrollFired = false;
+    window.addEventListener('scroll', function () {
+      if (scrollFired || isOpen || hasBeenClosed()) return;
+      var scrolled = window.scrollY / (document.documentElement.scrollHeight - window.innerHeight);
+      if (scrolled >= cfg.scrollTrigger / 100) {
+        scrollFired = true;
+        setTimeout(function () { if (!isOpen) open(); }, 500);
+      }
+    }, { passive: true });
+  }
+
+  // Track manual close to avoid re-triggering
+  var origClose = close;
+  close = function () {
+    origClose();
+    try { sessionStorage.setItem('cbs_closed_' + cfg.id, '1'); } catch (e) {}
+  };
 
   // ---- Public API ----
   window.ChatBotStudio = {

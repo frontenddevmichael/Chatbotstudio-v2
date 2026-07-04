@@ -2,19 +2,9 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-admin-secret",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "Access-Control-Allow-Methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
 };
-
-const ADMIN_SECRET = "Studio@Admin2026!";
-
-// Constant-time string comparison to mitigate timing attacks on the admin secret.
-function safeEqual(a: string, b: string): boolean {
-  if (a.length !== b.length) return false;
-  let diff = 0;
-  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
-  return diff === 0;
-}
 
 const jsonError = (error: string, status: number, code?: string) =>
   new Response(JSON.stringify({ error, code }), {
@@ -22,15 +12,53 @@ const jsonError = (error: string, status: number, code?: string) =>
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 
+async function listAllAuthUsers(supabase: ReturnType<typeof createClient>): Promise<Record<string, unknown>[]> {
+  const allUsers: Record<string, unknown>[] = [];
+  let page = 0;
+  let hasMore = true;
+  while (hasMore) {
+    const { data } = await supabase.auth.admin.listUsers({ perPage: 1000, page: page++ });
+    if (data?.users?.length) {
+      allUsers.push(...data.users as Record<string, unknown>[]);
+      hasMore = data.users.length >= 1000;
+    } else {
+      hasMore = false;
+    }
+  }
+  return allUsers;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
 
   try {
-    const authHeader = req.headers.get("x-admin-secret") ?? "";
-    if (!safeEqual(authHeader, ADMIN_SECRET)) {
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+
+    const authHeader = req.headers.get("Authorization") ?? "";
+    const token = authHeader.replace(/^Bearer\s+/i, "");
+
+    if (!token) {
       return jsonError("Unauthorized", 401, "unauthorized");
+    }
+
+    const supabase = createClient(supabaseUrl, serviceRoleKey);
+
+    const { data: { user }, error: userErr } = await supabase.auth.getUser(token);
+    if (userErr || !user) {
+      return jsonError("Unauthorized", 401, "unauthorized");
+    }
+
+    const { data: roles } = await supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", user.id)
+      .eq("role", "admin");
+
+    if (!roles || roles.length === 0) {
+      return jsonError("Forbidden", 403, "forbidden");
     }
 
     let body: { action?: unknown; payload?: unknown };
@@ -47,10 +75,6 @@ Deno.serve(async (req) => {
     if (payload !== undefined && (typeof payload !== "object" || payload === null || Array.isArray(payload))) {
       return jsonError("Invalid payload", 400, "invalid_payload");
     }
-
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabase = createClient(supabaseUrl, serviceRoleKey);
 
     let result: unknown = null;
 
@@ -132,10 +156,10 @@ Deno.serve(async (req) => {
           supabase.from("conversations").select("id, chatbot_id, started_at").order("started_at", { ascending: false }).limit(5),
         ]);
 
-        const feed: any[] = [];
-        (recentUsers ?? []).forEach((u: any) => feed.push({ type: 'signup', label: u.full_name || 'New user', time: u.created_at }));
-        (recentBots ?? []).forEach((b: any) => feed.push({ type: 'bot', label: `${b.avatar_emoji || '🤖'} ${b.name}`, time: b.created_at }));
-        (recentConvos ?? []).forEach((c: any) => feed.push({ type: 'conversation', label: 'New conversation', time: c.started_at }));
+        const feed: Array<{ type: string; label: string; time: string }> = [];
+        (recentUsers ?? []).forEach((u: Record<string, unknown>) => feed.push({ type: 'signup', label: (u.full_name as string) || 'New user', time: u.created_at as string }));
+        (recentBots ?? []).forEach((b: Record<string, unknown>) => feed.push({ type: 'bot', label: `${b.avatar_emoji || '🤖'} ${b.name as string}`, time: b.created_at as string }));
+        (recentConvos ?? []).forEach((c: Record<string, unknown>) => feed.push({ type: 'conversation', label: 'New conversation', time: c.started_at as string }));
         feed.sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime());
         result = feed.slice(0, 10);
         break;
@@ -187,12 +211,12 @@ Deno.serve(async (req) => {
           .select("*")
           .order("created_at", { ascending: false })
           .limit(500);
-        const { data: authData } = await supabase.auth.admin.listUsers({ perPage: 1000 });
+        const authUsers = await listAllAuthUsers(supabase);
         const emailMap: Record<string, string> = {};
-        (authData?.users ?? []).forEach((u: any) => {
-          emailMap[u.id] = u.email ?? "";
+        authUsers.forEach((u: Record<string, unknown>) => {
+          emailMap[u.id as string] = (u.email as string) ?? "";
         });
-        result = (profiles ?? []).map((p: any) => ({ ...p, email: emailMap[p.id] ?? "" }));
+        result = (profiles ?? []).map((p: Record<string, unknown>) => ({ ...p, email: emailMap[p.id as string] ?? "" }));
         break;
       }
 
@@ -221,15 +245,16 @@ Deno.serve(async (req) => {
           .from("user_roles")
           .select("user_id, role")
           .eq("role", "admin");
-        result = (data ?? []).map((r: any) => r.user_id);
+        result = (data ?? []).map((r: Record<string, unknown>) => r.user_id);
         break;
       }
 
       case "get-bot-counts": {
         const { data } = await supabase.from("chatbots").select("user_id");
         const counts: Record<string, number> = {};
-        (data ?? []).forEach((b: any) => {
-          counts[b.user_id] = (counts[b.user_id] ?? 0) + 1;
+        (data ?? []).forEach((b: Record<string, unknown>) => {
+          const uid = b.user_id as string;
+          counts[uid] = (counts[uid] ?? 0) + 1;
         });
         result = counts;
         break;
@@ -248,8 +273,8 @@ Deno.serve(async (req) => {
       case "get-owners": {
         const { data } = await supabase.from("profiles").select("id, full_name");
         const map: Record<string, string> = {};
-        (data ?? []).forEach((p: any) => {
-          map[p.id] = p.full_name || "Unnamed";
+        (data ?? []).forEach((p: Record<string, unknown>) => {
+          map[p.id as string] = (p.full_name as string) || "Unnamed";
         });
         result = map;
         break;
@@ -258,8 +283,9 @@ Deno.serve(async (req) => {
       case "get-faq-counts": {
         const { data } = await supabase.from("faqs").select("chatbot_id");
         const counts: Record<string, number> = {};
-        (data ?? []).forEach((f: any) => {
-          counts[f.chatbot_id] = (counts[f.chatbot_id] ?? 0) + 1;
+        (data ?? []).forEach((f: Record<string, unknown>) => {
+          const cid = f.chatbot_id as string;
+          counts[cid] = (counts[cid] ?? 0) + 1;
         });
         result = counts;
         break;
@@ -277,9 +303,9 @@ Deno.serve(async (req) => {
 
       case "get-chatbot-map": {
         const { data } = await supabase.from("chatbots").select("id, name, avatar_emoji");
-        const map: Record<string, { name: string; emoji: string }> = {};
-        (data ?? []).forEach((b: any) => {
-          map[b.id] = { name: b.name, emoji: b.avatar_emoji };
+        const map: Record<string, { name: string; emoji: string | null }> = {};
+        (data ?? []).forEach((b: Record<string, unknown>) => {
+          map[b.id as string] = { name: b.name as string, emoji: (b.avatar_emoji as string) ?? null };
         });
         result = map;
         break;
@@ -326,8 +352,14 @@ Deno.serve(async (req) => {
       }
 
       case "toggle-plan": {
-        const { id, plan } = payload;
-        const newPlan = plan === "premium" ? "free" : "premium";
+        const { id } = payload as Record<string, string>;
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("plan")
+          .eq("id", id)
+          .single();
+        const currentPlan = profile?.plan || "free";
+        const newPlan = currentPlan === "premium" ? "free" : "premium";
         const newLimit = newPlan === "premium" ? 10000 : 500;
         const { error } = await supabase
           .from("profiles")
@@ -339,7 +371,7 @@ Deno.serve(async (req) => {
       }
 
       case "bulk-toggle-plan": {
-        const { ids, targetPlan } = payload;
+        const { ids, targetPlan } = payload as { ids: string[]; targetPlan: string };
         const newLimit = targetPlan === "premium" ? 10000 : 500;
         const { error } = await supabase
           .from("profiles")
@@ -351,7 +383,7 @@ Deno.serve(async (req) => {
       }
 
       case "toggle-bot-active": {
-        const { id, is_active } = payload;
+        const { id, is_active } = payload as { id: string; is_active: boolean };
         const { error } = await supabase
           .from("chatbots")
           .update({ is_active: !is_active })
@@ -362,18 +394,18 @@ Deno.serve(async (req) => {
       }
 
       case "toggle-admin-role": {
-        const { id, isAdmin } = payload;
+        const { id, isAdmin } = payload as { id: string; isAdmin: boolean };
         if (isAdmin) {
+          const { error } = await supabase
+            .from("user_roles")
+            .insert({ user_id: id, role: "admin" });
+          if (error) throw error;
+        } else {
           const { error } = await supabase
             .from("user_roles")
             .delete()
             .eq("user_id", id)
             .eq("role", "admin");
-          if (error) throw error;
-        } else {
-          const { error } = await supabase
-            .from("user_roles")
-            .insert({ user_id: id, role: "admin" });
           if (error) throw error;
         }
         result = { ok: true };
@@ -381,7 +413,7 @@ Deno.serve(async (req) => {
       }
 
       case "reset-user-messages": {
-        const { id } = payload;
+        const { id } = payload as { id: string };
         const { error } = await supabase
           .from("profiles")
           .update({ monthly_message_count: 0 })
@@ -402,7 +434,7 @@ Deno.serve(async (req) => {
       }
 
       case "delete-chatbot": {
-        const { id } = payload;
+        const { id } = payload as { id: string };
         await supabase.from("faqs").delete().eq("chatbot_id", id);
         await supabase.from("conversations").delete().eq("chatbot_id", id);
         const { error } = await supabase.from("chatbots").delete().eq("id", id);
@@ -412,7 +444,7 @@ Deno.serve(async (req) => {
       }
 
       case "delete-conversation": {
-        const { id } = payload;
+        const { id } = payload as { id: string };
         const { error } = await supabase.from("conversations").delete().eq("id", id);
         if (error) throw error;
         result = { ok: true };
@@ -420,7 +452,7 @@ Deno.serve(async (req) => {
       }
 
       case "purge-old-conversations": {
-        const { olderThanDays } = payload;
+        const { olderThanDays } = payload as { olderThanDays: number };
         const cutoff = new Date(Date.now() - olderThanDays * 24 * 60 * 60 * 1000).toISOString();
         const { error } = await supabase.from("conversations").delete().lt("last_message_at", cutoff);
         if (error) throw error;
@@ -436,14 +468,15 @@ Deno.serve(async (req) => {
       }
 
       case "delete-ad": {
-        const { error } = await supabase.from("ads").delete().eq("id", payload.id);
+        const { id } = payload as { id: string };
+        const { error } = await supabase.from("ads").delete().eq("id", id);
         if (error) throw error;
         result = { ok: true };
         break;
       }
 
       case "toggle-ad": {
-        const { id, is_active } = payload;
+        const { id, is_active } = payload as { id: string; is_active: boolean };
         const { error } = await supabase
           .from("ads")
           .update({ is_active: !is_active })
@@ -453,8 +486,31 @@ Deno.serve(async (req) => {
         break;
       }
 
+      case "get-orphan-users": {
+        const authUsers = await listAllAuthUsers(supabase);
+        const { data: profiles } = await supabase.from("profiles").select("id");
+        const profileIds = new Set((profiles ?? []).map((p: Record<string, unknown>) => p.id as string));
+        const orphans = authUsers
+          .filter((u: Record<string, unknown>) => !profileIds.has(u.id as string))
+          .map((u: Record<string, unknown>) => ({
+            id: u.id as string,
+            email: (u.email as string) ?? "",
+            created_at: (u.created_at as string) ?? null,
+          }));
+        result = orphans;
+        break;
+      }
+
+      case "restore-orphan-user": {
+        const { id: userId } = payload as { id: string };
+        const { error } = await supabase.rpc("restore_user_profile", { p_user_id: userId });
+        if (error) throw error;
+        result = { ok: true };
+        break;
+      }
+
       case "delete-user": {
-        const userId = payload.id;
+        const { id: userId } = payload as { id: string };
         const { error } = await supabase.from("profiles").delete().eq("id", userId);
         if (error) throw error;
         const { error: authError } = await supabase.auth.admin.deleteUser(userId);
@@ -474,7 +530,7 @@ Deno.serve(async (req) => {
       }
 
       case "delete-waitlist-entry": {
-        const { id } = payload;
+        const { id } = payload as { id: string };
         const { error } = await supabase.from("waitlist").delete().eq("id", id);
         if (error) throw error;
         result = { ok: true };
@@ -491,6 +547,6 @@ Deno.serve(async (req) => {
     });
   } catch (err) {
     console.error("Admin data error:", err);
-    return jsonError(err instanceof Error ? err.message : "Internal error", 500, "internal_error");
+    return jsonError("Internal error", 500, "internal_error");
   }
 });

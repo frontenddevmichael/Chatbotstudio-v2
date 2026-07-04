@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Check, X, Bot, FileQuestion, Rocket, Settings, Sparkles } from 'lucide-react';
+import { X } from 'lucide-react';
+import { CheckIcon, BotIcon, FAQIcon, LaunchIcon, SettingsIcon, SparkleIcon } from '@/components/ui/icons';
 import { motion, AnimatePresence } from 'framer-motion';
 import ReactConfetti from 'react-confetti';
 import type { Chatbot } from '@/hooks/useChatbot';
@@ -23,11 +24,11 @@ interface OnboardingCtx {
 }
 
 const steps: Step[] = [
-  { id: 'create', label: 'Create your first chatbot', icon: Bot, link: '/builder/new', check: (c) => c.chatbots.length > 0 },
-  { id: 'faq', label: 'Add at least 3 FAQs', icon: FileQuestion, link: '/dashboard', check: (c) => c.faqCount >= 3 },
-  { id: 'deploy', label: 'Deploy your chatbot', icon: Rocket, link: '/dashboard', check: (c) => c.hasDeployed },
-  { id: 'profile', label: 'Complete your profile', icon: Settings, link: '/settings', check: (c) => c.profileComplete },
-  { id: 'customize', label: 'Customize bot appearance', icon: Sparkles, link: '/dashboard', check: (c) => c.chatbots.some(b => b.avatar_emoji && b.avatar_emoji !== 'bot') },
+  { id: 'create', label: 'Create your first chatbot', icon: BotIcon, link: '/builder/new', check: (c) => c.chatbots.length > 0 },
+  { id: 'faq', label: 'Add at least 3 FAQs', icon: FAQIcon, link: '/dashboard', check: (c) => c.faqCount >= 3 },
+  { id: 'deploy', label: 'Deploy your chatbot', icon: LaunchIcon, link: '/dashboard', check: (c) => c.hasDeployed },
+  { id: 'profile', label: 'Complete your profile', icon: SettingsIcon, link: '/settings', check: (c) => c.profileComplete },
+  { id: 'customize', label: 'Customize bot appearance', icon: SparkleIcon, link: '/dashboard', check: (c) => c.chatbots.some(b => b.avatar_emoji && b.avatar_emoji !== 'bot') },
 ];
 
 interface Props {
@@ -85,7 +86,7 @@ const OnboardingChecklist = ({ ctx }: Props) => {
                 <div className={`flex h-5 w-5 items-center justify-center rounded-full border ${
                   done ? 'border-success bg-success/10' : 'border-border'
                 }`}>
-                  {done && <Check className="h-3 w-3 text-success" />}
+                  {done && <CheckIcon className="h-3 w-3 text-success" />}
                 </div>
                 <step.icon className="h-3.5 w-3.5 shrink-0" />
                 <span className={done ? 'line-through' : ''}>{step.label}</span>

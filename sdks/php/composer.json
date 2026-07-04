@@ -1,0 +1,21 @@
+{
+    "name": "chatbotstudio/php-sdk",
+    "description": "Official ChatBot Studio PHP SDK",
+    "type": "library",
+    "autoload": {
+        "psr-4": {
+            "ChatBotStudio\\": "src/"
+        }
+    },
+    "require": {
+        "php": ">=8.0",
+        "ext-json": "*",
+        "ext-curl": "*"
+    },
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "ChatBot Studio"
+        }
+    ]
+}

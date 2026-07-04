@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useInView } from 'react-intersection-observer';
-import { MessageSquare, Zap, Code2, BarChart3, Shield } from 'lucide-react';
+import { Code2 } from 'lucide-react';
+import { ChatIcon, SuperchargeIcon, AnalyticsIcon, ShieldIcon } from '@/components/ui/icons';
 
 const TABS = [
   {
     id: 'conversations',
-    icon: MessageSquare,
+    icon: ChatIcon,
     title: 'Intelligent Conversations',
     headline: 'Two brains. One bot.',
     points: [
@@ -17,7 +18,7 @@ const TABS = [
   },
   {
     id: 'supercharge',
-    icon: Zap,
+    icon: SuperchargeIcon,
     title: 'Supercharge FAQ',
     headline: 'One question, infinite understanding.',
     points: [
@@ -39,7 +40,7 @@ const TABS = [
   },
   {
     id: 'analytics',
-    icon: BarChart3,
+    icon: AnalyticsIcon,
     title: 'Real-time Analytics',
     headline: 'Know what your customers ask.',
     points: [
@@ -50,7 +51,7 @@ const TABS = [
   },
   {
     id: 'admin',
-    icon: Shield,
+    icon: ShieldIcon,
     title: 'Full Admin Control',
     headline: 'Your platform, your rules.',
     points: [
@@ -73,10 +74,10 @@ const TabContent = ({ tab }: { tab: typeof TABS[0] }) => {
           </div>
         </div>
         <div className="rounded-[10px] border border-border bg-background p-4">
-          <div className="text-[11px] font-mono text-[#ff9f0a] mb-2">Layer 2 — General AI</div>
+          <div className="text-[11px] font-mono text-primary mb-2">Layer 2 — General AI</div>
           <div className="text-[13px] text-muted-foreground bg-muted/40 rounded-md p-2">
             <span className="text-muted-foreground/60">Q:</span> "Write a return policy"<br />
-            <span className="text-[#ff9f0a]">→</span> Generates complete policy
+            <span className="text-primary">→</span> Generates complete policy
           </div>
         </div>
       </div>
@@ -100,7 +101,7 @@ const TabContent = ({ tab }: { tab: typeof TABS[0] }) => {
           { label: 'Satisfaction', val: '94%' },
         ].map(s => (
           <div key={s.label} className="rounded-[10px] border border-border bg-background p-3 text-center">
-            <div className="font-serif text-[22px] text-foreground/90">{s.val}</div>
+            <div className="font-display text-[22px] text-ink">{s.val}</div>
             <div className="text-[11px] text-muted-foreground/60 mt-1">{s.label}</div>
           </div>
         ))}
@@ -116,7 +117,7 @@ const TabContent = ({ tab }: { tab: typeof TABS[0] }) => {
         {[['Sarah K.', 'Premium', '3', 'Active'], ['Mike J.', 'Free', '1', 'Active'], ['Lisa T.', 'Premium', '7', 'Active']].map((row, i) => (
           <div key={i} className="grid grid-cols-4 text-[13px] p-3 border-b border-border/40 text-muted-foreground">
             <span>{row[0]}</span><span>{row[1]}</span><span>{row[2]}</span>
-            <span className="text-[#30d158]">{row[3]}</span>
+            <span className="text-success-dot">{row[3]}</span>
           </div>
         ))}
       </div>
@@ -130,7 +131,7 @@ const TabContent = ({ tab }: { tab: typeof TABS[0] }) => {
       </div>
       <div className="grid grid-cols-2 gap-2">
         {['When do you open?', 'What time do you close?', 'Are you open on weekends?', 'Business hours?'].map((v, i) => (
-          <div key={i} className="rounded-[8px] border border-[#ff9f0a]/15 bg-[#ff9f0a]/[0.05] px-3 py-2 text-[12px] text-[#ff9f0a]/80">
+          <div key={i} className="rounded-[8px] border border-ink/10 bg-ink/[0.03] px-3 py-2 text-[12px] text-ink-muted/80">
             {v}
           </div>
         ))}
@@ -154,7 +155,7 @@ const FeatureShowcase = () => {
           Features
         </motion.p>
         <motion.h2
-          className="font-serif text-[36px] sm:text-[44px] font-normal text-foreground/90 text-center mb-4"
+          className="font-display text-[36px] sm:text-[44px] font-normal text-ink text-center mb-4"
           initial={{ opacity: 0, y: 24 }}
           animate={inView ? { opacity: 1, y: 0 } : {}}
         >
@@ -204,7 +205,7 @@ const FeatureShowcase = () => {
                 exit={{ opacity: 0, x: -12 }}
                 transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
               >
-                <h3 className="font-serif text-[22px] text-foreground/90 mb-2">{TABS[active].headline}</h3>
+                <h3 className="font-display text-[22px] text-ink mb-2">{TABS[active].headline}</h3>
                 <ul className="space-y-2 mb-6">
                   {TABS[active].points.map((p, i) => (
                     <li key={i} className="text-[13px] text-muted-foreground flex items-start gap-2">
@@ -242,7 +243,7 @@ const FeatureShowcase = () => {
                       className="overflow-hidden"
                     >
                       <div className="p-4 bg-background">
-                        <h4 className="font-serif text-[17px] text-foreground/85 mb-2">{tab.headline}</h4>
+                        <h4 className="font-display text-[17px] text-ink mb-2">{tab.headline}</h4>
                         <ul className="space-y-1.5 mb-4">
                           {tab.points.map((p, j) => (
                             <li key={j} className="text-[13px] text-muted-foreground">✓ {p}</li>

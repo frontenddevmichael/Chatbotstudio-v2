@@ -3,13 +3,13 @@ import { Navigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import SEO from '@/components/ui/SEO';
 import ScrollProgress from './ScrollProgress';
-
-import LandingNavbar from './LandingNavbar';
+import Header from '@/components/layout/Header';
 import HeroSection from './HeroSection';
 import TrustBar from './TrustBar';
 import ProblemSection from './ProblemSection';
 import HowItWorks from './HowItWorks';
 import FeatureShowcase from './FeatureShowcase';
+import LandingWizard from './LandingWizard';
 import DeveloperDocs from './DeveloperDocs';
 import SuperchargeDemo from './SuperchargeDemo';
 import StatsBand from './StatsBand';
@@ -48,12 +48,13 @@ const Landing = () => {
       />
       <ScrollProgress />
       
-      <LandingNavbar />
+      <Header intensity="expressive" />
       <HeroSection />
       <TrustBar />
       <ProblemSection />
       <HowItWorks />
       <FeatureShowcase />
+      <LandingWizard />
       <DeveloperDocs />
       <SuperchargeDemo />
       <StatsBand />

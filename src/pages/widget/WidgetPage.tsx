@@ -4,7 +4,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { sanitizeHTML, sanitizeText } from '@/lib/sanitize';
 import SEO from '@/components/ui/SEO';
 import ErrorBoundary from '@/components/ui/ErrorBoundary';
-import { ArrowUp, RotateCcw, X, Maximize2, Minimize2, ChevronLeft } from 'lucide-react';
+import type { Chatbot } from '@/hooks/useChatbot';
+import { RotateCcw, X, Maximize2, Minimize2, ChevronLeft, MessageSquare, Mail, Mic, MicOff, Volume2 } from 'lucide-react';
 import BotAvatar from '@/components/chatbot/BotAvatar';
 
 interface Message {
@@ -25,7 +26,7 @@ function renderMarkdown(text: string): string {
     .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
     .replace(/\*(.+?)\*/g, '<em>$1</em>')
     .replace(/\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer" style="text-decoration:underline">$1</a>')
-    .replace(/^[•\-\*] (.+)$/gm, '<li>$1</li>')
+    .replace(/^[•*-] (.+)$/gm, '<li>$1</li>')
     .replace(/^\d+\.\s(.+)$/gm, '<li>$1</li>')
     .replace(/\n/g, '<br/>');
   html = html.replace(/((?:<li>.*?<\/li><br\/>?)+)/g, (match) => {
@@ -35,9 +36,38 @@ function renderMarkdown(text: string): string {
 }
 
 function getParentOrigin(): string | null {
-  try { if (document.referrer) return new URL(document.referrer).origin; } catch {}
+  try { if (document.referrer) return new URL(document.referrer).origin; } catch (e) { console.error("Failed to parse parent origin:", e); }
   return null;
 }
+
+function getConfidenceScore(text: string): number {
+  const uncertain = [
+    "i'm not sure", "i don't know", "i cannot", "can't answer", "unable to",
+    "i'm sorry, i", "sorry, i'm not", "i don't have", "not sure how",
+    "i'm an ai", "as an ai", "i would recommend contacting",
+    "i'd recommend", "you may want to", "you could try", "might want to",
+    "i can't provide", "cannot provide",
+  ];
+  const hedging = [
+    "i think", "maybe", "perhaps", "possibly", "could be",
+    "not entirely sure", "not 100%", "best guess",
+  ];
+  const lower = text.toLowerCase();
+  const matches = uncertain.filter(p => lower.includes(p)).length;
+  const hedgeMatches = hedging.filter(p => lower.includes(p)).length;
+  const totalSignals = matches + hedgeMatches * 0.5;
+  if (totalSignals >= 3) return 0.3;
+  if (totalSignals >= 2) return 0.45;
+  if (totalSignals >= 1) return 0.6;
+  return 1;
+}
+
+function isUncertainResponse(text: string): boolean {
+  return getConfidenceScore(text) < 0.7;
+}
+
+const WHATSAPP_NUMBER = import.meta.env.VITE_WIDGET_WHATSAPP as string | undefined;
+const HANDOFF_EMAIL = import.meta.env.VITE_WIDGET_EMAIL as string | undefined;
 
 /** Parse hex color to RGB */
 function hexToRgb(hex: string): { r: number; g: number; b: number } | null {
@@ -48,7 +78,7 @@ function hexToRgb(hex: string): { r: number; g: number; b: number } | null {
 
 /** Derive theme colors from primary color */
 function deriveTheme(primary: string, isDark: boolean) {
-  const rgb = hexToRgb(primary) || { r: 10, g: 132, b: 255 };
+  const rgb = hexToRgb(primary) || { r: 154, g: 61, b: 34 };
   const { r, g, b } = rgb;
   return {
     primary,
@@ -73,16 +103,38 @@ function deriveTheme(primary: string, isDark: boolean) {
   };
 }
 
+function hashString(str: string): number {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash |= 0;
+  }
+  return Math.abs(hash);
+}
+
 const WidgetPage = () => {
   const { embedToken } = useParams<{ embedToken: string }>();
-  const [chatbot, setChatbot] = useState<any>(null);
+  const [chatbot, setChatbot] = useState<Chatbot | null>(null);
+  const [variant, setVariant] = useState<{ id: string; tone?: string | null; welcome_message?: string | null } | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [isNetworkError, setIsNetworkError] = useState(false);
+  const [isOffline, setIsOffline] = useState(() => typeof navigator !== 'undefined' && !navigator.onLine);
   const [sessionId] = useState(() => crypto.randomUUID());
+  const [visitorId] = useState(() => {
+    try {
+      let vid = localStorage.getItem('cbs_visitor_id');
+      if (!vid) { vid = crypto.randomUUID(); localStorage.setItem('cbs_visitor_id', vid); }
+      return vid;
+    } catch { return crypto.randomUUID(); }
+  });
   const [msgCount, setMsgCount] = useState(0);
+  const [isRecording, setIsRecording] = useState(false);
+  const recognitionRef = useRef<SpeechRecognition | null>(null);
+  const [voiceEnabled, setVoiceEnabled] = useState(() => import.meta.env.VITE_ENABLE_VOICE !== 'false');
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const [initialLoad, setInitialLoad] = useState(true);
@@ -99,24 +151,58 @@ const WidgetPage = () => {
         const parsed = JSON.parse(saved);
         if (parsed.messages?.length) { setMessages(parsed.messages); setMsgCount(parsed.msgCount ?? 0); }
       }
-    } catch {}
+    } catch { void 0; }
   }, [embedToken]);
 
   useEffect(() => {
     if (!embedToken || messages.length === 0) return;
-    try { localStorage.setItem(getSessionKey(embedToken), JSON.stringify({ messages, msgCount })); } catch {}
+    try { localStorage.setItem(getSessionKey(embedToken), JSON.stringify({ messages, msgCount })); } catch { void 0; }
   }, [messages, msgCount, embedToken]);
+
+  useEffect(() => {
+    const goOnline = () => setIsOffline(false);
+    const goOffline = () => setIsOffline(true);
+    window.addEventListener('online', goOnline);
+    window.addEventListener('offline', goOffline);
+    return () => { window.removeEventListener('online', goOnline); window.removeEventListener('offline', goOffline); };
+  }, []);
+
+  const [pageContext, setPageContext] = useState<string>('');
+  const [visitorLang] = useState(() => {
+    try { return navigator.language || 'en'; } catch { return 'en'; }
+  });
+  const [customTheme, setCustomTheme] = useState<Partial<ReturnType<typeof deriveTheme>> | null>(null);
+  const pageContextRef = useRef(pageContext);
+  pageContextRef.current = pageContext;
 
   useEffect(() => {
     function handleMessage(e: MessageEvent) {
       if (!e.data || typeof e.data !== 'object') return;
       if (parentOrigin.current && e.origin !== parentOrigin.current) return;
-      if (e.data.type === 'cbs:init') { if (e.data.theme === 'dark') setTheme('dark'); else setTheme('light'); }
+      if (e.data.type === 'cbs:init') { if (e.data.theme === 'dark') setTheme('dark'); else setTheme('light'); if (e.data.voiceEnabled !== undefined) setVoiceEnabled(e.data.voiceEnabled); }
       if (e.data.type === 'cbs:focus') inputRef.current?.focus();
       if (e.data.type === 'cbs:expanded') setIsExpanded(!!e.data.expanded);
+      if (e.data.type === 'cbs:theme') {
+        setCustomTheme(e.data.theme);
+      }
+      if (e.data.type === 'cbs:page-context' && e.data.context) {
+        const ctx = e.data.context;
+        const parts: string[] = [];
+        if (ctx.title) parts.push(`Page title: ${ctx.title}`);
+        if (ctx.url) parts.push(`URL: ${ctx.url}`);
+        if (ctx.selectedText) parts.push(`Visitor selected text: "${ctx.selectedText}"`);
+        if (ctx.pageText) parts.push(`Page content: ${ctx.pageText.slice(0, 2000)}`);
+        setPageContext(parts.join('\n'));
+      }
     }
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      recognitionRef.current?.abort();
+    };
   }, []);
 
   const postToParent = useCallback((msg: Record<string, unknown>) => {
@@ -141,50 +227,121 @@ const WidgetPage = () => {
       if (!data?.length) { setError('Chatbot not found or inactive'); setInitialLoad(false); return; }
       const bot = data[0];
       setChatbot(bot);
-      setMessages(prev => prev.length ? prev : (bot.welcome_message ? [{ role: 'assistant', content: bot.welcome_message }] : []));
+
+      if (bot.user_id) {
+        const { data: agencyData } = await supabase
+          .from('agencies')
+          .select('brand_color, logo_url')
+          .eq('owner_id', bot.user_id)
+          .eq('is_active', true)
+          .maybeSingle();
+        if (agencyData) {
+          setCustomTheme({
+            primary: agencyData.brand_color,
+            userBubble: agencyData.brand_color,
+            sendBtn: agencyData.brand_color,
+            inputFocusBorder: agencyData.brand_color,
+            onlineDot: agencyData.brand_color,
+            linkColor: agencyData.brand_color,
+          });
+        }
+      }
+
+      let assignedVariant: typeof variant = null;
+      const { data: variants } = await supabase
+        .from('chatbot_variants')
+        .select('id, tone, welcome_message, traffic_percentage')
+        .eq('chatbot_id', bot.id)
+        .eq('is_active', true);
+      if (variants?.length) {
+        const h = hashString(visitorId + bot.id);
+        let cumulative = 0;
+        for (const v of variants) {
+          cumulative += (v as any).traffic_percentage || 0;
+          if (h % 100 < cumulative) {
+            assignedVariant = { id: v.id, tone: v.tone, welcome_message: v.welcome_message };
+            break;
+          }
+        }
+      }
+      setVariant(assignedVariant);
+
+      const welcomeMsg = assignedVariant?.welcome_message || bot.welcome_message;
+      setMessages(prev => prev.length ? prev : (welcomeMsg ? [{ role: 'assistant', content: welcomeMsg }] : []));
       setInitialLoad(false);
     } catch { setError('Unable to connect. Check your internet and try again.'); setIsNetworkError(true); setInitialLoad(false); }
-  }, [embedToken]);
+  }, [embedToken, visitorId]);
 
   useEffect(() => { fetchChatbot(); }, [fetchChatbot]);
   useEffect(() => { scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' }); }, [messages]);
 
   const clearSession = () => {
-    if (embedToken) { try { localStorage.removeItem(getSessionKey(embedToken)); } catch {} }
-    setMessages(chatbot?.welcome_message ? [{ role: 'assistant', content: chatbot.welcome_message }] : []);
+    if (embedToken) { try { localStorage.removeItem(getSessionKey(embedToken)); } catch { void 0; } }
+    const welcomeMsg = variant?.welcome_message || chatbot?.welcome_message;
+    setMessages(welcomeMsg ? [{ role: 'assistant', content: welcomeMsg }] : []);
     setMsgCount(0);
   };
 
-  const invokeWithRetry = useCallback(async (body: any, retries = MAX_RETRIES): Promise<any> => {
+  const invokeWithRetry = useCallback(async (body: Record<string, unknown>, retries = MAX_RETRIES): Promise<Record<string, unknown>> => {
+    if (typeof navigator !== 'undefined' && !navigator.onLine) throw new Error('offline');
     for (let attempt = 0; attempt <= retries; attempt++) {
       try {
         const { data, error: fnError } = await supabase.functions.invoke('chat', { body });
         if (fnError) throw fnError;
         return data;
-      } catch (err) { if (attempt === retries) throw err; await new Promise(r => setTimeout(r, Math.pow(2, attempt) * 500)); }
+      } catch (err) {
+        if (typeof navigator !== 'undefined' && !navigator.onLine) throw new Error('offline');
+        if (attempt === retries) throw err;
+        await new Promise(r => setTimeout(r, Math.pow(2, attempt) * 500));
+      }
     }
   }, []);
 
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 4_000_000) { setError('Image must be under 4MB'); return; }
+    if (!file.type.startsWith('image/')) { setError('Only image files allowed'); return; }
+    const reader = new FileReader();
+    reader.onload = (ev) => setImagePreview(ev.target?.result as string);
+    reader.readAsDataURL(file);
+  };
+
+  const removeImage = () => { setImagePreview(null); if (fileInputRef.current) fileInputRef.current.value = ''; };
+
   const sendMessage = async () => {
     const text = sanitizeText(input);
-    if (!text || loading || !chatbot) return;
+    if ((!text && !imagePreview) || loading || !chatbot) return;
     if (msgCount >= MAX_MESSAGES_PER_SESSION) {
       setMessages(prev => [...prev, { role: 'assistant', content: "You've reached the message limit for this session. Please refresh to start a new conversation." }]);
       setInput(''); return;
     }
-    const userMsg: Message = { role: 'user', content: text };
+    const userContent = imagePreview ? `${text || 'See attached image'}\n<image>` : text;
+    const userMsg: Message = { role: 'user', content: userContent };
     const newMessages = [...messages, userMsg];
     setMessages(newMessages); setInput(''); setLoading(true); setMsgCount(prev => prev + 1);
+    const body: Record<string, unknown> = { chatbot_id: chatbot.id, session_id: sessionId, visitor_id: visitorId, messages: newMessages, new_message: text || 'See attached image' };
+    if (variant) body.variant_id = variant.id;
+    if (imagePreview) body.image = imagePreview;
+    if (pageContextRef.current) body.page_context = pageContextRef.current;
+    body.visitor_lang = visitorLang;
     try {
-      const data = await invokeWithRetry({ chatbot_id: chatbot.id, session_id: sessionId, messages: newMessages, new_message: text });
+      const data = await invokeWithRetry(body);
+      removeImage();
       const reply = data?.error === 'rate_limit'
         ? "You've sent too many messages. Please wait a moment."
         : data?.response || "Sorry, I'm having trouble responding. Please try again.";
       setMessages([...newMessages, { role: 'assistant', content: reply }]);
       // Send unread notification to parent if widget is embedded
       postToParent({ type: 'cbs:unread' });
-    } catch {
-      setMessages([...newMessages, { role: 'assistant', content: "Sorry, I'm having trouble responding. Please try again." }]);
+    } catch (err) {
+      const msg = (err as Error)?.message === 'offline' || (typeof navigator !== 'undefined' && !navigator.onLine)
+        ? "You appear to be offline. Please check your internet connection and try again."
+        : "Sorry, I'm having trouble responding. Please try again.";
+      setMessages([...newMessages, { role: 'assistant', content: msg }]);
     } finally { setLoading(false); }
   };
 
@@ -192,11 +349,46 @@ const WidgetPage = () => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
   };
 
+  const speakMessage = useCallback((text: string) => {
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(text);
+      window.speechSynthesis.speak(utterance);
+    }
+  }, []);
+
+  const toggleRecording = useCallback(() => {
+    if (isRecording) {
+      recognitionRef.current?.abort();
+      recognitionRef.current = null;
+      setIsRecording(false);
+      return;
+    }
+    const SpeechRecognitionCtor = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognitionCtor) return;
+    const recognition = new SpeechRecognitionCtor();
+    recognition.lang = 'en-US';
+    recognition.interimResults = false;
+    recognition.continuous = false;
+    recognition.onresult = (event) => {
+      setInput(event.results[0][0].transcript);
+      setIsRecording(false);
+    };
+    recognition.onerror = () => setIsRecording(false);
+    recognition.onend = () => setIsRecording(false);
+    recognition.start();
+    recognitionRef.current = recognition;
+    setIsRecording(true);
+  }, [isRecording]);
+
   const primaryColor = chatbot?.primary_color || '#0a84ff';
   const botAvatar = chatbot?.avatar_emoji || 'bot';
   const botName = chatbot?.name || 'Bot';
   const isDark = theme === 'dark';
-  const t = useMemo(() => deriveTheme(primaryColor, isDark), [primaryColor, isDark]);
+  const t = useMemo(() => {
+    const base = deriveTheme(primaryColor, isDark);
+    return customTheme ? { ...base, ...customTheme } : base;
+  }, [primaryColor, isDark, customTheme]);
   const mobile = typeof window !== 'undefined' && window.innerWidth <= 640;
 
   // Skeleton loading state
@@ -260,10 +452,15 @@ const WidgetPage = () => {
           )}
           <BotAvatar avatarEmoji={botAvatar} botName={botName} accentColor={primaryColor} size="sm" />
           <div className="flex-1 min-w-0">
-            <p className="text-[14px] font-semibold truncate" style={{ color: t.textPrimary }}>{botName}</p>
+            <p className="text-[14px] font-semibold truncate flex items-center gap-1.5" style={{ color: t.textPrimary }}>
+              {botName}
+              <span className="inline-flex items-center rounded-full px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wider" style={{ background: `${primaryColor}18`, color: primaryColor }}>
+                AI
+              </span>
+            </p>
             <div className="flex items-center gap-1.5">
               <span className="inline-block h-1.5 w-1.5 rounded-full" style={{ background: t.onlineDot }} aria-hidden="true" />
-              <p className="text-[11px]" style={{ color: t.textSecondary }}>Online</p>
+              <p className="text-[11px]" style={{ color: t.textSecondary }}>AI Assistant</p>
             </div>
           </div>
           <div className="flex items-center gap-1">
@@ -284,6 +481,13 @@ const WidgetPage = () => {
             )}
           </div>
         </header>
+
+        {/* Offline banner */}
+        {isOffline && (
+          <div className="px-4 py-2 text-center text-[12px] font-medium" style={{ background: '#FEF3C7', color: '#92400E' }} role="alert" aria-live="assertive">
+            No internet connection. Messages will send when you're back online.
+          </div>
+        )}
 
         {/* Messages */}
         <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-3" role="log" aria-live="polite" aria-label="Chat messages">
@@ -306,9 +510,67 @@ const WidgetPage = () => {
                     __html: sanitizeHTML(msg.role === 'assistant' ? renderMarkdown(msg.content) : msg.content),
                   }}
                 />
+                {voiceEnabled && msg.role === 'assistant' && (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); speakMessage(msg.content); }}
+                    className="mt-1 flex items-center gap-1 text-[11px] opacity-60 hover:opacity-100 transition-opacity"
+                    style={{ color: t.textSecondary }}
+                    aria-label="Read message aloud"
+                  >
+                    <Volume2 className="h-3 w-3" />
+                  </button>
+                )}
               </div>
             </div>
           ))}
+          {/* Handoff on uncertainty */}
+          {!loading && messages.length > 0 && (() => {
+            const lastMsg = messages[messages.length - 1];
+            if (lastMsg.role !== 'assistant' || !isUncertainResponse(lastMsg.content)) return null;
+            const confidence = getConfidenceScore(lastMsg.content);
+            const confidencePct = Math.round(confidence * 100);
+            const barColor = confidencePct < 40 ? '#EF4444' : confidencePct < 60 ? '#F59E0B' : '#10B981';
+            return (
+              <div className="mt-4 pt-4" style={{ borderTop: `1px solid ${t.botBubbleBorder}` }}>
+                {/* Confidence indicator */}
+                <div className="mb-3 flex items-center gap-2 px-1">
+                  <div className="flex-1 h-1.5 rounded-full overflow-hidden" style={{ background: `${t.textSecondary}20` }}>
+                    <div className="h-full rounded-full transition-all duration-500" style={{ width: `${confidencePct}%`, background: barColor }} />
+                  </div>
+                  <span className="text-[10px] font-semibold tabular-nums" style={{ color: barColor }}>
+                    {confidencePct}%
+                  </span>
+                </div>
+                <p className="text-[12px] font-medium text-center mb-3" style={{ color: t.textSecondary }}>
+                  {confidencePct < 40 ? 'I\'m not confident about that answer. Let me connect you with a human.' :
+                   'I may not have the best answer. Want to talk to a person instead?'}
+                </p>
+                <div className="flex items-center justify-center gap-3">
+                  {WHATSAPP_NUMBER && (
+                    <a
+                      href={`https://wa.me/${WHATSAPP_NUMBER}?text=Hi%2C%20I%20need%20help%20with%20${encodeURIComponent(botName)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-1.5 rounded-[8px] px-3.5 py-2 text-[12px] font-medium transition-all hover:opacity-80 active:scale-95"
+                      style={{ background: '#25D36620', color: '#25D366' }}
+                    >
+                      <MessageSquare className="h-3.5 w-3.5" /> WhatsApp
+                    </a>
+                  )}
+                  {HANDOFF_EMAIL && (
+                    <a
+                      href={`mailto:${HANDOFF_EMAIL}?subject=Help%20with%20${encodeURIComponent(botName)}&body=Hi%2C%20I%20was%20chatting%20with%20${encodeURIComponent(botName)}%20and%20need%20further%20assistance.`}
+                      className="flex items-center gap-1.5 rounded-[8px] px-3.5 py-2 text-[12px] font-medium transition-all hover:opacity-80 active:scale-95"
+                      style={{ background: `${t.primary}15`, color: t.primary }}
+                    >
+                      <Mail className="h-3.5 w-3.5" /> Email
+                    </a>
+                  )}
+                </div>
+              </div>
+            );
+          })()}
+
           {loading && (
             <div className="message-in flex justify-start" aria-label="Bot is typing">
               <BotAvatar avatarEmoji={botAvatar} botName={botName} accentColor={primaryColor} size="sm" className="mr-2 shrink-0" />
@@ -325,7 +587,29 @@ const WidgetPage = () => {
 
         {/* Input — focus ring uses primary */}
         <div style={{ background: t.inputAreaBg, borderTop: `1px solid ${t.headerBorder}` }} className="p-3">
-          <div className="flex items-center gap-2">
+          {/* Image preview */}
+          {imagePreview && (
+            <div className="mb-2 flex items-center gap-2 rounded-lg p-2" style={{ background: `${t.primary}10` }}>
+              <img src={imagePreview} alt="Preview" className="h-10 w-10 rounded object-cover" />
+              <span className="flex-1 truncate text-[11px]" style={{ color: t.textSecondary }}>Image attached</span>
+              <button onClick={removeImage} className="rounded-full p-1 hover:bg-black/10 transition-colors" style={{ color: t.textSecondary }}>
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          )}
+          <div className="flex items-center gap-1.5">
+            <input type="file" accept="image/*" onChange={handleImageSelect} className="hidden" ref={fileInputRef} />
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              disabled={loading || msgCount >= MAX_MESSAGES_PER_SESSION || !!imagePreview}
+              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full transition-colors disabled:opacity-25"
+              style={{ color: t.textMuted }}
+              aria-label="Attach image"
+            >
+              <svg viewBox="0 0 20 20" fill="none" className="h-4 w-4">
+                <path d="M4 16L10 8L13 12L15 9L18 14V4C18 3.45 17.55 3 17 3H3C2.45 3 2 3.45 2 4V16C2 16.55 2.45 17 3 17H16C16.55 17 17 16.55 17 16V15L14 11L10 16L8 13L4 16Z" fill="currentColor"/>
+              </svg>
+            </button>
             <label htmlFor="cbs-input" className="sr-only">Type a message</label>
             <input
               id="cbs-input"
@@ -333,9 +617,9 @@ const WidgetPage = () => {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder={msgCount >= MAX_MESSAGES_PER_SESSION ? 'Message limit reached' : 'Message...'}
+              placeholder={isOffline ? 'No internet connection' : msgCount >= MAX_MESSAGES_PER_SESSION ? 'Message limit reached' : 'Message...'}
               maxLength={2000}
-              disabled={msgCount >= MAX_MESSAGES_PER_SESSION}
+              disabled={msgCount >= MAX_MESSAGES_PER_SESSION || isOffline}
               className="flex-1 rounded-full px-4 py-2 text-[15px] outline-none disabled:opacity-40 transition-shadow"
               style={{
                 background: t.inputBg,
@@ -346,14 +630,30 @@ const WidgetPage = () => {
               onBlur={(e) => { e.currentTarget.style.boxShadow = 'none'; e.currentTarget.style.borderColor = t.botBubbleBorder; }}
               autoComplete="off"
             />
+            {voiceEnabled && (
+              <button
+                onClick={toggleRecording}
+                disabled={loading}
+                className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-all active:scale-90 disabled:opacity-25 ${isRecording ? 'animate-pulse' : ''}`}
+                style={{
+                  background: isRecording ? '#EF4444' : 'transparent',
+                  color: isRecording ? '#fff' : t.textMuted,
+                }}
+                aria-label={isRecording ? 'Stop recording' : 'Start voice input'}
+              >
+                {isRecording ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+              </button>
+            )}
             <button
               onClick={sendMessage}
-              disabled={loading || !input.trim() || msgCount >= MAX_MESSAGES_PER_SESSION}
+              disabled={loading || (!input.trim() && !imagePreview) || msgCount >= MAX_MESSAGES_PER_SESSION || isOffline}
               className="flex h-8 w-8 items-center justify-center rounded-full text-white transition-all active:scale-90 disabled:opacity-25"
               style={{ background: t.sendBtn }}
               aria-label="Send message"
             >
-              <ArrowUp className="h-4 w-4" />
+              <svg viewBox="0 0 16 16" fill="none" className="h-4 w-4" style={loading ? { animation: 'widgetSendPulse 0.6s ease-in-out infinite' } : {}}>
+                <path d="M2 8L14 2L10 14L7.5 8.5L2 8Z" className="fill-current" />
+              </svg>
             </button>
           </div>
           <p className="mt-1.5 text-center text-[10px]" style={{ color: t.textMuted }} aria-hidden="true">

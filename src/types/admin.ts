@@ -1,5 +1,10 @@
-// Shared types for admin pages, hooks, and adminApi
 export type Plan = 'free' | 'premium';
+
+export interface OrphanUser {
+  id: string;
+  email: string;
+  created_at: string | null;
+}
 
 export interface AdminUser {
   id: string;
@@ -21,6 +26,11 @@ export interface AdminChatbot {
   id: string;
   user_id: string;
   name: string;
+  avatar_emoji: string | null;
+  welcome_message: string | null;
+  tone: string | null;
+  primary_color: string | null;
+  embed_token: string | null;
   is_active: boolean | null;
   total_conversations: number | null;
   total_messages: number | null;
@@ -52,17 +62,48 @@ export interface AdminAd {
   id: string;
   title: string;
   description: string | null;
-  image_url: string | null;
-  link_url: string;
+  cta_text: string | null;
+  cta_url: string | null;
+  placement: string;
   is_active: boolean;
-  position: string | null;
-  click_count?: number;
-  created_at?: string;
+  created_at: string | null;
 }
 
 export interface ActivityFeedItem {
-  type: 'signup' | 'bot_created' | 'conversation';
-  id: string;
+  type: string;
   label: string;
-  timestamp: string;
+  time: string;
+}
+
+export interface AdminStats {
+  userCount: number;
+  botCount: number;
+  convoCount: number;
+  waitlistCount: number;
+  faqCount: number;
+  premiumCount: number;
+  revenue: number;
+  settings: Record<string, unknown> | null;
+}
+
+export interface AdminDeltaStats {
+  usersThisWeek: number;
+  usersLastWeek: number;
+  botsThisWeek: number;
+  botsLastWeek: number;
+  convosThisWeek: number;
+  convosLastWeek: number;
+}
+
+export interface ChartPoint {
+  created_at: string;
+  started_at: string;
+}
+
+export interface AdminPlatformSettings {
+  maintenance_mode?: boolean;
+  announcement_text?: string;
+  free_message_limit?: number;
+  premium_price_monthly?: number;
+  updated_at?: string;
 }

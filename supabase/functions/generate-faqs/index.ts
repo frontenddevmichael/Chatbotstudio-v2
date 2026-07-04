@@ -38,38 +38,62 @@ serve(async (req) => {
       return jsonError("Document text must be 50 000 characters or fewer.", 400, "too_long");
     }
 
-    // Per-IP rate limit: 10 generations per hour.
-    const ip = req.headers.get("x-forwarded-for")?.split(",")[0].trim() || "unknown";
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, serviceKey);
-    const { data: allowed } = await supabase.rpc("check_and_increment_rate_limit", {
+
+    // Verify authentication
+    const authHeader = req.headers.get("Authorization") ?? "";
+    const token = authHeader.replace(/^Bearer\s+/i, "");
+    if (!token) {
+      return jsonError("Unauthorized", 401, "unauthorized");
+    }
+    const { data: { user }, error: userErr } = await supabase.auth.getUser(token);
+    if (userErr || !user) {
+      return jsonError("Unauthorized", 401, "unauthorized");
+    }
+
+    // Per-IP rate limit: 10 generations per hour.
+    const ip = req.headers.get("x-forwarded-for")?.split(",")[0].trim() || "unknown";
+    const { data: allowed, error: rlErr } = await supabase.rpc("check_and_increment_rate_limit", {
       _identifier: ip,
       _endpoint: "generate-faqs",
       _max_requests: 10,
       _window_seconds: 3600,
     });
-    if (allowed === false) {
+    if (rlErr || allowed === false) {
       return jsonError("Rate limit exceeded. Please try again later.", 429, "rate_limit");
     }
 
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) {
+    const aiKey = Deno.env.get("AI_API_KEY");
+    const aiBaseUrl = (Deno.env.get("AI_BASE_URL") || "https://openrouter.ai/api").replace(/\/+$/, "");
+    const aiModel = Deno.env.get("AI_MODEL") || "google/gemini-2.5-flash";
+    if (!aiKey) {
       return jsonError("AI service not configured", 500, "api_key_missing");
     }
 
     // Strip control chars, truncate to ~15k chars for token safety.
-    const sanitized = trimmed.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, "");
+    let sanitized = '';
+    for (const c of trimmed) {
+      const code = c.charCodeAt(0);
+      if (code === 0x09 || code === 0x0A || code === 0x0D || code >= 0x20) sanitized += c;
+    }
     const truncated = sanitized.slice(0, 15000);
 
-    const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const aiHeaders: Record<string, string> = {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${aiKey}`,
+    };
+    if (aiBaseUrl.includes("openrouter")) {
+      aiHeaders["HTTP-Referer"] = "https://chatbotstudio.dev";
+      aiHeaders["X-Title"] = "ChatBot Studio";
+    }
+
+    const aiResponse = await fetch(`${aiBaseUrl}/v1/chat/completions`, {
       method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
+      headers: aiHeaders,
       body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
+        model: aiModel,
         messages: [
           {
             role: "system",

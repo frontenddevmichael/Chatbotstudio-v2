@@ -1,6 +1,10 @@
-import { Upload, Trash2, Wand2, FileText } from 'lucide-react';
+import { useState } from 'react';
+import { Upload, Wand2, FileText, Globe, Layout } from 'lucide-react';
+import { TrashIcon } from '@/components/ui/icons';
 import Spinner from '@/components/ui/Spinner';
 import { parseFAQFile, useAIGenerateFAQs, type FAQPair } from '../hooks/useFAQImport';
+import { useURLCrawl } from '@/hooks/useURLCrawl';
+import { CATEGORIES, getDefaultFAQs } from '@/lib/default-faqs';
 import { toast } from 'sonner';
 
 interface Props {
@@ -10,7 +14,11 @@ interface Props {
 }
 
 const Step3Knowledge = ({ faqs, setFaqs, inputClass }: Props) => {
+  const [tab, setTab] = useState<'manual' | 'crawl' | 'template'>('manual');
+  const [crawlUrl, setCrawlUrl] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('');
   const { generating, generate } = useAIGenerateFAQs();
+  const { crawling, crawl } = useURLCrawl();
 
   const addFAQ = () => setFaqs(prev => [...prev, { question: '', answer: '' }]);
   const removeFAQ = (i: number) => setFaqs(prev => prev.length <= 1 ? prev : prev.filter((_, idx) => idx !== i));
@@ -42,9 +50,92 @@ const Step3Knowledge = ({ faqs, setFaqs, inputClass }: Props) => {
         <p className="text-[13px] text-muted-foreground">Teach your chatbot about your business</p>
         <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-[6px] border border-border px-2.5 py-1 text-[11px] font-medium text-muted-foreground hover:text-foreground transition-colors">
           <Upload className="h-3 w-3" /> Import
-          <input type="file" accept=".txt,.csv" onChange={handleFileUpload} className="hidden" />
+          <input type="file" accept=".txt,.csv,.json,.tsv" onChange={handleFileUpload} className="hidden" />
         </label>
       </div>
+
+      {/* Source tabs */}
+      <div className="flex gap-1.5 rounded-[10px] border border-border bg-muted/20 p-1">
+        {[
+          { id: 'manual' as const, label: 'Write', icon: FileText },
+          { id: 'crawl' as const, label: 'Website', icon: Globe },
+          { id: 'template' as const, label: 'Template', icon: Layout },
+        ].map(t => (
+          <button
+            key={t.id}
+            onClick={() => setTab(t.id)}
+            className={`flex-1 flex items-center justify-center gap-1.5 rounded-[8px] py-2 text-[12px] font-medium transition-all ${
+              tab === t.id ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            <t.icon className="h-3.5 w-3.5" /> {t.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Crawl website */}
+      {tab === 'crawl' && (
+        <div className="rounded-[14px] border border-border p-4 space-y-3">
+          <p className="text-[13px] font-medium text-foreground">Import from your website</p>
+          <p className="text-[12px] text-muted-foreground">Enter your URL and we will extract content to generate FAQs.</p>
+          <div className="flex gap-2">
+            <input
+              value={crawlUrl}
+              onChange={e => setCrawlUrl(e.target.value)}
+              placeholder="yourwebsite.com"
+              className={`${inputClass} flex-1`}
+            />
+            <button
+              onClick={async () => {
+                if (!crawlUrl.trim()) { toast.error('Enter a URL'); return; }
+                const result = await crawl(crawlUrl.trim());
+                if (result) {
+                  const data = await generate(new File([result.text], 'crawled.txt', { type: 'text/plain' }));
+                  if (data.length) {
+                    setFaqs(prev => [...prev.filter(f => f.question || f.answer), ...data]);
+                    toast.success(`Generated ${data.length} FAQs from your website`);
+                  }
+                }
+              }}
+              disabled={crawling || generating || !crawlUrl.trim()}
+              className="shrink-0 rounded-[8px] bg-primary px-4 py-2 text-[12px] font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-all"
+            >
+              {crawling || generating ? <Spinner className="h-3.5 w-3.5" /> : 'Crawl'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Category template */}
+      {tab === 'template' && (
+        <div className="rounded-[14px] border border-border p-4 space-y-3">
+          <p className="text-[13px] font-medium text-foreground">Start from a template</p>
+          <p className="text-[12px] text-muted-foreground">Pick a business category to pre-fill relevant FAQs.</p>
+          <select
+            value={selectedCategory}
+            onChange={e => setSelectedCategory(e.target.value)}
+            className={`${inputClass} text-[14px]`}
+          >
+            <option value="">Select a category...</option>
+            {CATEGORIES.map(c => (
+              <option key={c.id} value={c.id}>{c.label}</option>
+            ))}
+          </select>
+          <button
+            onClick={() => {
+              if (!selectedCategory) { toast.error('Select a category'); return; }
+              setFaqs(() => getDefaultFAQs(selectedCategory));
+              toast.success(`Loaded ${CATEGORIES.find(c => c.id === selectedCategory)?.label} FAQs`);
+            }}
+            disabled={!selectedCategory}
+            className="rounded-[8px] bg-primary px-4 py-2 text-[12px] font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-all"
+          >
+            Load Template
+          </button>
+        </div>
+      )}
+
+      {/* Manual FAQ editing (always visible) */}
 
       <div className="rounded-[14px] border border-dashed border-primary/30 bg-primary/5 p-4">
         <div className="flex items-start gap-3">
@@ -56,7 +147,7 @@ const Step3Knowledge = ({ faqs, setFaqs, inputClass }: Props) => {
             <p className="text-[12px] text-muted-foreground mt-0.5">Upload a company document (.txt, .csv) and AI will generate FAQs automatically</p>
             <label className={`mt-3 inline-flex cursor-pointer items-center gap-1.5 rounded-[8px] bg-primary px-3 py-1.5 text-[12px] font-medium text-primary-foreground hover:bg-primary/90 transition-all active:scale-[0.97] ${generating ? 'opacity-50 pointer-events-none' : ''}`}>
               {generating ? (<><Spinner className="h-3 w-3" /> Generating...</>) : (<><FileText className="h-3 w-3" /> Upload Document</>)}
-              <input type="file" accept=".txt,.csv" onChange={handleAIGenerate} className="hidden" disabled={generating} />
+              <input type="file" accept=".txt,.csv,.json,.tsv" onChange={handleAIGenerate} className="hidden" disabled={generating} />
             </label>
           </div>
         </div>
@@ -68,7 +159,7 @@ const Step3Knowledge = ({ faqs, setFaqs, inputClass }: Props) => {
             <span className="text-[11px] font-medium text-muted-foreground">FAQ {i + 1}</span>
             {faqs.length > 1 && (
               <button type="button" onClick={() => removeFAQ(i)} aria-label={`Remove FAQ ${i + 1}`} className="rounded-[6px] p-1 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors">
-                <Trash2 className="h-3 w-3" />
+                <TrashIcon className="h-3 w-3" />
               </button>
             )}
           </div>

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Check } from 'lucide-react';
+import { X } from 'lucide-react';
+import { CheckIcon } from '@/components/ui/icons';
 import { supabase } from '@/integrations/supabase/client';
 
 interface WaitlistModalProps {
@@ -65,7 +66,7 @@ const WaitlistModal = ({ open, onClose }: WaitlistModalProps) => {
                   animate={{ scale: 1 }}
                   transition={{ type: 'spring', stiffness: 300 }}
                 >
-                  <Check size={28} className="text-primary" />
+                  <CheckIcon className="h-7 w-7 text-primary" />
                 </motion.div>
                 <h3 className="text-[17px] font-semibold text-foreground/90 mb-2">You're on the list</h3>
                 <p className="text-[13px] text-muted-foreground">We'll notify you when Premium launches.</p>

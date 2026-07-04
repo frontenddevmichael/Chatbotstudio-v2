@@ -1,27 +1,32 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase, initialAuthHash } from '@/integrations/supabase/client';
 import Spinner from '@/components/ui/Spinner';
 import SEO from '@/components/ui/SEO';
 import { toast } from 'sonner';
+import { getErrorMessage } from '@/lib/errors';
 
 const AuthCallback = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    const hash = window.location.hash || '';
+    const hash = window.location.hash || initialAuthHash || '';
     const params = new URLSearchParams(hash.replace(/^#/, ''));
     const type = params.get('type');
     const errorDesc = params.get('error_description') || params.get('error');
 
     if (errorDesc) {
-      toast.error(decodeURIComponent(errorDesc));
+      // URLSearchParams already decodes URI components, so decodeURIComponent would be
+      // redundant here. Supabase sends error_description=%7B%7D (URL-encoded `{}`) as a
+      // placeholder for unknown errors — treat that as a generic failure message.
+      const decoded = errorDesc === '{}' ? 'Something went wrong' : errorDesc;
+      toast.error(decoded);
       navigate('/login', { replace: true });
       return;
     }
 
     if (type === 'recovery') {
-      navigate(`/reset-password${window.location.hash}`, { replace: true });
+      navigate(`/reset-password${hash}`, { replace: true });
       return;
     }
 
@@ -39,10 +44,18 @@ const AuthCallback = () => {
     };
 
     supabase.auth.getSession().then(({ data }) => {
-      if (data.session) finish(true);
+      if (data.session && !done) finish(true);
+    }).catch((err) => {
+      console.error('getSession failed:', err);
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'PASSWORD_RECOVERY') {
+        if (session) {
+          navigate('/reset-password', { replace: true });
+        }
+        return;
+      }
       if (session && (event === 'SIGNED_IN' || event === 'INITIAL_SESSION' || event === 'TOKEN_REFRESHED')) {
         finish(true);
       }

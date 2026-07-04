@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 
 const STATS = [
   { value: 5, suffix: ' min', label: 'Average setup time' },
-  { value: 0, suffix: '', label: 'Lines of code required' },
+  { value: 0, suffix: '', label: 'No coding required' },
   { value: 24, suffix: '/7', label: 'Your bot never sleeps' },
   { value: '∞', suffix: '', label: 'Conversations handled' },
 ];
@@ -29,7 +29,7 @@ const Counter = ({ value, suffix, inView }: { value: number | string; suffix: st
   }, [inView, value, isNumber]);
 
   return (
-    <span className="font-serif italic text-[48px] sm:text-[56px] text-foreground/90">
+    <span className="font-display italic text-[48px] sm:text-[56px] text-ink">
       {isNumber ? count : value}{suffix}
     </span>
   );

@@ -1,4 +1,5 @@
 import "@testing-library/jest-dom";
+import { vi } from "vitest";
 
 Object.defineProperty(window, "matchMedia", {
   writable: true,
@@ -13,3 +14,6 @@ Object.defineProperty(window, "matchMedia", {
     dispatchEvent: () => {},
   }),
 });
+
+Element.prototype.scrollTo = vi.fn();
+Element.prototype.scrollBy = vi.fn();

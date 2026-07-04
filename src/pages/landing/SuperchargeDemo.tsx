@@ -1,7 +1,9 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useInView } from 'react-intersection-observer';
-import { Zap, RotateCcw } from 'lucide-react';
+import { RotateCcw } from 'lucide-react';
+import { SuperchargeIcon } from '@/components/ui/icons';
+import SuperchargeScene from '@/components/ui/illustrations/SuperchargeScene';
 
 const VARIATIONS = [
   'When do you open?',
@@ -42,16 +44,16 @@ const SuperchargeDemo = () => {
   return (
     <section ref={ref} className="py-24 md:py-32 bg-background px-6">
       {inView && !fired && <AutoFire onFire={handleView} />}
-      <div className="max-w-4xl mx-auto text-center">
+      <div className="max-w-5xl mx-auto text-center">
         <motion.h2
-          className="font-serif text-[36px] sm:text-[44px] font-normal text-foreground/90 mb-4"
+          className="font-display text-[36px] sm:text-[44px] font-normal text-ink mb-4"
           initial={{ opacity: 0, y: 24 }}
           animate={inView ? { opacity: 1, y: 0 } : {}}
         >
-          One question. <span className="italic text-[#ff9f0a]">Eight ways to ask it.</span>
+          One question. <span className="italic text-primary">Eight ways to ask it.</span>
         </motion.h2>
         <motion.p
-          className="text-[15px] text-muted-foreground mb-12 max-w-md mx-auto"
+          className="text-[15px] text-muted-foreground mb-10 max-w-md mx-auto"
           initial={{ opacity: 0 }}
           animate={inView ? { opacity: 1 } : {}}
           transition={{ delay: 0.15 }}
@@ -59,25 +61,24 @@ const SuperchargeDemo = () => {
           Supercharge turns one FAQ into a bot that understands every way your customer might phrase it.
         </motion.p>
 
-        {/* Original FAQ */}
+        {/* Animated SVG scene */}
         <motion.div
-          className="inline-block rounded-[10px] border border-border bg-card px-6 py-4 mb-8"
-          initial={{ opacity: 0, scale: 0.97 }}
-          animate={inView ? { opacity: 1, scale: 1 } : {}}
+          className="mb-8 flex justify-center"
+          initial={{ opacity: 0, y: 20 }}
+          animate={inView ? { opacity: 1, y: 0 } : {}}
           transition={{ delay: 0.2 }}
         >
-          <div className="text-[11px] font-mono text-muted-foreground/50 mb-1">Original FAQ</div>
-          <div className="text-[15px] text-foreground/80 font-medium">"What are your opening hours?"</div>
+          <SuperchargeScene />
         </motion.div>
 
         {/* Fire button */}
         <div className="mb-8">
           <motion.button
             onClick={fire}
-            className="inline-flex items-center gap-2 h-10 px-6 rounded-[10px] bg-[#ff9f0a] text-black text-[14px] font-semibold hover:bg-[#ff9f0a]/90 active:scale-[0.97] transition-all"
+            className="inline-flex items-center gap-2 h-10 px-6 rounded-pill bg-primary text-primary-foreground text-[14px] font-semibold hover:bg-primary/90 active:scale-[0.97] transition-all"
             whileTap={{ scale: 0.95 }}
           >
-            {fired ? <RotateCcw size={16} /> : <Zap size={16} />}
+            {fired ? <RotateCcw size={16} /> : <SuperchargeIcon className="h-4 w-4" />}
             {fired ? 'Replay' : 'Supercharge'}
           </motion.button>
         </div>
@@ -91,7 +92,7 @@ const SuperchargeDemo = () => {
                 initial={{ opacity: 0, scale: 0.8, y: 12 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 transition={{ type: 'spring', stiffness: 300, damping: 22, delay: i * 0.06 }}
-                className="rounded-[8px] border border-[#ff9f0a]/15 bg-[#ff9f0a]/[0.05] px-3 py-2 text-[12px] text-[#ff9f0a]/70"
+                className="rounded-[8px] border border-ink/10 bg-ink/[0.03] px-3 py-2 text-[12px] text-ink-muted/70"
               >
                 {v}
               </motion.div>
@@ -105,7 +106,7 @@ const SuperchargeDemo = () => {
             animate={{ opacity: 1 }}
             className="font-mono text-[13px] text-muted-foreground/60"
           >
-            <span className="text-[#ff9f0a] font-semibold">{count}</span> variations generated
+            <span className="text-primary font-semibold">{count}</span> variations generated
           </motion.div>
         )}
       </div>
@@ -114,7 +115,10 @@ const SuperchargeDemo = () => {
 };
 
 const AutoFire = ({ onFire }: { onFire: () => void }) => {
-  useState(() => { setTimeout(onFire, 800); });
+  useEffect(() => {
+    const t = setTimeout(onFire, 800);
+    return () => clearTimeout(t);
+  }, [onFire]);
   return null;
 };
 

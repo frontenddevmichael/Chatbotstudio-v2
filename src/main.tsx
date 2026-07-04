@@ -1,18 +1,32 @@
 import { createRoot } from "react-dom/client";
 import { registerSW } from "virtual:pwa-register";
+import { initSentry } from "@/lib/sentry";
+import { initPostHog } from "@/lib/posthog";
+import * as Sentry from "@sentry/react";
 import App from "./App.tsx";
 import "./index.css";
 
 // Register service worker for PWA
 registerSW({ immediate: true });
 
-// Global error handlers for uncaught errors
-window.onerror = (message, source, lineno, colno, error) => {
-  console.error('[Global Error]', { message, source, lineno, colno, error });
-};
+// Initialize Sentry (no-op if DSN not set)
+initSentry();
 
-window.onunhandledrejection = (event: PromiseRejectionEvent) => {
-  console.error('[Unhandled Promise Rejection]', event.reason);
-};
+// Capture unhandled promise rejections
+window.addEventListener("unhandledrejection", (event) => {
+  Sentry.captureException(event.reason);
+});
 
-createRoot(document.getElementById("root")!).render(<App />);
+// Capture uncaught runtime errors
+window.addEventListener("error", (event) => {
+  Sentry.captureException(event.error || event.message);
+});
+
+// Initialize PostHog (no-op if API key not set)
+initPostHog();
+
+createRoot(document.getElementById("root")!).render(
+  <Sentry.ErrorBoundary fallback={<p className="flex min-h-screen items-center justify-center text-sm text-muted-foreground">An unexpected error occurred.</p>}>
+    <App />
+  </Sentry.ErrorBoundary>
+);

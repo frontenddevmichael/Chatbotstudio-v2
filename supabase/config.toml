@@ -1,4 +1,4 @@
-project_id = "lcnbcwpixeerkijnnuiz"
+project_id = "rtnhlmmgvvfupbibyrhu"
 
 [functions.chat]
 verify_jwt = false
@@ -8,3 +8,20 @@ verify_jwt = false
 
 [functions.generate-faqs]
 verify_jwt = false
+
+[functions.flutterwave-webhook]
+verify_jwt = false
+
+[functions.autopilot]
+verify_jwt = false
+
+[functions.rollback-faq]
+verify_jwt = false
+
+[functions.generate-embeddings]
+verify_jwt = false
+
+[functions.send-webhook]
+verify_jwt = false
+
+

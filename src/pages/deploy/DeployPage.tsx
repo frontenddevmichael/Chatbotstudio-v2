@@ -2,8 +2,9 @@ import { useParams } from 'react-router-dom';
 import { useChatbot } from '@/hooks/useChatbot';
 import PageWrapper from '@/components/layout/PageWrapper';
 import SEO from '@/components/ui/SEO';
-import Spinner from '@/components/ui/Spinner';
-import { Copy, ExternalLink, Zap, Link as LinkIcon } from 'lucide-react';
+import WebhookSettings from '@/components/deploy/WebhookSettings';
+import { ExternalLink, Link as LinkIcon } from 'lucide-react';
+import { CopyIcon, SuperchargeIcon } from '@/components/ui/icons';
 import { toast } from 'sonner';
 import { useState } from 'react';
 
@@ -14,12 +15,36 @@ const DeployPage = () => {
   const { data: chatbot, isLoading } = useChatbot(id!);
   const [variant, setVariant] = useState<EmbedVariant>('sdk');
 
-  if (isLoading) return <PageWrapper><div className="flex justify-center py-20"><Spinner className="h-6 w-6" /></div></PageWrapper>;
+  if (isLoading) return (
+    <PageWrapper>
+      <div className="max-w-[640px]">
+        <div className="mb-6 h-6 w-36 animate-pulse rounded bg-[hsl(var(--color-surface-2))]" />
+        <div className="mb-4 rounded-[14px] border border-border bg-card p-5" style={{ boxShadow: 'var(--shadow-sm)' }}>
+          <div className="mb-3 h-3.5 w-24 animate-pulse rounded bg-[hsl(var(--color-surface-2))]" />
+          <div className="flex items-center gap-2">
+            <div className="flex-1 h-10 animate-pulse rounded-[10px] bg-[hsl(var(--color-surface-2))]" />
+            <div className="h-10 w-10 animate-pulse rounded-[10px] bg-[hsl(var(--color-surface-2))]" />
+          </div>
+          <div className="mt-2 h-3 w-32 animate-pulse rounded bg-[hsl(var(--color-surface-2))]" />
+        </div>
+        <div className="mb-4 grid grid-cols-2 gap-2">
+          <div className="h-10 animate-pulse rounded-[10px] bg-[hsl(var(--color-surface-2))]" />
+          <div className="h-10 animate-pulse rounded-[10px] bg-[hsl(var(--color-surface-2))]" />
+        </div>
+        <div className="rounded-[14px] border border-border bg-card p-5" style={{ boxShadow: 'var(--shadow-sm)' }}>
+          <div className="mb-1 h-3.5 w-32 animate-pulse rounded bg-[hsl(var(--color-surface-2))]" />
+          <div className="mb-3 h-3 w-56 animate-pulse rounded bg-[hsl(var(--color-surface-2))]" />
+          <div className="h-32 w-full animate-pulse rounded-[10px] bg-[hsl(var(--color-surface-2))]" />
+          <div className="mt-2 h-3 w-16 animate-pulse rounded bg-[hsl(var(--color-surface-2))]" />
+        </div>
+      </div>
+    </PageWrapper>
+  );
   if (!chatbot) return <PageWrapper><p className="text-[13px] text-muted-foreground">Chatbot not found</p></PageWrapper>;
 
   const getPublishedOrigin = () => {
     const origin = window.location.origin;
-    if (origin.includes('-preview--') && origin.includes('.lovable.app')) return 'https://ideaweave-bot.lovable.app';
+    if (origin.includes('-preview--') && origin.includes('.lovable.app')) return 'https://chatbotstudio.dev';
     return origin;
   };
 
@@ -31,9 +56,9 @@ const DeployPage = () => {
   const codes: Record<EmbedVariant, { label: string; icon: React.ElementType; code: string; desc: string }> = {
     sdk: {
       label: 'SDK (Recommended)',
-      icon: Zap,
+      icon: SuperchargeIcon,
       desc: 'Lightweight launcher with toggle bubble, lazy loading, and mobile support',
-      code: `<!-- ChatBot Studio Embed -->\n<script>\n  window.$chatbot = {\n    id: "${chatbot.embed_token}",\n    color: "${primaryColor}",\n    position: "bottom-right",\n    width: 400,      // optional: 320–700\n    height: 600,     // optional: 400–900\n    // autoOpen: 5000 // optional: auto-open after ms\n  };\n</script>\n<script src="${embedJsUrl}" async></script>`,
+      code: `<!-- ChatBot Studio Embed -->\n<script>\n  window.$chatbot = {\n    id: "${chatbot.embed_token}",\n    color: "${primaryColor}",\n    position: "bottom-right",\n    width: 400,      // optional: 320–700\n    height: 600,     // optional: 400–900\n    autoOpen: 5000,  // optional: auto-open after N ms\n    exitIntent: true, // optional: open on exit intent\n    scrollTrigger: 50, // optional: open at 50% scroll\n  };\n</script>\n<script src="${embedJsUrl}" async></script>`,
     },
     link: {
       label: 'Direct Link',
@@ -60,8 +85,8 @@ const DeployPage = () => {
           </h3>
           <div className="flex items-center gap-2">
             <input readOnly value={widgetUrl} className="flex-1 rounded-[10px] border border-border bg-[hsl(var(--color-surface-3))] px-3 py-2 font-mono text-[12px] text-foreground" />
-            <button onClick={() => copy(widgetUrl)} className="rounded-[10px] bg-primary px-3 py-2 text-[12px] font-medium text-primary-foreground hover:bg-primary/90 active:scale-[0.97] transition-all">
-              <Copy className="h-3.5 w-3.5" />
+            <button onClick={() => copy(widgetUrl)} aria-label="Copy widget URL" className="rounded-[10px] bg-primary px-3 py-2 text-[12px] font-medium text-primary-foreground hover:bg-primary/90 active:scale-[0.97] transition-all">
+              <CopyIcon className="h-3.5 w-3.5" />
             </button>
           </div>
           <a href={widgetUrl} target="_blank" rel="noopener noreferrer" className="mt-2 inline-flex items-center gap-1 text-[12px] text-primary hover:underline">
@@ -98,19 +123,31 @@ const DeployPage = () => {
           </h3>
           <p className="mb-3 text-[12px] text-muted-foreground">{current.desc}</p>
           <pre className="overflow-x-auto rounded-[10px] bg-[hsl(var(--color-surface-3))] p-3 font-mono text-[12px] text-foreground whitespace-pre-wrap break-all">{current.code}</pre>
-          <button onClick={() => copy(current.code)} className="mt-2 inline-flex items-center gap-1 text-[12px] font-medium text-primary hover:underline">
-            <Copy className="h-3 w-3" /> Copy
+          <button onClick={() => copy(current.code)} aria-label="Copy embed code" className="mt-2 inline-flex items-center gap-1 text-[12px] font-medium text-primary hover:underline">
+            <CopyIcon className="h-3 w-3" /> Copy
           </button>
 
           {variant === 'sdk' && (
             <div className="mt-4 rounded-[10px] border border-border bg-muted/30 p-3">
               <p className="text-[12px] font-medium text-foreground mb-1">Public API</p>
-              <pre className="text-[11px] font-mono text-muted-foreground leading-relaxed">{`window.ChatBotStudio.open()   // Open widget
-window.ChatBotStudio.close()  // Close widget
-window.ChatBotStudio.toggle() // Toggle
-window.ChatBotStudio.setUser({ name, email })`}</pre>
+              <pre className="text-[11px] font-mono text-muted-foreground leading-relaxed">{`window.ChatBotStudio.open()     // Open widget
+window.ChatBotStudio.close()    // Close widget
+window.ChatBotStudio.toggle()   // Toggle
+window.ChatBotStudio.expand()   // Expand widget
+window.ChatBotStudio.collapse() // Collapse widget
+window.ChatBotStudio.setUser({ name, email })
+window.ChatBotStudio.setTheme({ bg: '#000', headerBg: '#111' }) // Custom theme
+// Proactive config:
+$chatbot.autoOpen = 5000       // auto-open after 5s
+$chatbot.exitIntent = true     // open on mouse exit
+$chatbot.scrollTrigger = 50    // open at 50% scroll`}</pre>
             </div>
           )}
+        </div>
+
+        {/* Webhook settings */}
+        <div className="mt-6 rounded-[14px] border border-border bg-card p-5" style={{ boxShadow: 'var(--shadow-sm)' }}>
+          <WebhookSettings chatbotId={id!} />
         </div>
       </div>
     </PageWrapper>

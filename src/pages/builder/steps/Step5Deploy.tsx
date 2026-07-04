@@ -1,4 +1,5 @@
-import { Sparkles, Copy, ExternalLink } from 'lucide-react';
+import { ExternalLink } from 'lucide-react';
+import { SparkleIcon, CopyIcon } from '@/components/ui/icons';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 
@@ -10,7 +11,7 @@ interface Props {
 
 const getPublishedOrigin = () => {
   const origin = window.location.origin;
-  if (origin.includes('-preview--') && origin.includes('.lovable.app')) return 'https://ideaweave-bot.lovable.app';
+  if (origin.includes('-preview--') && origin.includes('.lovable.app')) return 'https://chatbotstudio.dev';
   return origin;
 };
 
@@ -25,7 +26,7 @@ const Step5Deploy = ({ embedToken, primaryColor, botId }: Props) => {
 
   return (
     <div className="space-y-6 text-center">
-      <Sparkles className="mx-auto h-10 w-10 text-primary" />
+      <SparkleIcon className="mx-auto h-10 w-10 text-primary" />
       <h2 className="text-[22px] font-semibold text-foreground">Your chatbot is ready!</h2>
       <p className="text-[13px] text-muted-foreground">Deploy it anywhere with the SDK embed code</p>
       {embedToken ? (
@@ -34,7 +35,7 @@ const Step5Deploy = ({ embedToken, primaryColor, botId }: Props) => {
             <p className="mb-2 text-[11px] font-medium tracking-[0.06em] uppercase text-muted-foreground">SDK Embed Code</p>
             <pre className="overflow-x-auto rounded-[10px] bg-[hsl(var(--color-surface-3))] p-3 font-mono text-[12px] text-foreground whitespace-pre-wrap">{sdkSnippet}</pre>
             <button type="button" onClick={() => { navigator.clipboard.writeText(sdkSnippet); toast.success('Copied!'); }} className="mt-2 inline-flex items-center gap-1 text-[12px] font-medium text-primary hover:underline">
-              <Copy className="h-3 w-3" /> Copy code
+              <CopyIcon className="h-3 w-3" /> Copy code
             </button>
           </div>
           <a href={widgetUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-[13px] font-medium text-primary hover:underline">

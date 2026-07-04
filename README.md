@@ -1,6 +1,88 @@
- ChatBot Studio
+# ChatBot Studio
 
 ChatBot Studio is a no-code AI chatbot creation platform that enables businesses, creators, and organizations to build, train, and deploy intelligent chatbots in minutes — without writing code.
+
+---
+
+## Getting Started
+
+### Prerequisites
+- Node.js 22+
+- npm 10+
+- A Supabase project (free tier works)
+- An OpenRouter (or compatible) API key for AI features
+
+### Setup
+
+```bash
+# 1. Clone the repo
+git clone <repo-url>
+cd ideaweave-bot
+
+# 2. Install dependencies
+npm install
+
+# 3. Copy environment variables
+cp .env.example .env
+# Edit .env with your Supabase project details and API keys
+
+# 4. Start the dev server
+npm run dev
+```
+
+### Environment Variables
+
+See `.env.example` for the full list of required variables. Key ones:
+
+| Variable | Description |
+|---|---|
+| `VITE_SUPABASE_URL` | Your Supabase project URL |
+| `VITE_SUPABASE_PUBLISHABLE_KEY` | Supabase anon/publishable key |
+| `VITE_SUPABASE_PROJECT_ID` | Supabase project ID |
+| `VITE_TURNSTILE_SITE_KEY` | Cloudflare Turnstile site key (auth pages) |
+
+Edge function secrets are managed in the Supabase dashboard under **Edge Functions → Secrets**.
+
+### Available Scripts
+
+```bash
+npm run dev          # Start development server
+npm run build        # Production build
+npm test             # Run all tests (vitest)
+npm run lint         # ESLint check
+npm run preview      # Preview production build
+```
+
+### Testing
+
+```bash
+# Run all tests
+npm test
+
+# Watch mode
+npm run test:watch
+
+# Run a specific test file
+npx vitest run src/test/sendWebhook.test.ts
+```
+
+### Deployment
+
+**Frontend (Vercel)**:
+```bash
+npm run build
+npx vercel --prod
+```
+
+**Supabase Edge Functions**:
+```bash
+supabase functions deploy --project-ref <project-id>
+supabase db push
+```
+
+### CI/CD
+
+The project includes a GitHub Actions workflow (`.github/workflows/ci.yml`) that runs lint + typecheck + tests on every push and PR. On pushes to `main`, it also builds and deploys to Vercel (requires repository secrets: `VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID`).
 
 The platform focuses on simplicity and accessibility. Users can create a functional chatbot by filling out a few forms, uploading FAQs or knowledge content, and instantly deploying the bot on their website.
 

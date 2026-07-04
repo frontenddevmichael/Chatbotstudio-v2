@@ -29,9 +29,9 @@ function hslToHex(h: number, s: number, l: number): string {
 function hexToHsl(hex: string): [number, number, number] {
   const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
   if (!result) return [190, 100, 50];
-  let r = parseInt(result[1], 16) / 255;
-  let g = parseInt(result[2], 16) / 255;
-  let b = parseInt(result[3], 16) / 255;
+  const r = parseInt(result[1], 16) / 255;
+  const g = parseInt(result[2], 16) / 255;
+  const b = parseInt(result[3], 16) / 255;
   const max = Math.max(r, g, b), min = Math.min(r, g, b);
   let h = 0, s = 0;
   const l = (max + min) / 2;
@@ -78,7 +78,7 @@ const ColorPicker = ({ value, onChange }: ColorPickerProps) => {
         ctx.fillRect(x, y, 1, 1);
       }
     }
-  }, [hsl[0]]);
+  }, [hsl]);
 
   const handleCanvasInteraction = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
     if (!isDragging.current && e.type !== 'mousedown') return;
@@ -90,7 +90,7 @@ const ColorPicker = ({ value, onChange }: ColorPickerProps) => {
     const s = Math.round(x * 100);
     const l = Math.round(100 - y * 100);
     updateFromHsl(hsl[0], s, l);
-  }, [hsl[0], updateFromHsl]);
+  }, [hsl, updateFromHsl]);
 
   const handleHexChange = (input: string) => {
     setHexInput(input);

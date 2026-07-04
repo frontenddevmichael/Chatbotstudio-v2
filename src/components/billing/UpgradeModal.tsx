@@ -1,6 +1,7 @@
 import { PLANS, isPremium } from '@/lib/plans';
 import { useAuth } from '@/context/AuthContext';
-import { X, Check, Zap } from 'lucide-react';
+import { X } from 'lucide-react';
+import { CheckIcon, SuperchargeIcon } from '@/components/ui/icons';
 import { supabase } from '@/integrations/supabase/client';
 import { useState } from 'react';
 import { toast } from 'sonner';
@@ -45,8 +46,8 @@ const UpgradeModal = ({ open, onClose }: UpgradeModalProps) => {
           <X className="h-5 w-5" />
         </button>
         <div className="mb-6 text-center">
-          <Zap className="mx-auto mb-2 h-10 w-10 text-primary" />
-          <h2 className="font-display text-xl font-bold text-foreground">Upgrade to Premium</h2>
+          <SuperchargeIcon className="mx-auto mb-2 h-10 w-10 text-primary" />
+          <h2 className="text-xl font-bold text-foreground">Upgrade to Premium</h2>
           <p className="mt-1 text-sm text-muted-foreground">Unlock the full power of ChatBot Studio</p>
         </div>
 
@@ -58,13 +59,13 @@ const UpgradeModal = ({ open, onClose }: UpgradeModalProps) => {
                 plan === 'premium' ? 'border-primary bg-primary/5' : 'border-border'
               }`}
             >
-              <h3 className="font-display text-lg font-bold text-foreground">{PLANS[plan].name}</h3>
+              <h3 className="text-lg font-bold text-foreground">{PLANS[plan].name}</h3>
               {plan === 'premium' && <p className="text-2xl font-bold text-primary">${PLANS[plan].price}<span className="text-sm text-muted-foreground">/mo</span></p>}
               {plan === 'free' && <p className="text-2xl font-bold text-foreground">$0</p>}
               <ul className="mt-3 space-y-2">
                 {PLANS[plan].features.map((f) => (
                   <li key={f} className="flex items-start gap-2 text-xs text-muted-foreground">
-                    <Check className="mt-0.5 h-3 w-3 shrink-0 text-success" />
+                    <CheckIcon className="mt-0.5 h-3 w-3 shrink-0 text-success" />
                     {f}
                   </li>
                 ))}

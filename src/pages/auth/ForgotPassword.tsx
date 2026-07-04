@@ -1,28 +1,51 @@
-import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useState, useRef } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import SEO from '@/components/ui/SEO';
 import Spinner from '@/components/ui/Spinner';
 import { toast } from 'sonner';
+import { getErrorMessage } from '@/lib/errors';
+
+const COOLDOWN_MS = 30_000;
 
 const ForgotPassword = () => {
-  const [email, setEmail] = useState('');
+  const [searchParams] = useSearchParams();
+  const prefillEmail = searchParams.get('email') || '';
+  const fromMigration = !!searchParams.get('email');
+  const lastSentRef = useRef(0);
+
+  const [email, setEmail] = useState(prefillEmail);
   const [submitting, setSubmitting] = useState(false);
   const [sent, setSent] = useState(false);
+  const [cooldownUntil, setCooldownUntil] = useState(0);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email) { toast.error('Please enter your email'); return; }
+
+    const remaining = cooldownUntil - Date.now();
+    if (remaining > 0) {
+      const secs = Math.ceil(remaining / 1000);
+      toast.error(`Please wait ${secs}s before requesting another email`);
+      return;
+    }
+
     setSubmitting(true);
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/reset-password`,
+        redirectTo: `${window.location.origin}/auth/callback`,
       });
       if (error) throw error;
       setSent(true);
+      lastSentRef.current = Date.now();
+      setCooldownUntil(Date.now() + COOLDOWN_MS);
       toast.success('Check your email for a reset link');
     } catch (err: unknown) {
-      toast.error((err instanceof Error ? err.message : null) || 'Failed to send reset email');
+      console.error('Failed to send reset email', err);
+      const msg = getErrorMessage(err, 'Failed to send reset email');
+      // Apply cooldown even on failure to prevent hammering the API
+      setCooldownUntil(Date.now() + COOLDOWN_MS);
+      toast.error(msg);
     } finally {
       setSubmitting(false);
     }
@@ -51,27 +74,37 @@ const ForgotPassword = () => {
               </p>
             </div>
           ) : (
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <label htmlFor="forgot-email" className="mb-1.5 block text-[13px] font-medium text-muted-foreground">Email</label>
-                <input
-                  id="forgot-email"
-                  type="email"
-                  autoComplete="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="w-full rounded-[10px] border border-border bg-[hsl(var(--color-surface-3))] px-3 py-2 text-[15px] text-foreground placeholder:text-muted-foreground outline-none transition-colors focus:border-primary"
-                  placeholder="you@example.com"
-                />
-              </div>
-              <button
-                type="submit"
-                disabled={submitting}
-                className="flex w-full items-center justify-center rounded-[10px] bg-primary px-4 py-2.5 text-[15px] font-medium text-primary-foreground transition-all hover:bg-primary/90 active:scale-[0.97] disabled:opacity-50"
-              >
-                {submitting ? <Spinner /> : 'Send Reset Link'}
-              </button>
-            </form>
+            <>
+              {fromMigration && (
+                <div className="mb-4 rounded-[10px] bg-primary/5 border border-primary/20 p-3 text-center">
+                  <p className="text-[13px] text-foreground">
+                    It looks like your account was created before our latest database upgrade.
+                    Just set a new password and you'll be back in.
+                  </p>
+                </div>
+              )}
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div>
+                  <label htmlFor="forgot-email" className="mb-1.5 block text-[13px] font-medium text-muted-foreground">Email</label>
+                  <input
+                    id="forgot-email"
+                    type="email"
+                    autoComplete="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="w-full rounded-[10px] border border-border bg-[hsl(var(--color-surface-3))] px-3 py-2 text-[15px] text-foreground placeholder:text-muted-foreground outline-none transition-colors focus:border-primary"
+                    placeholder="you@example.com"
+                  />
+                </div>
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  className="flex w-full items-center justify-center rounded-[10px] bg-primary px-4 py-2.5 text-[15px] font-medium text-primary-foreground transition-all hover:bg-primary/90 active:scale-[0.97] disabled:opacity-50"
+                >
+                  {submitting ? <Spinner /> : 'Send Reset Link'}
+                </button>
+              </form>
+            </>
           )}
         </div>
 

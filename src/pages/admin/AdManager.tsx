@@ -3,16 +3,18 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { adminFetch } from '@/lib/adminApi';
 import AdminLayout from '@/components/layout/AdminLayout';
 import SEO from '@/components/ui/SEO';
+import type { AdminAd } from '@/types/admin';
 import { toast } from 'sonner';
 import { sanitizeText, isValidUrl } from '@/lib/sanitize';
-import { Plus, Trash2, Eye } from 'lucide-react';
+import { Eye } from 'lucide-react';
+import { PlusIcon, TrashIcon } from '@/components/ui/icons';
 import Spinner from '@/components/ui/Spinner';
 
 const AdManager = () => {
   const queryClient = useQueryClient();
   const { data: ads, isLoading } = useQuery({
     queryKey: ['admin-ads'],
-    queryFn: () => adminFetch<any[]>('get-ads'),
+    queryFn: () => adminFetch<AdminAd[]>('get-ads'),
   });
 
   const [form, setForm] = useState({ title: '', description: '', cta_text: '', cta_url: '', placement: 'sidebar', is_active: true });
@@ -37,7 +39,7 @@ const AdManager = () => {
       setAdding(false);
       toast.success('Ad created');
     },
-    onError: (err: any) => toast.error(err.message),
+    onError: (err: Error) => toast.error(err.message),
   });
 
   const deleteAd = useMutation({
@@ -59,12 +61,12 @@ const AdManager = () => {
     <AdminLayout>
       <SEO title="Ad Management" noIndex />
       <div className="mb-6 flex items-center justify-between">
-        <h1 className="font-display text-2xl font-bold text-foreground">Ads</h1>
+        <h1 className="text-2xl font-bold text-foreground">Ads</h1>
         <button
           onClick={() => setAdding(!adding)}
           className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
         >
-          <Plus className="h-4 w-4" /> New Ad
+          <PlusIcon className="h-4 w-4" /> New Ad
         </button>
       </div>
 
@@ -90,7 +92,7 @@ const AdManager = () => {
         <div className="space-y-2">{[...Array(3)].map((_, i) => <div key={i} className="h-16 animate-pulse rounded bg-card" />)}</div>
       ) : (
         <div className="space-y-3">
-          {ads?.map((ad: any) => (
+          {ads?.map((ad) => (
             <div key={ad.id} className="flex items-center justify-between rounded-lg border border-border bg-card p-4">
               <div>
                 <p className="text-sm font-semibold text-foreground">{ad.title}</p>
@@ -101,7 +103,7 @@ const AdManager = () => {
                   <Eye className="h-4 w-4" />
                 </button>
                 <button onClick={() => deleteAd.mutate(ad.id)} className="rounded p-1.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive">
-                  <Trash2 className="h-4 w-4" />
+                  <TrashIcon className="h-4 w-4" />
                 </button>
               </div>
             </div>

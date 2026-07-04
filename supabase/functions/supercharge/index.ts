@@ -19,8 +19,13 @@ serve(async (req) => {
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const lovableApiKey = Deno.env.get("LOVABLE_API_KEY");
-    const anonKey = Deno.env.get("SUPABASE_ANON_KEY") || Deno.env.get("SUPABASE_PUBLISHABLE_KEY")!;
+    const aiKey = Deno.env.get("AI_API_KEY");
+    const aiBaseUrl = (Deno.env.get("AI_BASE_URL") || "https://openrouter.ai/api").replace(/\/+$/, "");
+    const aiModel = Deno.env.get("AI_MODEL") || "google/gemini-2.5-flash";
+    const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
+    if (!anonKey) {
+      return new Response(JSON.stringify({ error: "server_not_configured" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
 
     // Verify user JWT
     const userClient = createClient(supabaseUrl, anonKey, { global: { headers: { Authorization: authHeader } } });
@@ -50,7 +55,7 @@ serve(async (req) => {
       .eq("id", faq_id)
       .single();
 
-    if (!faq || (faq as any).chatbots?.user_id !== user.id) {
+    if (!faq || (faq.chatbots as Record<string, string>)?.user_id !== user.id) {
       return new Response(JSON.stringify({ error: "not_found" }), { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
@@ -81,19 +86,24 @@ serve(async (req) => {
       );
     }
 
-    if (!lovableApiKey) {
+    if (!aiKey) {
       return new Response(JSON.stringify({ error: "api_key_missing" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // Call Lovable AI Gateway to generate variations
-    const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const aiHeaders: Record<string, string> = {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${aiKey}`,
+    };
+    if (aiBaseUrl.includes("openrouter")) {
+      aiHeaders["HTTP-Referer"] = "https://chatbotstudio.dev";
+      aiHeaders["X-Title"] = "ChatBot Studio";
+    }
+
+    const aiResponse = await fetch(`${aiBaseUrl}/v1/chat/completions`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${lovableApiKey}`,
-      },
+      headers: aiHeaders,
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+        model: aiModel,
         messages: [{
           role: "user",
           content: `Given this FAQ — Question: '${faq.question}', Answer: '${faq.answer}'.
@@ -132,7 +142,7 @@ Return ONLY a valid JSON array of 8 strings. No explanation, no markdown, no cod
       variations = JSON.parse(cleaned);
       if (!Array.isArray(variations)) variations = [];
       // Ensure all items are strings
-      variations = variations.filter((v: any) => typeof v === "string").slice(0, 8);
+      variations = variations.filter((v: unknown) => typeof v === "string").slice(0, 8);
     } catch {
       console.error("Failed to parse AI response:", text);
       variations = [];

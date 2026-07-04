@@ -2,7 +2,9 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { adminFetch } from '@/lib/adminApi';
 import AdminLayout from '@/components/layout/AdminLayout';
 import SEO from '@/components/ui/SEO';
-import { Users, Bot, MessageSquare, Mail, Crown, HelpCircle, DollarSign, Activity, RefreshCw, TrendingUp, TrendingDown, Minus, UserPlus, Zap } from 'lucide-react';
+import type { AdminStats, AdminDeltaStats, ActivityFeedItem, ChartPoint, AdminChatbot } from '@/types/admin';
+import { Users, Mail, Crown, DollarSign, Activity, RefreshCw, TrendingUp, TrendingDown, Minus, UserPlus } from 'lucide-react';
+import { BotIcon, ChatIcon, FAQIcon, SuperchargeIcon } from '@/components/ui/icons';
 import { formatDistanceToNow, subDays, format } from 'date-fns';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, FunnelChart, Funnel, LabelList } from 'recharts';
 import { toast } from 'sonner';
@@ -10,11 +12,11 @@ import { useState } from 'react';
 
 const statConfig = [
   { key: 'userCount', deltaKey: 'users', icon: Users, label: 'Total Users', color: 'bg-primary/10 text-primary' },
-  { key: 'botCount', deltaKey: 'bots', icon: Bot, label: 'Chatbots', color: 'bg-success/10 text-success' },
-  { key: 'convoCount', deltaKey: 'convos', icon: MessageSquare, label: 'Conversations', color: 'bg-accent/10 text-accent' },
-  { key: 'faqCount', deltaKey: null, icon: HelpCircle, label: 'FAQs', color: 'bg-warning/10 text-warning' },
-  { key: 'premiumCount', deltaKey: null, icon: Crown, label: 'Premium', color: 'bg-secondary/10 text-secondary' },
-  { key: 'waitlistCount', deltaKey: null, icon: Mail, label: 'Waitlist', color: 'bg-muted text-muted-foreground' },
+  { key: 'botCount', deltaKey: 'bots', icon: BotIcon, label: 'Chatbots', color: 'bg-primary/10 text-primary' },
+  { key: 'convoCount', deltaKey: 'convos', icon: ChatIcon, label: 'Conversations', color: 'bg-primary/10 text-primary' },
+  { key: 'faqCount', deltaKey: null, icon: FAQIcon, label: 'FAQs', color: 'bg-primary/10 text-primary' },
+  { key: 'premiumCount', deltaKey: null, icon: Crown, label: 'Premium', color: 'bg-primary/10 text-primary' },
+  { key: 'waitlistCount', deltaKey: null, icon: Mail, label: 'Waitlist', color: 'bg-primary/10 text-primary' },
 ];
 
 const DeltaBadge = ({ current, previous }: { current: number; previous: number }) => {
@@ -30,19 +32,19 @@ const AdminDashboard = () => {
   const queryClient = useQueryClient();
   const [lastRefreshed, setLastRefreshed] = useState<Date>(new Date());
 
-  const { data: stats } = useQuery({
+  const { data: stats, isLoading: statsLoading } = useQuery({
     queryKey: ['admin-stats'],
-    queryFn: () => adminFetch<any>('get-stats'),
+    queryFn: () => adminFetch<AdminStats>('get-stats'),
   });
 
   const { data: deltaStats } = useQuery({
     queryKey: ['admin-delta-stats'],
-    queryFn: () => adminFetch<any>('get-delta-stats'),
+    queryFn: () => adminFetch<AdminDeltaStats>('get-delta-stats'),
   });
 
   const { data: activityFeed } = useQuery({
     queryKey: ['admin-activity-feed'],
-    queryFn: () => adminFetch<any[]>('get-activity-feed'),
+    queryFn: () => adminFetch<ActivityFeedItem[]>('get-activity-feed'),
     refetchInterval: 30000,
   });
 
@@ -50,12 +52,12 @@ const AdminDashboard = () => {
     queryKey: ['admin-signup-chart'],
     queryFn: async () => {
       const since = subDays(new Date(), 30).toISOString();
-      const data = await adminFetch<any[]>('get-signup-chart', { since });
+      const data = await adminFetch<ChartPoint[]>('get-signup-chart', { since });
       const buckets: Record<string, number> = {};
       for (let i = 29; i >= 0; i--) {
         buckets[format(subDays(new Date(), i), 'MMM dd')] = 0;
       }
-      (data ?? []).forEach((p: any) => {
+      (data ?? []).forEach((p) => {
         const key = format(new Date(p.created_at), 'MMM dd');
         if (key in buckets) buckets[key]++;
       });
@@ -67,12 +69,12 @@ const AdminDashboard = () => {
     queryKey: ['admin-convo-chart'],
     queryFn: async () => {
       const since = subDays(new Date(), 7).toISOString();
-      const data = await adminFetch<any[]>('get-convo-chart', { since });
+      const data = await adminFetch<ChartPoint[]>('get-convo-chart', { since });
       const buckets: Record<string, number> = {};
       for (let i = 6; i >= 0; i--) {
         buckets[format(subDays(new Date(), i), 'EEE')] = 0;
       }
-      (data ?? []).forEach((c: any) => {
+      (data ?? []).forEach((c) => {
         const key = format(new Date(c.started_at), 'EEE');
         if (key in buckets) buckets[key]++;
       });
@@ -82,12 +84,12 @@ const AdminDashboard = () => {
 
   const { data: recentUsers } = useQuery({
     queryKey: ['admin-recent-users'],
-    queryFn: () => adminFetch<any[]>('get-recent-users'),
+    queryFn: () => adminFetch<Record<string, unknown>[]>('get-recent-users'),
   });
 
   const { data: activeBots } = useQuery({
     queryKey: ['admin-active-bots'],
-    queryFn: () => adminFetch<any[]>('get-active-bots'),
+    queryFn: () => adminFetch<AdminChatbot[]>('get-active-bots'),
   });
 
   const toggleMaintenance = useMutation({
@@ -110,7 +112,66 @@ const AdminDashboard = () => {
     toast.success('Data refreshed');
   };
 
-  const maxConvos = activeBots?.length ? Math.max(...activeBots.map((b: any) => b.total_conversations ?? 0), 1) : 1;
+  if (statsLoading) {
+    return (
+      <AdminLayout>
+        <div className="mb-6 flex items-center justify-between">
+          <div>
+            <div className="h-8 w-48 animate-pulse rounded bg-[hsl(var(--color-surface-2))]" />
+            <div className="mt-1 h-3 w-36 animate-pulse rounded bg-[hsl(var(--color-surface-2))]" />
+          </div>
+          <div className="h-8 w-20 animate-pulse rounded-lg bg-[hsl(var(--color-surface-2))]" />
+        </div>
+        <div className="mb-6 flex flex-wrap items-center gap-3">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="h-10 w-36 animate-pulse rounded-lg bg-[hsl(var(--color-surface-2))]" />
+          ))}
+        </div>
+        <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-6">
+          {[1, 2, 3, 4, 5, 6].map((i) => (
+            <div key={i} className="rounded-lg border border-border bg-card p-4">
+              <div className="flex items-center gap-3">
+                <div className="h-9 w-9 animate-pulse rounded-lg bg-[hsl(var(--color-surface-2))]" />
+                <div className="space-y-1.5 flex-1">
+                  <div className="h-3 w-16 animate-pulse rounded bg-[hsl(var(--color-surface-2))]" />
+                  <div className="h-6 w-12 animate-pulse rounded bg-[hsl(var(--color-surface-2))]" />
+                  <div className="h-3 w-10 animate-pulse rounded bg-[hsl(var(--color-surface-2))]" />
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className="mb-6 grid gap-6 lg:grid-cols-2">
+          <div className="rounded-lg border border-border bg-card p-4">
+            <div className="mb-3 h-4 w-32 animate-pulse rounded bg-[hsl(var(--color-surface-2))]" />
+            <div className="h-48 animate-pulse rounded bg-[hsl(var(--color-surface-2))]" />
+          </div>
+          <div className="rounded-lg border border-border bg-card p-4">
+            <div className="mb-3 h-4 w-32 animate-pulse rounded bg-[hsl(var(--color-surface-2))]" />
+            <div className="h-48 animate-pulse rounded bg-[hsl(var(--color-surface-2))]" />
+          </div>
+        </div>
+        <div className="grid gap-6 lg:grid-cols-3">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="rounded-lg border border-border bg-card p-4">
+              <div className="mb-3 h-4 w-28 animate-pulse rounded bg-[hsl(var(--color-surface-2))]" />
+              <div className="space-y-2">
+                {[1, 2, 3, 4].map((j) => (
+                  <div key={j} className="flex items-center gap-2.5 rounded-md bg-muted/50 p-2">
+                    <div className="h-6 w-6 animate-pulse rounded-full bg-[hsl(var(--color-surface-2))]" />
+                    <div className="flex-1 h-3 animate-pulse rounded bg-[hsl(var(--color-surface-2))]" />
+                    <div className="h-3 w-16 animate-pulse rounded bg-[hsl(var(--color-surface-2))]" />
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      </AdminLayout>
+    );
+  }
+
+  const maxConvos = activeBots?.length ? Math.max(...activeBots.map((b) => b.total_conversations ?? 0), 1) : 1;
 
   const funnelData = stats ? [
     { name: 'Waitlist', value: stats.waitlistCount, fill: 'hsl(var(--muted-foreground))' },
@@ -119,10 +180,10 @@ const AdminDashboard = () => {
     { name: 'Had Convo', value: stats.convoCount, fill: 'hsl(var(--success))' },
   ] : [];
 
-  const activityIcons: Record<string, any> = {
+  const activityIcons: Record<string, React.ComponentType<{ className?: string }>> = {
     signup: UserPlus,
-    bot: Bot,
-    conversation: Zap,
+    bot: BotIcon,
+    conversation: SuperchargeIcon,
   };
 
   return (
@@ -130,7 +191,7 @@ const AdminDashboard = () => {
       <SEO title="Admin Dashboard" noIndex />
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="font-display text-2xl font-bold text-foreground">Admin Dashboard</h1>
+          <h1 className="text-2xl font-bold text-foreground">Admin Dashboard</h1>
           <p className="text-xs text-muted-foreground mt-1">Last refreshed: {format(lastRefreshed, 'HH:mm:ss')}</p>
         </div>
         <button onClick={refreshAll} className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-2 text-xs font-medium text-foreground hover:bg-muted transition-colors">
@@ -169,11 +230,11 @@ const AdminDashboard = () => {
               </div>
               <div>
                 <p className="text-xs text-muted-foreground">{label}</p>
-                <p className="font-display text-2xl font-bold text-foreground">{(stats as any)?.[key] ?? 0}</p>
+                <p className="text-2xl font-bold text-foreground">{stats?.[key as keyof AdminStats] ?? 0}</p>
                 {deltaKey && deltaStats && (
                   <DeltaBadge
-                    current={(deltaStats as any)?.[`${deltaKey}ThisWeek`] ?? 0}
-                    previous={(deltaStats as any)?.[`${deltaKey}LastWeek`] ?? 0}
+                    current={deltaStats[`${deltaKey}ThisWeek` as keyof AdminDeltaStats] as number ?? 0}
+                    previous={deltaStats[`${deltaKey}LastWeek` as keyof AdminDeltaStats] as number ?? 0}
                   />
                 )}
               </div>
@@ -246,7 +307,7 @@ const AdminDashboard = () => {
           <h3 className="mb-3 text-sm font-semibold text-foreground">Live Activity</h3>
           {activityFeed?.length ? (
             <div className="space-y-2 max-h-72 overflow-y-auto">
-              {activityFeed.map((item: any, i: number) => {
+              {activityFeed.map((item, i) => {
                 const IconComp = activityIcons[item.type] || Activity;
                 return (
                   <div key={i} className="flex items-center gap-2.5 rounded-md bg-muted/50 p-2 text-sm">
@@ -271,7 +332,7 @@ const AdminDashboard = () => {
           <h3 className="mb-3 text-sm font-semibold text-foreground">Recent Signups</h3>
           {recentUsers?.length ? (
             <div className="space-y-2 max-h-72 overflow-y-auto">
-              {recentUsers.map((u: any) => {
+              {recentUsers.map((u) => {
                 const initial = (u.full_name || 'U')[0].toUpperCase();
                 return (
                   <div key={u.id} className="flex items-center gap-3 rounded-md bg-muted/50 p-2.5 text-sm">
@@ -299,7 +360,7 @@ const AdminDashboard = () => {
           <h3 className="mb-3 text-sm font-semibold text-foreground">Most Active Chatbots</h3>
           {activeBots?.length ? (
             <div className="space-y-2 max-h-72 overflow-y-auto">
-              {activeBots.map((bot: any) => (
+              {activeBots.map((bot) => (
                 <div key={bot.id} className="flex items-center gap-3 rounded-md bg-muted/50 p-2.5 text-sm">
                   <span className={`relative inline-block h-2 w-2 rounded-full ${bot.is_active ? 'bg-success' : 'bg-muted-foreground'}`} />
                   <span className="text-lg">{bot.avatar_emoji}</span>

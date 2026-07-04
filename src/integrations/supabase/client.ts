@@ -8,6 +8,11 @@ const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
 
+// Capture URL hash synchronously before createClient, because Supabase's
+// _recoverAndRefresh() clears it during construction (at import time), which
+// means React components can no longer read type=recovery from the hash.
+export const initialAuthHash = window.location.hash;
+
 export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
   auth: {
     storage: localStorage,

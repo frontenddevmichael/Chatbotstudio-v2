@@ -2,6 +2,7 @@ import { useLocation, Link } from 'react-router-dom';
 import { useEffect } from 'react';
 import { ArrowLeft, Home } from 'lucide-react';
 import SEO from '@/components/ui/SEO';
+import NotFound404 from '@/components/ui/illustrations/NotFound404';
 import logo from '@/assets/logo.png';
 
 const NotFound = () => {
@@ -14,9 +15,9 @@ const NotFound = () => {
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-background px-6">
       <SEO title="Page Not Found" description="The page you're looking for doesn't exist." noIndex />
-      <img src={logo} alt="ChatBot Studio" className="h-12 w-12 mb-6" />
-      <h1 className="text-6xl font-bold text-foreground mb-2">404</h1>
-      <p className="text-lg text-muted-foreground mb-1">Page not found</p>
+      <img src={logo} alt="ChatBot Studio" className="h-12 w-12 mb-4" />
+      <NotFound404 className="mb-4 h-28 w-36" />
+      <h1 className="text-3xl font-bold text-foreground mb-1">Page not found</h1>
       <p className="text-sm text-muted-foreground/60 mb-8 text-center max-w-sm">
         The page <code className="rounded bg-muted px-1.5 py-0.5 text-xs font-mono text-foreground">{location.pathname}</code> doesn't exist or has been moved.
       </p>

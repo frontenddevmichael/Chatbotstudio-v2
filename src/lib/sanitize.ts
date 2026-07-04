@@ -6,8 +6,15 @@ export const sanitizeHTML = (dirty: string): string =>
     ALLOWED_ATTR: ['href', 'target', 'rel'],
   });
 
-export const sanitizeText = (str: string | null | undefined): string =>
-  str?.replace(/<[^>]*>/g, '').trim() ?? '';
+export const sanitizeText = (str: string | null | undefined): string => {
+  if (!str) return '';
+  const noTags = str
+    .replace(/<script[\s\S]*?<\/script>/gi, '')
+    .replace(/<style[\s\S]*?<\/style>/gi, '')
+    .replace(/<[^>]*>/g, '')
+    .trim();
+  return noTags.length > 2000 ? noTags.slice(0, 2000) : noTags;
+};
 
 export const sanitizeFAQ = (faq: { question: string; answer: string }) => ({
   ...faq,
@@ -17,8 +24,8 @@ export const sanitizeFAQ = (faq: { question: string; answer: string }) => ({
 
 export const isValidUrl = (url: string): boolean => {
   try {
-    new URL(url);
-    return true;
+    const parsed = new URL(url);
+    return ['http:', 'https:', 'ftp:', 'mailto:'].includes(parsed.protocol);
   } catch {
     return false;
   }

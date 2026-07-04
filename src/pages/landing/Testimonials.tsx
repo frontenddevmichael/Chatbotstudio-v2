@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion';
 import { useInView } from 'react-intersection-observer';
-import { Star } from 'lucide-react';
+import { StarIcon } from '@/components/ui/icons';
 
 const TESTIMONIALS = [
   {
@@ -34,7 +34,7 @@ const Testimonials = () => {
           Testimonials
         </motion.p>
         <motion.h2
-          className="font-serif text-[36px] sm:text-[44px] font-normal text-foreground/90 text-center mb-16"
+          className="font-display text-[36px] sm:text-[44px] font-normal text-ink text-center mb-16"
           initial={{ opacity: 0, y: 24 }}
           animate={inView ? { opacity: 1, y: 0 } : {}}
         >
@@ -52,7 +52,7 @@ const Testimonials = () => {
             >
               <div className="flex gap-0.5 mb-4">
                 {Array.from({ length: 5 }).map((_, j) => (
-                  <Star key={j} size={12} className="fill-[#ff9f0a] text-[#ff9f0a]" />
+                  <StarIcon key={j} className="h-3 w-3 fill-primary text-primary" />
                 ))}
               </div>
 

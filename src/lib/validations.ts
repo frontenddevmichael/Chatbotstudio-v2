@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-export const chatbotNameSchema = z.string().trim().min(1, 'Name is required').max(100, 'Name must be under 100 characters');
+export const chatbotNameSchema = z.string().trim().min(1, 'Name is required').max(50, 'Name must be under 50 characters');
 
 export const chatbotSchema = z.object({
   name: chatbotNameSchema,
@@ -11,7 +11,7 @@ export const chatbotSchema = z.object({
 });
 
 export const faqSchema = z.object({
-  question: z.string().trim().min(1, 'Question is required').max(500, 'Question must be under 500 characters'),
+  question: z.string().trim().min(1, 'Question is required').max(200, 'Question must be under 200 characters'),
   answer: z.string().trim().min(1, 'Answer is required').max(2000, 'Answer must be under 2000 characters'),
 });
 

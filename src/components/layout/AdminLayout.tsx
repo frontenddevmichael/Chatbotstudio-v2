@@ -1,28 +1,20 @@
 import { ReactNode, useState } from 'react';
 import { Navigate, Link, useLocation, useNavigate } from 'react-router-dom';
-import {
-  LayoutDashboard,
-  Users,
-  Bot,
-  MessageSquare,
-  Megaphone,
-  Settings,
-  Shield,
-  Menu,
-  LogOut,
-  Mail,
-  ChevronRight,
-} from 'lucide-react';
+import { Users, Megaphone, Menu, Mail, ChevronRight, Building2 } from 'lucide-react';
+import { DashboardIcon, BotIcon, ChatIcon, SettingsIcon, LogOutIcon, ShieldIcon } from '@/components/ui/icons';
 import ThemeToggle from '@/components/ui/ThemeToggle';
+import { useAuth } from '@/context/AuthContext';
+import PageLoader from '@/components/ui/PageLoader';
 
 const adminNav = [
-  { to: '/admin', icon: LayoutDashboard, label: 'Dashboard' },
+  { to: '/admin', icon: DashboardIcon, label: 'Dashboard' },
   { to: '/admin/users', icon: Users, label: 'Users' },
-  { to: '/admin/chatbots', icon: Bot, label: 'Chatbots' },
-  { to: '/admin/conversations', icon: MessageSquare, label: 'Conversations' },
+  { to: '/admin/chatbots', icon: BotIcon, label: 'Chatbots' },
+  { to: '/admin/conversations', icon: ChatIcon, label: 'Conversations' },
   { to: '/admin/waitlist', icon: Mail, label: 'Waitlist' },
   { to: '/admin/ads', icon: Megaphone, label: 'Ads' },
-  { to: '/admin/settings', icon: Settings, label: 'Settings' },
+  { to: '/admin/settings', icon: SettingsIcon, label: 'Settings' },
+  { to: '/dashboard/admin/agencies', icon: Building2, label: 'Agencies' },
 ];
 
 const labelMap: Record<string, string> = {
@@ -39,13 +31,16 @@ const AdminLayout = ({ children }: { children: ReactNode }) => {
   const { pathname } = useLocation();
   const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const { user, isAdmin, loading, signOut } = useAuth();
 
-  if (sessionStorage.getItem('admin_authenticated') !== 'true') {
+  if (loading) return <PageLoader />;
+
+  if (!user || !isAdmin) {
     return <Navigate to="/login" replace />;
   }
 
-  const handleLogout = () => {
-    sessionStorage.removeItem('admin_authenticated');
+  const handleLogout = async () => {
+    await signOut();
     navigate('/login', { replace: true });
   };
 
@@ -54,8 +49,8 @@ const AdminLayout = ({ children }: { children: ReactNode }) => {
   const sidebar = (
     <div className="flex h-full flex-col">
       <div className="flex items-center gap-2 border-b border-border px-4 py-4">
-        <Shield className="h-5 w-5 text-primary" />
-        <span className="font-display text-lg font-bold text-foreground">Admin Portal</span>
+        <ShieldIcon className="h-5 w-5 text-primary" />
+        <span className="text-lg font-bold text-foreground">Admin Portal</span>
       </div>
       <nav className="flex-1 space-y-1 p-3">
         {adminNav.map(({ to, icon: Icon, label }) => {
@@ -86,7 +81,7 @@ const AdminLayout = ({ children }: { children: ReactNode }) => {
           onClick={handleLogout}
           className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
         >
-          <LogOut className="h-4 w-4" />
+          <LogOutIcon className="h-4 w-4" />
           Sign Out
         </button>
       </div>

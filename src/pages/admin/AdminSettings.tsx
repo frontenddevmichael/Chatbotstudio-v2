@@ -6,6 +6,7 @@ import SEO from '@/components/ui/SEO';
 import { toast } from 'sonner';
 import Spinner from '@/components/ui/Spinner';
 import { sanitizeText } from '@/lib/sanitize';
+import type { AdminPlatformSettings } from '@/types/admin';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AlertTriangle } from 'lucide-react';
 import {
@@ -15,7 +16,7 @@ import {
 
 const AdminSettings = () => {
   const queryClient = useQueryClient();
-  const { data: settings, isLoading } = useQuery({ queryKey: ['platform-settings'], queryFn: () => adminFetch<any>('get-settings') });
+  const { data: settings, isLoading } = useQuery({ queryKey: ['platform-settings'], queryFn: () => adminFetch<AdminPlatformSettings>('get-settings') });
 
   const [freeLimit, setFreeLimit] = useState(500);
   const [premiumPrice, setPremiumPrice] = useState(19.99);
@@ -39,27 +40,47 @@ const AdminSettings = () => {
       maintenance_mode: maintenance, announcement_text: sanitizeText(announcement),
     }),
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['platform-settings'] }); toast.success('Settings saved'); },
-    onError: () => toast.error('Failed to save settings'),
+    onError: (err) => toast.error(err instanceof Error ? err.message : 'Failed to save settings'),
   });
 
   const resetAllMessages = useMutation({
     mutationFn: () => adminFetch('reset-all-messages'),
     onSuccess: () => { toast.success('All message counts reset'); setDangerConfirm(null); },
-    onError: () => { toast.error('Failed'); setDangerConfirm(null); },
+    onError: (err) => { toast.error(err instanceof Error ? err.message : 'Failed to reset messages'); setDangerConfirm(null); },
   });
 
   const purgeConversations = useMutation({
     mutationFn: () => adminFetch('purge-old-conversations', { olderThanDays: purgeDays }),
     onSuccess: () => { toast.success(`Conversations older than ${purgeDays} days purged`); setDangerConfirm(null); },
-    onError: () => { toast.error('Failed'); setDangerConfirm(null); },
+    onError: (err) => { toast.error(err instanceof Error ? err.message : 'Failed to purge conversations'); setDangerConfirm(null); },
   });
 
-  if (isLoading) return <AdminLayout><div className="flex justify-center py-20"><Spinner className="h-8 w-8" /></div></AdminLayout>;
+  if (isLoading) return (
+    <AdminLayout>
+      <div className="mb-6 h-8 w-48 animate-pulse rounded bg-[hsl(var(--color-surface-2))]" />
+      <div className="max-w-lg">
+        <div className="mb-4 flex gap-1">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="h-8 w-24 animate-pulse rounded-md bg-[hsl(var(--color-surface-2))]" />
+          ))}
+        </div>
+        <div className="rounded-lg border border-border bg-card p-4 space-y-4">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="space-y-2">
+              <div className="h-3.5 w-32 animate-pulse rounded bg-[hsl(var(--color-surface-2))]" />
+              <div className="h-9 w-full animate-pulse rounded-md bg-[hsl(var(--color-surface-2))]" />
+            </div>
+          ))}
+          <div className="h-9 w-28 animate-pulse rounded-md bg-[hsl(var(--color-surface-2))]" />
+        </div>
+      </div>
+    </AdminLayout>
+  );
 
   return (
     <AdminLayout>
       <SEO title="Platform Settings" noIndex />
-      <h1 className="mb-6 font-display text-2xl font-bold text-foreground">Platform Settings</h1>
+      <h1 className="mb-6 text-2xl font-bold text-foreground">Platform Settings</h1>
 
       <Tabs defaultValue="general" className="max-w-lg">
         <TabsList className="mb-4">

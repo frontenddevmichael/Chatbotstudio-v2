@@ -8,12 +8,23 @@ interface Particle {
   size: number;
 }
 
+function parseBlueFill(): { h: number; s: number; l: number } {
+  const raw = getComputedStyle(document.documentElement).getPropertyValue('--blue-fill').trim();
+  const parts = raw.split(/\s+/);
+  return {
+    h: parseInt(parts[0], 10) || 210,
+    s: parseInt(parts[1], 10) || 50,
+    l: parseInt(parts[2], 10) || 72,
+  };
+}
+
 const ParticleField = ({ count = 80 }: { count?: number }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const particles = useRef<Particle[]>([]);
   const mouse = useRef({ x: -1000, y: -1000 });
   const animRef = useRef<number>(0);
   const visibleRef = useRef(true);
+  const colorRef = useRef(parseBlueFill());
 
   const init = useCallback((w: number, h: number) => {
     particles.current = Array.from({ length: count }, () => ({
@@ -53,16 +64,19 @@ const ParticleField = ({ count = 80 }: { count?: number }) => {
     const onVisibility = () => { visibleRef.current = !document.hidden; };
     document.addEventListener('visibilitychange', onVisibility);
 
+    const observer = new MutationObserver(() => { colorRef.current = parseBlueFill(); });
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+
     const draw = () => {
       if (!visibleRef.current) { animRef.current = requestAnimationFrame(draw); return; }
       const w = canvas.width, h = canvas.height;
       ctx.clearRect(0, 0, w, h);
       const pts = particles.current;
       const mx = mouse.current.x, my = mouse.current.y;
+      const { h: hue, s: sat, l: lit } = colorRef.current;
 
       for (let i = 0; i < pts.length; i++) {
         const p = pts[i];
-        // mouse repulsion
         const dx = p.x - mx, dy = p.y - my;
         const dist = Math.sqrt(dx * dx + dy * dy);
         if (dist < 150 && dist > 0) {
@@ -77,10 +91,9 @@ const ParticleField = ({ count = 80 }: { count?: number }) => {
 
         ctx.beginPath();
         ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-        ctx.fillStyle = 'rgba(0, 212, 255, 0.5)';
+        ctx.fillStyle = `hsla(${hue}, ${sat}%, ${lit}%, 0.5)`;
         ctx.fill();
 
-        // connections
         for (let j = i + 1; j < pts.length; j++) {
           const q = pts[j];
           const ddx = p.x - q.x, ddy = p.y - q.y;
@@ -89,7 +102,7 @@ const ParticleField = ({ count = 80 }: { count?: number }) => {
             ctx.beginPath();
             ctx.moveTo(p.x, p.y);
             ctx.lineTo(q.x, q.y);
-            ctx.strokeStyle = `rgba(0, 212, 255, ${0.15 * (1 - d / 120)})`;
+            ctx.strokeStyle = `hsla(${hue}, ${sat}%, ${lit}%, ${0.15 * (1 - d / 120)})`;
             ctx.lineWidth = 0.5;
             ctx.stroke();
           }
@@ -101,13 +114,14 @@ const ParticleField = ({ count = 80 }: { count?: number }) => {
 
     return () => {
       cancelAnimationFrame(animRef.current);
+      observer.disconnect();
       window.removeEventListener('resize', resize);
       canvas.removeEventListener('mousemove', onMouse);
       document.removeEventListener('visibilitychange', onVisibility);
     };
   }, [init]);
 
-  return <canvas ref={canvasRef} className="absolute inset-0 w-full h-full pointer-events-auto" />;
+  return <canvas ref={canvasRef} className="absolute inset-0 w-full h-full pointer-events-none" />;
 };
 
 export default ParticleField;

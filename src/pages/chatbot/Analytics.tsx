@@ -3,10 +3,11 @@ import { useChatbot } from '@/hooks/useChatbot';
 import { useConversations } from '@/hooks/useConversations';
 import PageWrapper from '@/components/layout/PageWrapper';
 import SEO from '@/components/ui/SEO';
-import Spinner from '@/components/ui/Spinner';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { useState } from 'react';
+import EmptyState from '@/components/ui/illustrations/EmptyState';
 import { ChevronDown, ChevronUp, MessageSquare } from 'lucide-react';
+import { ChatIcon } from '@/components/ui/icons';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const Analytics = () => {
@@ -15,7 +16,49 @@ const Analytics = () => {
   const { data: conversations, isLoading } = useConversations(id!);
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
-  if (isLoading) return <PageWrapper><div className="flex justify-center py-20"><Spinner className="h-6 w-6" /></div></PageWrapper>;
+  if (isLoading) return (
+    <PageWrapper>
+      <div className="mb-6 h-6 w-52 animate-pulse rounded bg-[hsl(var(--color-surface-2))]" />
+      <div className="mb-6 flex items-center rounded-[14px] border border-border bg-card p-5" style={{ boxShadow: 'var(--shadow-sm)' }}>
+        {[1, 2, 3].map((i) => (
+          <div key={i} className="flex flex-1 flex-col items-center relative">
+            {i > 0 && <div className="absolute left-0 top-1/2 -translate-y-1/2 h-8 w-px bg-border" />}
+            <div className="mb-1.5 h-8 w-14 animate-pulse rounded bg-[hsl(var(--color-surface-2))]" />
+            <div className="h-3 w-20 animate-pulse rounded bg-[hsl(var(--color-surface-2))]" />
+          </div>
+        ))}
+      </div>
+      <div className="mb-6 rounded-[14px] border border-border bg-card p-5" style={{ boxShadow: 'var(--shadow-sm)' }}>
+        <div className="mb-4 h-3.5 w-24 animate-pulse rounded bg-[hsl(var(--color-surface-2))]" />
+        <div className="h-[180px] w-full animate-pulse rounded-[8px] bg-[hsl(var(--color-surface-2))]" />
+      </div>
+      <div className="rounded-[14px] border border-border bg-card p-5" style={{ boxShadow: 'var(--shadow-sm)' }}>
+        <div className="mb-3 h-3.5 w-32 animate-pulse rounded bg-[hsl(var(--color-surface-2))]" />
+        <div className="space-y-2">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="flex items-center justify-between px-2.5 py-1.5">
+              <div className="h-3.5 w-48 animate-pulse rounded bg-[hsl(var(--color-surface-2))]" />
+              <div className="h-5 w-8 animate-pulse rounded-[6px] bg-[hsl(var(--color-surface-2))]" />
+            </div>
+          ))}
+        </div>
+      </div>
+      <div className="mt-6 rounded-[14px] border border-border bg-card p-5" style={{ boxShadow: 'var(--shadow-sm)' }}>
+        <div className="mb-3 h-3.5 w-32 animate-pulse rounded bg-[hsl(var(--color-surface-2))]" />
+        <div className="space-y-1">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="flex items-center justify-between rounded-[10px] border border-border bg-[hsl(var(--color-surface-2))] p-3">
+              <div className="flex items-center gap-2">
+                <div className="h-3.5 w-3.5 animate-pulse rounded bg-[hsl(var(--color-surface-2))]" />
+                <div className="h-3 w-20 animate-pulse rounded bg-[hsl(var(--color-surface-2))]" />
+              </div>
+              <div className="h-3 w-16 animate-pulse rounded bg-[hsl(var(--color-surface-2))]" />
+            </div>
+          ))}
+        </div>
+      </div>
+    </PageWrapper>
+  );
 
   const totalConvos = conversations?.length ?? 0;
   const totalMessages = conversations?.reduce((a, c) => a + (Array.isArray(c.messages) ? c.messages.length : 0), 0) ?? 0;
@@ -35,7 +78,7 @@ const Analytics = () => {
   const questionCounts: Record<string, number> = {};
   conversations?.forEach((c) => {
     if (Array.isArray(c.messages)) {
-      c.messages.forEach((m: any) => {
+      c.messages.forEach((m) => {
         if (m.role === 'user') {
           const q = String(m.content).slice(0, 80);
           questionCounts[q] = (questionCounts[q] || 0) + 1;
@@ -57,39 +100,36 @@ const Analytics = () => {
       <SEO title={`Analytics — ${chatbot?.name || 'Chatbot'}`} noIndex />
       <h1 className="text-[22px] font-semibold text-foreground mb-6">Analytics — {chatbot?.name}</h1>
 
-      {/* Stats */}
       <div className="mb-6 flex items-center rounded-[14px] border border-border bg-card p-5" style={{ boxShadow: 'var(--shadow-sm)' }}>
         {stats.map((s, i) => (
           <div key={s.label} className="flex flex-1 flex-col items-center relative">
             {i > 0 && <div className="absolute left-0 top-1/2 -translate-y-1/2 h-8 w-px bg-border" />}
-            <span className="font-serif text-[32px] italic leading-none text-foreground">{s.value}</span>
+            <span className="text-[32px] font-semibold leading-none text-foreground tracking-tight">{s.value}</span>
             <span className="mt-1.5 text-[11px] font-medium tracking-[0.06em] text-muted-foreground">{s.label}</span>
           </div>
         ))}
       </div>
 
-      {/* Chart */}
       <div className="mb-6 rounded-[14px] border border-border bg-card p-5" style={{ boxShadow: 'var(--shadow-sm)' }}>
         <h3 className="mb-4 text-[13px] font-medium text-muted-foreground">Last 7 Days</h3>
         <ResponsiveContainer width="100%" height={180}>
           <BarChart data={chartData}>
-            <XAxis dataKey="day" tick={{ fill: 'hsl(0 0% 38%)', fontSize: 11 }} axisLine={false} tickLine={false} />
-            <YAxis tick={{ fill: 'hsl(0 0% 38%)', fontSize: 11 }} axisLine={false} tickLine={false} />
+            <XAxis dataKey="day" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} axisLine={false} tickLine={false} />
+            <YAxis tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} axisLine={false} tickLine={false} />
             <Tooltip
               contentStyle={{
-                background: 'hsl(0 0% 8%)',
-                border: '1px solid rgba(255,255,255,0.1)',
+                background: 'hsl(var(--card))',
+                border: '1px solid hsl(var(--border)/0.15)',
                 borderRadius: 10,
-                color: 'rgba(255,255,255,0.92)',
+                color: 'hsl(var(--foreground))',
                 fontSize: 13,
               }}
             />
-            <Bar dataKey="count" fill="hsl(211 100% 52%)" radius={[4, 4, 0, 0]} />
+            <Bar dataKey="count" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
           </BarChart>
         </ResponsiveContainer>
       </div>
 
-      {/* Top questions */}
       {topQuestions.length > 0 && (
         <div className="mb-6 rounded-[14px] border border-border bg-card p-5" style={{ boxShadow: 'var(--shadow-sm)' }}>
           <h3 className="mb-3 text-[13px] font-medium text-muted-foreground">Top Questions</h3>
@@ -107,12 +147,17 @@ const Analytics = () => {
         </div>
       )}
 
-      {/* Recent conversations */}
-      <div className="rounded-[14px] border border-border bg-card p-5" style={{ boxShadow: 'var(--shadow-sm)' }}>
-        <h3 className="mb-3 text-[13px] font-medium text-muted-foreground">Recent Conversations</h3>
-        {!conversations?.length ? (
-          <p className="text-[13px] text-muted-foreground">No conversations yet</p>
-        ) : (
+      {!conversations?.length ? (
+        <div className="rounded-[14px] border border-border bg-card p-5" style={{ boxShadow: 'var(--shadow-sm)' }}>
+          <EmptyState
+            icon={<MessageSquare className="h-8 w-8 text-muted-foreground/40" />}
+            title="No conversations yet"
+            description="Conversation data will appear once visitors start chatting."
+          />
+        </div>
+      ) : (
+        <div className="rounded-[14px] border border-border bg-card p-5" style={{ boxShadow: 'var(--shadow-sm)' }}>
+          <h3 className="mb-3 text-[13px] font-medium text-muted-foreground">Recent Conversations</h3>
           <div className="space-y-1">
             {conversations.slice(0, 10).map((convo) => (
               <div key={convo.id} className="rounded-[10px] border border-border bg-[hsl(var(--color-surface-2))] overflow-hidden">
@@ -121,7 +166,7 @@ const Analytics = () => {
                   className="flex w-full items-center justify-between p-3 text-left transition-colors hover:bg-[hsl(var(--color-surface-3))]"
                 >
                   <div className="flex items-center gap-2">
-                    <MessageSquare className="h-3.5 w-3.5 text-muted-foreground" />
+                    <ChatIcon className="h-3.5 w-3.5 text-muted-foreground" />
                     <span className="text-[12px] text-muted-foreground">
                       {Array.isArray(convo.messages) ? convo.messages.length : 0} messages
                     </span>
@@ -141,10 +186,13 @@ const Analytics = () => {
                       className="overflow-hidden"
                     >
                       <div className="border-t border-border p-3 space-y-1.5">
-                        {convo.messages.map((msg: any, i: number) => (
-                          <div key={i} className={`rounded-[6px] p-2 text-[12px] ${
-                            msg.role === 'user' ? 'bg-primary/5 text-foreground' : 'bg-[hsl(var(--color-surface-3))] text-muted-foreground'
-                          }`}>
+                        {convo.messages.map((msg, i) => (
+                          <div key={i} className="rounded-[6px] p-2 text-[12px]"
+                            style={{
+                              backgroundColor: msg.role === 'user' ? 'hsl(var(--primary)/0.05)' : 'hsl(var(--color-surface-3))',
+                              color: msg.role === 'user' ? 'hsl(var(--foreground))' : 'hsl(var(--muted-foreground))',
+                            }}
+                          >
                             <span className="font-medium">{msg.role === 'user' ? 'User' : 'Bot'}: </span>
                             {String(msg.content).slice(0, 200)}
                           </div>
@@ -156,8 +204,8 @@ const Analytics = () => {
               </div>
             ))}
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </PageWrapper>
   );
 };

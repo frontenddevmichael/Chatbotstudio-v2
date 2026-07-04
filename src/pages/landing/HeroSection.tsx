@@ -1,7 +1,7 @@
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import ParticleField from './ParticleField';
-import LiveChatDemo from './LiveChatDemo';
+import AmbientTexture from '@/components/AmbientTexture';
+import HeroScene from '@/components/ui/illustrations/HeroScene';
 import { useInView } from 'react-intersection-observer';
 
 const HeroSection = () => {
@@ -9,19 +9,20 @@ const HeroSection = () => {
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
 
   return (
-    <section ref={ref} className="relative min-h-screen flex items-center overflow-hidden bg-background">
-      {/* Particle background — desktop only */}
+    <section id="hero-section" ref={ref} className="relative min-h-screen flex items-center overflow-hidden bg-background">
+      {/* Ambient texture — desktop only */}
       {!isMobile && (
-        <div className="absolute inset-0 opacity-40">
-          <ParticleField count={60} />
+        <div className="absolute inset-0 opacity-30">
+          <AmbientTexture count={24} lineAlpha={0.04} />
         </div>
       )}
 
       {/* Subtle radial glow */}
-      <div className="absolute top-1/3 left-1/2 -translate-x-1/2 w-[800px] h-[600px] bg-primary/[0.04] rounded-full blur-[120px] pointer-events-none" />
+      <div className="absolute top-[20%] left-[30%] -translate-x-1/2 w-[min(600px,50vw)] h-[min(600px,50vw)] bg-blue-fill/10 rounded-full blur-[120px] pointer-events-none" />
+      <div className="absolute bottom-[20%] right-[20%] w-[min(400px,35vw)] h-[min(400px,35vw)] bg-primary/5 rounded-full blur-[100px] pointer-events-none" />
 
       <div className="relative z-10 max-w-6xl mx-auto px-6 pt-32 pb-24 w-full">
-        <div className="grid lg:grid-cols-[55fr_45fr] gap-16 items-center">
+        <div className="grid lg:grid-cols-[1fr_1.2fr] gap-12 items-center">
           {/* Left column */}
           <div>
             <motion.p
@@ -39,19 +40,19 @@ const HeroSection = () => {
               animate={inView ? { opacity: 1, y: 0 } : {}}
               transition={{ duration: 0.6, delay: 0.1 }}
             >
-              <span className="block font-serif text-5xl sm:text-6xl lg:text-[72px] font-normal leading-[0.95] text-foreground/90">
+              <span className="block font-display text-5xl sm:text-6xl lg:text-[72px] font-light leading-[0.95] text-ink">
                 Build chatbots
               </span>
-              <span className="block font-serif text-5xl sm:text-6xl lg:text-[72px] font-normal leading-[0.95] text-foreground/90">
+              <span className="block font-display text-5xl sm:text-6xl lg:text-[72px] font-light leading-[0.95] text-ink">
                 that actually
               </span>
-              <span className="block font-serif italic text-5xl sm:text-6xl lg:text-[72px] font-normal leading-[0.95] text-primary">
+              <span className="block font-display italic text-5xl sm:text-6xl lg:text-[72px] font-light leading-[0.95] text-primary">
                 think.
               </span>
             </motion.h1>
 
             <motion.p
-              className="text-[15px] text-muted-foreground max-w-md mb-10 leading-relaxed"
+              className="text-[15px] text-ink-muted max-w-md mb-10 leading-relaxed"
               initial={{ opacity: 0, y: 16 }}
               animate={inView ? { opacity: 1, y: 0 } : {}}
               transition={{ duration: 0.5, delay: 0.3 }}
@@ -68,20 +69,20 @@ const HeroSection = () => {
             >
               <Link
                 to="/signup"
-                className="h-11 px-7 inline-flex items-center rounded-[10px] bg-primary text-primary-foreground text-[15px] font-medium hover:bg-primary/90 active:scale-[0.97] transition-all"
+                className="h-11 px-7 inline-flex items-center rounded-pill bg-primary text-primary-foreground text-[15px] font-medium hover:bg-primary/90 active:scale-[0.97] transition-all"
               >
                 Start Building Free
               </Link>
               <button
                 onClick={() => document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' })}
-                className="h-11 px-7 rounded-[10px] border border-border text-muted-foreground text-[15px] font-medium hover:text-foreground hover:border-foreground/20 active:scale-[0.97] transition-all"
+                className="h-11 px-7 rounded-pill border border-border/15 text-ink-muted text-[15px] font-medium hover:text-ink hover:border-border/30 active:scale-[0.97] transition-all"
               >
                 See it in action
               </button>
             </motion.div>
 
             <motion.p
-              className="text-[13px] text-muted-foreground/60"
+              className="text-[13px] text-label-muted"
               initial={{ opacity: 0 }}
               animate={inView ? { opacity: 1 } : {}}
               transition={{ duration: 0.5, delay: 0.6 }}
@@ -92,12 +93,12 @@ const HeroSection = () => {
 
           {/* Right column — Live demo */}
           <motion.div
-            className="relative hidden lg:block"
+            className="relative hidden lg:flex items-center justify-center"
             initial={{ opacity: 0, y: 24 }}
             animate={inView ? { opacity: 1, y: 0 } : {}}
             transition={{ duration: 0.7, delay: 0.3 }}
           >
-            <LiveChatDemo />
+            <HeroScene />
           </motion.div>
         </div>
       </div>

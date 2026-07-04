@@ -1,4 +1,5 @@
 import type { Config } from "tailwindcss";
+import tailwindcssAnimate from "tailwindcss-animate";
 
 export default {
   darkMode: ["class"],
@@ -14,11 +15,11 @@ export default {
     },
     extend: {
       fontFamily: {
-        sans: ["Geist", "system-ui", "-apple-system", "sans-serif"],
-        serif: ["Instrument Serif", "serif"],
+        sans: ["Plus Jakarta Sans", "system-ui", "-apple-system", "sans-serif"],
+        serif: ["Fraunces", "serif"],
         mono: ["Geist Mono", "monospace"],
-        display: ["Geist", "system-ui", "-apple-system", "sans-serif"],
-        body: ["Geist", "system-ui", "-apple-system", "sans-serif"],
+        display: ["Fraunces", "serif"],
+        body: ["Plus Jakarta Sans", "system-ui", "-apple-system", "sans-serif"],
       },
       colors: {
         border: "hsl(var(--border))",
@@ -74,13 +75,31 @@ export default {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
+        "blue-pale": "hsl(var(--blue-pale))",
+        "blue-fill": "hsl(var(--blue-fill))",
+        "blue-mid": "hsl(var(--blue-mid))",
+        ink: {
+          DEFAULT: "hsl(var(--ink))",
+          muted: "hsl(var(--ink-muted))",
+        },
+        label: {
+          muted: "hsl(var(--label-muted))",
+        },
+        "accent-fg": "hsl(var(--accent-fg))",
+        "accent-on-dark": "hsl(var(--accent-on-dark))",
+        "hero-deep": "hsl(var(--hero-deep))",
+        "hero-deep-mid": "hsl(var(--hero-deep-mid))",
+        "error-fg": "hsl(var(--error-fg))",
+        "success-dot": "hsl(var(--success-dot))",
       },
       borderRadius: {
         lg: "var(--radius)",
-        md: "calc(var(--radius) - 2px)",
-        sm: "calc(var(--radius) - 4px)",
+        md: "calc(var(--radius) - 4px)",
+        sm: "calc(var(--radius) - 8px)",
+        pill: "20px",
       },
       boxShadow: {
+        card: "var(--shadow-card)",
         sm: "var(--shadow-sm)",
         md: "var(--shadow-md)",
         lg: "var(--shadow-lg)",
@@ -103,5 +122,5 @@ export default {
       },
     },
   },
-  plugins: [require("tailwindcss-animate")],
+  plugins: [tailwindcssAnimate],
 } satisfies Config;

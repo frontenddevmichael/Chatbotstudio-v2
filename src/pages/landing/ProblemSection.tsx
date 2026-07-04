@@ -15,7 +15,7 @@ const ProblemSection = () => {
       <div className="max-w-6xl mx-auto">
         <div className="grid md:grid-cols-2 gap-12 md:gap-20 mb-16">
           <motion.h2
-            className="font-serif text-[36px] sm:text-[44px] lg:text-[52px] font-normal text-foreground/90 leading-[1.05]"
+            className="font-display text-[36px] sm:text-[44px] lg:text-[52px] font-normal text-ink leading-[1.05]"
             initial={{ opacity: 0, y: 24 }}
             animate={inView ? { opacity: 1, y: 0 } : {}}
             transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
