@@ -63,6 +63,7 @@ export async function generateContent(
   systemPrompt: string | null,
   messages: Array<{ role: string; content: string | Array<Record<string, unknown>> }>,
   temperature?: number,
+  maxOutputTokens = 512,
 ): Promise<string> {
   model = normalizeModel(model);
   const body: Record<string, unknown> = {
@@ -71,9 +72,12 @@ export async function generateContent(
   if (systemPrompt) {
     body.systemInstruction = { parts: [{ text: systemPrompt }] };
   }
-  if (temperature !== undefined) {
-    body.generationConfig = { temperature };
-  }
+  body.generationConfig = {
+    temperature: temperature ?? 0.7,
+    maxOutputTokens,
+    topP: 0.95,
+    topK: 40,
+  };
 
   const res = await fetch(geminiUrl(model, apiKey), {
     method: "POST",

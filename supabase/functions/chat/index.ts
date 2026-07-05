@@ -42,8 +42,8 @@ serve(async (req) => {
       return jsonResponse({ error: "invalid_messages" }, 400);
     }
 
-    // Sanitize: strip HTML tags and limit to 2000 chars
-    const sanitizedMessage = new_message.replace(/<[^>]*>/g, "").trim().slice(0, 2000);
+    // Sanitize: strip HTML tags and limit to 500 chars
+    const sanitizedMessage = new_message.replace(/<[^>]*>/g, "").trim().slice(0, 500);
     if (!sanitizedMessage) {
       return jsonResponse({ error: "empty_message" }, 400);
     }
@@ -98,7 +98,7 @@ serve(async (req) => {
     const routingStrategy = chatbot.routing_strategy || "single";
 
     async function callModel(model: string): Promise<string> {
-      return await generateContent(model, aiKey!, systemPrompt, conversationMessages);
+      return await generateContent(model, aiKey!, systemPrompt, conversationMessages, undefined, 300);
     }
 
     function isComplexQuery(): boolean {
@@ -128,14 +128,12 @@ serve(async (req) => {
       return jsonResponse({ error: "rate_limit", message: "Too many messages. Please wait and try again." }, 429);
     }
 
-    // Fetch FAQs for context
+    // Fetch FAQs for context (limit to 10)
     let faqContext = "";
-    const { data: faqs } = await supabase.from("faqs").select("*").eq("chatbot_id", chatbot_id);
-    faqContext = (faqs || []).map((f: { question: string; answer: string; variations?: string[] }) => {
-      let entry = `Topic: ${f.question}\nAnswer: ${f.answer}`;
-      if (f.variations?.length) entry += `\nAlso asked as: ${f.variations.join(", ")}`;
-      return entry;
-    }).join("\n\n");
+    const { data: faqs } = await supabase.from("faqs").select("question, answer").eq("chatbot_id", chatbot_id).limit(10);
+    faqContext = (faqs || []).map((f: { question: string; answer: string }) =>
+      `Q: ${f.question.slice(0, 150)}\nA: ${f.answer.slice(0, 300)}`
+    ).join("\n\n");
 
     // Visitor persona detection from conversation messages
     function detectPersona(msgs: Array<{ role: string; content: string }>): string {
@@ -166,14 +164,12 @@ serve(async (req) => {
           .limit(3);
 
         if (pastConvos && pastConvos.length > 0) {
-          const summaries = pastConvos.map((conv, i) => {
+          const summaries = pastConvos.slice(0, 1).map((conv) => {
             const msgs = (conv.messages as Array<{ role: string; content: string }>) || [];
-            const userMsgs = msgs.filter(m => m.role === "user").map(m => m.content.slice(0, 200));
-            return `[Past Session ${i + 1} — ${new Date(conv.started_at || "").toLocaleDateString()}]\nUser asked: ${userMsgs.join(" | ")}`;
-          }).filter(s => s.length > 20);
-          if (summaries.length > 0) {
-            pastContext = "\n\nPREVIOUS CONVERSATIONS WITH THIS VISITOR:\n" + summaries.join("\n\n");
-          }
+            const topics = msgs.filter(m => m.role === "user").map(m => m.content.slice(0, 100)).join(", ");
+            return `Past: ${topics}`;
+          });
+          pastContext = " " + summaries.join(" ");
         }
       } catch {
         // Non-critical — conversation memory is best-effort
@@ -186,40 +182,21 @@ serve(async (req) => {
       : [];
     const personaContext = detectPersona(conversationHistory);
 
-    const toneLabel = effectiveTone === "friendly" ? "warm, casual, uses contractions" : effectiveTone === "professional" ? "formal, precise, no slang" : effectiveTone === "casual" ? "like texting a smart friend" : "corporate, structured responses";
+    const systemPrompt = systemPromptOverride || `You are ${chatbot.name}. Tone: ${effectiveTone || chatbot.tone}.
+Knowledge:
+${faqContext || "No business knowledge yet."}${pastContext}
 
-    const systemPrompt = systemPromptOverride || `You are ${chatbot.name}, an intelligent AI assistant.
-Your personality and tone: ${effectiveTone || chatbot.tone}.
+Page: ${typeof page_context === "string" && page_context ? page_context.slice(0, 200) : "Unknown"}${personaContext ? `\nVisitor: ${personaContext}` : ""}
 
-You have two layers of knowledge:
+Language: ${typeof visitor_lang === "string" && visitor_lang ? visitor_lang.slice(0, 5) : "visitor's language"}
+Rules: Answer from knowledge first. Be concise. Match tone. Never mention AI providers.`;
 
-LAYER 1 — Business Knowledge Base (always prioritize this):
-${faqContext || "No specific business knowledge has been added yet."}${pastContext}
-
-VISITOR CONTEXT: ${personaContext || "Unknown visitor — answer helpfully regardless."}
-
-CURRENT PAGE CONTEXT (the visitor is on this page right now):
-${typeof page_context === "string" && page_context ? page_context : "Unknown page — answer generally."}
-
-LAYER 2 — General Intelligence:
-You are a highly capable AI. For any question not covered in the business knowledge base above, use your general knowledge and reasoning to give a genuinely helpful, accurate answer. Never pretend you don't know something you actually know.
-
-BEHAVIOR RULES:
-- Always check Layer 1 first. If the answer is there, use it.
-- If not in Layer 1, answer from your general knowledge helpfully and confidently.
-- Maintain full conversation context — remember everything said earlier in this chat.
-- Match the tone setting: ${toneLabel}
-- Keep responses concise unless the question genuinely needs depth.
-- Match the visitor's language: ${typeof visitor_lang === "string" && visitor_lang ? `The visitor's browser language is ${visitor_lang}. Respond in the same language unless the visitor switches to another.` : "Respond in the language the visitor is using."}
-- Never break character. You are ${chatbot.name}.
-- Never mention Anthropic, Claude, Google, Gemini, or any underlying AI technology.
-- If asked "are you an AI?" respond naturally based on tone — acknowledge it without revealing the technology stack.`;
-
-    // Build conversation history
+    // Build conversation history (last 6 messages, truncated)
     const conversationMessages: Array<{ role: string; content: string | Array<Record<string, unknown>> }> = Array.isArray(messages)
       ? (messages as Array<{ role: string; content: string }>)
           .filter((m) => m.role === "user" || m.role === "assistant")
-          .map((m) => ({ role: m.role, content: String(m.content).slice(0, 2000) }))
+          .slice(-6)
+          .map((m) => ({ role: m.role, content: String(m.content).slice(0, 500) }))
       : [];
 
     // If image provided, use multimodal content for the latest user message
