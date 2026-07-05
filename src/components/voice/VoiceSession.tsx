@@ -1,5 +1,5 @@
-import { useCallback, useRef } from 'react';
-import { Mic, MicOff, X, ArrowLeft } from 'lucide-react';
+import { useCallback, useEffect } from 'react';
+import { Mic, X, ArrowLeft, RefreshCw } from 'lucide-react';
 import { useVoiceSession, type TranscriptEntry } from './useVoiceSession';
 import { AudioVisualizer } from './AudioVisualizer';
 import { TranscriptDisplay } from './TranscriptDisplay';
@@ -18,17 +18,14 @@ export function VoiceSession({ chatbotId, systemPrompt, accentColor = '#0a84ff',
     transcript,
     audioLevel,
     error,
+    muted,
     startSession,
     endSession,
+    toggleMute,
   } = useVoiceSession({ chatbotId, systemPrompt });
 
-  const sessionStarted = useRef(false);
-
-  const handleStart = useCallback(() => {
-    if (!sessionStarted.current) {
-      sessionStarted.current = true;
-      startSession();
-    }
+  useEffect(() => {
+    startSession();
   }, [startSession]);
 
   const handleEnd = useCallback(() => {
@@ -36,50 +33,48 @@ export function VoiceSession({ chatbotId, systemPrompt, accentColor = '#0a84ff',
     onSessionEnd(transcript);
   }, [endSession, onSessionEnd, transcript]);
 
-  const isRunning = state === 'listening' || state === 'speaking' || state === 'processing';
+  const handleRetry = useCallback(() => {
+    startSession();
+  }, [startSession]);
+
+  const isRunning = state === 'listening' || state === 'speaking' || state === 'processing' || state === 'connecting';
   const visualizerMode = state === 'speaking' ? 'speaking' : state === 'listening' ? 'listening' : 'idle';
 
   const statusText = {
-    idle: '',
+    idle: 'Starting...',
     connecting: 'Connecting...',
-    listening: 'Listening...',
+    listening: muted ? 'Muted' : 'Listening...',
     processing: 'Thinking...',
     speaking: 'Speaking...',
     disconnected: error || 'Session ended',
   }[state];
 
   return (
-    <div
-      className="absolute inset-0 z-50 flex flex-col"
-      style={{ background: 'var(--cbs-bg, #ffffff)' }}
-      onClick={handleStart}
-    >
+    <div className="absolute inset-0 z-50 flex flex-col" style={{ background: 'var(--cbs-bg, #ffffff)' }}>
       {/* Top bar */}
       <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: '1px solid var(--cbs-bot-bubble-border, #e5e5e5)' }}>
         <div className="flex items-center gap-2">
-          {isRunning || state === 'disconnected' ? (
+          {(isRunning || state === 'disconnected') && (
             <span className="flex items-center gap-1.5 text-[12px] font-medium" style={{ color: '#22C55E' }}>
               <span className="inline-block h-2 w-2 rounded-full bg-green-500 animate-pulse" />
               Live
             </span>
-          ) : (
-            <span className="text-[12px] text-gray-400">Voice</span>
           )}
           <SessionTimer isRunning={isRunning} />
         </div>
         <div className="flex items-center gap-1">
           {isRunning && (
             <button
-              onClick={(e) => { e.stopPropagation(); /* mute toggle - could add state */ }}
+              onClick={toggleMute}
               className="rounded-full p-2 transition-colors hover:opacity-70"
-              style={{ color: 'var(--cbs-text-muted, #999)' }}
-              aria-label="Mute microphone"
+              style={{ color: muted ? '#EF4444' : 'var(--cbs-text-muted, #999)' }}
+              aria-label={muted ? 'Unmute microphone' : 'Mute microphone'}
             >
               <Mic className="h-4 w-4" />
             </button>
           )}
           <button
-            onClick={(e) => { e.stopPropagation(); handleEnd(); }}
+            onClick={handleEnd}
             className="rounded-full p-2 transition-colors hover:opacity-70"
             style={{ color: 'var(--cbs-text-muted, #999)' }}
             aria-label="End voice session"
@@ -97,11 +92,9 @@ export function VoiceSession({ chatbotId, systemPrompt, accentColor = '#0a84ff',
         </div>
 
         {/* Status text */}
-        {state !== 'idle' && (
-          <p className="text-[13px] font-medium" style={{ color: 'var(--cbs-text-secondary, #666)' }}>
-            {statusText}
-          </p>
-        )}
+        <p className="text-[13px] font-medium" style={{ color: error ? '#EF4444' : 'var(--cbs-text-secondary, #666)' }}>
+          {statusText}
+        </p>
 
         {/* Transcript */}
         <div className="flex-1 w-full min-h-0 max-h-[40vh]">
@@ -110,35 +103,28 @@ export function VoiceSession({ chatbotId, systemPrompt, accentColor = '#0a84ff',
 
         {/* Error */}
         {error && (
-          <p className="text-[12px] text-center px-4" style={{ color: '#EF4444' }}>
-            {error}
-          </p>
-        )}
-
-        {/* Start prompt */}
-        {state === 'idle' && (
           <button
-            className="rounded-full px-6 py-2.5 text-[14px] font-medium text-white transition-all active:scale-95"
-            style={{ background: accentColor }}
+            onClick={handleRetry}
+            className="flex items-center gap-1.5 rounded-full px-4 py-2 text-[13px] font-medium transition-all active:scale-95"
+            style={{ background: accentColor + '20', color: accentColor }}
           >
-            Tap to start voice conversation
+            <RefreshCw className="h-4 w-4" />
+            Retry
           </button>
         )}
       </div>
 
       {/* Bottom bar */}
-      {state !== 'idle' && (
-        <div className="flex items-center justify-center px-4 py-3" style={{ borderTop: '1px solid var(--cbs-bot-bubble-border, #e5e5e5)' }}>
-          <button
-            onClick={handleEnd}
-            className="flex items-center gap-1.5 text-[13px] font-medium transition-opacity hover:opacity-70"
-            style={{ color: 'var(--cbs-text-secondary, #666)' }}
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Back to Chat
-          </button>
-        </div>
-      )}
+      <div className="flex items-center justify-center px-4 py-3" style={{ borderTop: '1px solid var(--cbs-bot-bubble-border, #e5e5e5)' }}>
+        <button
+          onClick={handleEnd}
+          className="flex items-center gap-1.5 text-[13px] font-medium transition-opacity hover:opacity-70"
+          style={{ color: 'var(--cbs-text-secondary, #666)' }}
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Back to Chat
+        </button>
+      </div>
     </div>
   );
 }

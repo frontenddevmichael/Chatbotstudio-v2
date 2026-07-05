@@ -46,6 +46,7 @@ export function useVoiceSession(config: VoiceSessionConfig) {
   const [transcript, setTranscript] = useState<TranscriptEntry[]>([]);
   const [audioLevel, setAudioLevel] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [muted, setMuted] = useState(false);
 
   const wsRef = useRef<WebSocket | null>(null);
   const vadRef = useRef<VADProcessor | null>(null);
@@ -54,6 +55,13 @@ export function useVoiceSession(config: VoiceSessionConfig) {
   const modelRef = useRef<string>('gemini-2.5-flash-native-audio');
   const reconnectRef = useRef(false);
   const transcriptRef = useRef<TranscriptEntry[]>([]);
+  const stateRef = useRef<VoiceState>('idle');
+  const mutedRef = useRef(false);
+
+  const setStateSafe = useCallback((s: VoiceState) => {
+    stateRef.current = s;
+    setState(s);
+  }, []);
 
   const updateTranscript = useCallback((entry: TranscriptEntry) => {
     transcriptRef.current = [...transcriptRef.current, entry];
@@ -89,6 +97,7 @@ export function useVoiceSession(config: VoiceSessionConfig) {
 
   const sendAudioData = useCallback((pcm: Int16Array) => {
     if (wsRef.current?.readyState !== WebSocket.OPEN) return;
+    if (mutedRef.current) return;
     const base64 = base64EncodeInt16(pcm);
     wsRef.current.send(JSON.stringify({
       realtime_input: {
@@ -102,6 +111,16 @@ export function useVoiceSession(config: VoiceSessionConfig) {
     wsRef.current.send(JSON.stringify({
       realtime_input: { parts: [] },
     }));
+  }, []);
+
+  const cleanup = useCallback(() => {
+    reconnectRef.current = false;
+    wsRef.current?.close();
+    wsRef.current = null;
+    vadRef.current?.stop();
+    vadRef.current = null;
+    audioCtxRef.current?.close();
+    audioCtxRef.current = null;
   }, []);
 
   const setupWebSocket = useCallback(async () => {
@@ -129,18 +148,18 @@ export function useVoiceSession(config: VoiceSessionConfig) {
       try {
         const msg = JSON.parse(event.data);
         if (msg.setupComplete) {
-          setState('listening');
+          setStateSafe('listening');
           return;
         }
 
         if (msg.serverContent) {
           const sc = msg.serverContent;
           if (sc.interrupted) {
-            setState('listening');
+            setStateSafe('listening');
             return;
           }
 
-          setState('speaking');
+          setStateSafe('speaking');
           for (const part of sc.parts || []) {
             if (part.inlineData?.mimeType === 'audio/pcm') {
               const pcm = base64ToInt16(part.inlineData.data);
@@ -152,7 +171,7 @@ export function useVoiceSession(config: VoiceSessionConfig) {
           }
 
           if (sc.turnComplete) {
-            setState('listening');
+            setStateSafe('listening');
           }
         }
       } catch {
@@ -162,26 +181,29 @@ export function useVoiceSession(config: VoiceSessionConfig) {
 
     ws.onerror = () => {
       setError('Connection lost. Please try again.');
-      setState('disconnected');
+      setStateSafe('disconnected');
     };
 
     ws.onclose = () => {
       if (reconnectRef.current) {
         reconnectRef.current = false;
         setupWebSocket();
-      } else {
-        setState('disconnected');
+      } else if (stateRef.current !== 'idle') {
+        setStateSafe('disconnected');
       }
     };
 
     wsRef.current = ws;
-  }, [config.systemPrompt, playAudioChunk, appendPartialText]);
+  }, [config.systemPrompt, playAudioChunk, appendPartialText, setStateSafe]);
 
   const startSession = useCallback(async () => {
+    cleanup();
     setError(null);
-    setState('connecting');
+    setAudioLevel(0);
+    setStateSafe('connecting');
     setTranscript([]);
     transcriptRef.current = [];
+    apiKeyRef.current = null;
 
     try {
       const { data, error: fnErr } = await supabase.functions.invoke<LiveTokenResponse>(
@@ -191,7 +213,7 @@ export function useVoiceSession(config: VoiceSessionConfig) {
 
       if (fnErr || !data?.token) {
         setError('Failed to start voice session. Please try again.');
-        setState('disconnected');
+        setStateSafe('disconnected');
         return;
       }
 
@@ -206,24 +228,24 @@ export function useVoiceSession(config: VoiceSessionConfig) {
       await setupWebSocket();
 
       vad.onAudioData = (pcm) => {
-        if (state === 'listening') {
+        if (stateRef.current === 'listening') {
           sendAudioData(pcm);
         }
       };
       vad.onAudioLevel = (level) => setAudioLevel(level);
       vad.onSpeechStart = () => {
-        if (state === 'speaking') {
+        if (stateRef.current === 'speaking') {
           reconnectRef.current = true;
           wsRef.current?.close();
           audioCtxRef.current?.close();
           audioCtxRef.current = new AudioContext();
-          setState('listening');
+          setStateSafe('listening');
           setupWebSocket();
         }
       };
       vad.onSpeechEnd = () => {
-        if (state === 'listening') {
-          setState('processing');
+        if (stateRef.current === 'listening') {
+          setStateSafe('processing');
           sendTurnComplete();
         }
       };
@@ -231,38 +253,38 @@ export function useVoiceSession(config: VoiceSessionConfig) {
       await vad.start();
     } catch {
       setError('Microphone access denied or session failed.');
-      setState('disconnected');
+      setStateSafe('disconnected');
     }
-  }, [config.chatbotId, setupWebSocket, sendAudioData, sendTurnComplete, state]);
+  }, [config.chatbotId, setupWebSocket, sendAudioData, sendTurnComplete, cleanup, setStateSafe]);
 
   const endSession = useCallback(() => {
-    reconnectRef.current = false;
-    wsRef.current?.close();
-    wsRef.current = null;
-    vadRef.current?.stop();
-    vadRef.current = null;
-    audioCtxRef.current?.close();
-    audioCtxRef.current = null;
+    cleanup();
     apiKeyRef.current = null;
     setAudioLevel(0);
-    setState('disconnected');
+    setStateSafe('disconnected');
+  }, [cleanup, setStateSafe]);
+
+  const toggleMute = useCallback(() => {
+    setMuted(m => {
+      mutedRef.current = !m;
+      return !m;
+    });
   }, []);
 
   useEffect(() => {
     return () => {
-      reconnectRef.current = false;
-      wsRef.current?.close();
-      vadRef.current?.stop();
-      audioCtxRef.current?.close();
+      cleanup();
     };
-  }, []);
+  }, [cleanup]);
 
   return {
     state,
     transcript,
     audioLevel,
     error,
+    muted,
     startSession,
     endSession,
+    toggleMute,
   };
 }
