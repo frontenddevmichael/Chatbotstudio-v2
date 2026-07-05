@@ -7,6 +7,8 @@ import ErrorBoundary from '@/components/ui/ErrorBoundary';
 import type { Chatbot } from '@/hooks/useChatbot';
 import { RotateCcw, X, Maximize2, Minimize2, ChevronLeft, MessageSquare, Mail, Mic, MicOff, Volume2 } from 'lucide-react';
 import BotAvatar from '@/components/chatbot/BotAvatar';
+import { VoiceSession } from '@/components/voice/VoiceSession';
+import type { TranscriptEntry } from '@/components/voice/useVoiceSession';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -132,15 +134,8 @@ const WidgetPage = () => {
     } catch { return crypto.randomUUID(); }
   });
   const [msgCount, setMsgCount] = useState(0);
-  const [isRecording, setIsRecording] = useState(false);
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const audioChunksRef = useRef<Blob[]>([]);
   const [voiceEnabled, setVoiceEnabled] = useState(() => import.meta.env.VITE_ENABLE_VOICE !== 'false');
-  const [voiceMode, setVoiceMode] = useState(false);
-  const voiceModeRef = useRef(false);
-  const voiceMsgCountRef = useRef(0);
-  const voiceMessagesRef = useRef<Message[]>([]);
-  const voiceResolveRef = useRef<((blob: Blob | null) => void) | null>(null);
+  const [voiceSessionActive, setVoiceSessionActive] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const [initialLoad, setInitialLoad] = useState(true);
@@ -356,142 +351,23 @@ const WidgetPage = () => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
   };
 
-  const speakMessage = useCallback((text: string) => {
-    if (!('speechSynthesis' in window)) return;
-    window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.onend = () => {
-      if (voiceModeRef.current && !loading) {
-        startVoiceRecording();
-      }
-    };
-    window.speechSynthesis.speak(utterance);
-  }, [loading]);
-
-  const startVoiceRecording = useCallback(async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
-        ? 'audio/webm;codecs=opus'
-        : MediaRecorder.isTypeSupported('audio/webm')
-          ? 'audio/webm'
-          : MediaRecorder.isTypeSupported('audio/ogg;codecs=opus')
-            ? 'audio/ogg;codecs=opus'
-            : 'audio/mp4';
-      const recorder = new MediaRecorder(stream, { mimeType });
-      audioChunksRef.current = [];
-      recorder.ondataavailable = (e) => {
-        if (e.data.size > 0) audioChunksRef.current.push(e.data);
-      };
-      recorder.onstop = () => {
-        stream.getTracks().forEach(t => t.stop());
-        setIsRecording(false);
-        const blob = new Blob(audioChunksRef.current, { type: recorder.mimeType });
-        if (blob.size >= 1000 && voiceResolveRef.current) {
-          voiceResolveRef.current(blob);
-          voiceResolveRef.current = null;
-        }
-      };
-      recorder.onerror = () => {
-        stream.getTracks().forEach(t => t.stop());
-        setIsRecording(false);
-      };
-      recorder.start();
-      mediaRecorderRef.current = recorder;
-      setIsRecording(true);
-    } catch {
-      setIsRecording(false);
-    }
-  }, []);
-
-  const stopVoiceRecording = useCallback(() => {
-    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
-      mediaRecorderRef.current.stop();
-    }
-  }, []);
-
-  const recordAndSendAudio = useCallback(async () => {
-    const blob = await new Promise<Blob | null>((resolve) => {
-      voiceResolveRef.current = resolve;
-      startVoiceRecording();
-    });
-    if (!blob || !voiceModeRef.current) return;
-    if (voiceMsgCountRef.current >= MAX_MESSAGES_PER_SESSION) { voiceModeRef.current = false; setVoiceMode(false); return; }
-    const reader = new FileReader();
-    const dataUrl = await new Promise<string>((resolve) => {
-      reader.onloadend = () => resolve(reader.result as string);
-      reader.readAsDataURL(blob);
-    });
-    if (!voiceModeRef.current) return;
-    const text = 'Voice message';
-    const userMsg = { role: 'user', content: text } as Message;
-    voiceMessagesRef.current = [...voiceMessagesRef.current, userMsg];
-    const body: Record<string, unknown> = {
-      chatbot_id: chatbot.id, session_id: sessionId, visitor_id: visitorId,
-      messages: voiceMessagesRef.current,
-      new_message: text,
-      audio: dataUrl,
-    };
-    if (variant) body.variant_id = variant.id;
-    if (pageContextRef.current) body.page_context = pageContextRef.current;
-    body.visitor_lang = visitorLang;
-    try {
-      setLoading(true);
-      setMessages(voiceMessagesRef.current);
-      voiceMsgCountRef.current++;
-      const data = await invokeWithRetry(body);
-      const reply = data?.error === 'rate_limit'
-        ? "You've sent too many messages. Please wait a moment."
-        : data?.response || "Sorry, I'm having trouble responding. Please try again.";
-      const assistantMsg = { role: 'assistant', content: reply } as Message;
-      voiceMessagesRef.current = [...voiceMessagesRef.current, assistantMsg];
-      setMessages(voiceMessagesRef.current);
+  const handleVoiceSessionEnd = useCallback((sessionTranscript: TranscriptEntry[]) => {
+    setVoiceSessionActive(false);
+    if (sessionTranscript.length === 0) return;
+    const newMsgs: Message[] = sessionTranscript.map((e) => ({
+      role: e.role,
+      content: e.text,
+    }));
+    setMessages(prev => [...prev, ...newMsgs]);
+    setMsgCount(prev => prev + Math.ceil(newMsgs.length / 2));
+    const aiReplies = newMsgs.filter(m => m.role === 'assistant');
+    if (aiReplies.length > 0) {
       postToParent({ type: 'cbs:unread' });
-      if (voiceModeRef.current) speakMessage(reply);
-    } catch (err) {
-      const msg = (err as Error)?.message === 'offline' || (typeof navigator !== 'undefined' && !navigator.onLine)
-        ? "You appear to be offline. Please check your internet connection and try again."
-        : "Sorry, I'm having trouble responding. Please try again.";
-      const errorMsg = { role: 'assistant', content: msg } as Message;
-      voiceMessagesRef.current = [...voiceMessagesRef.current, errorMsg];
-      setMessages(voiceMessagesRef.current);
-    } finally {
-      setLoading(false);
     }
-  }, [chatbot, sessionId, visitorId, variant, visitorLang, speakMessage, startVoiceRecording]);
+  }, []);
 
-  const voiceConversationLoop = useCallback(async () => {
-    while (voiceModeRef.current && voiceMsgCountRef.current < MAX_MESSAGES_PER_SESSION) {
-      await recordAndSendAudio();
-    }
-    if (voiceModeRef.current) {
-      setMessages(prev => [...prev, { role: 'assistant', content: "Voice conversation ended. You've reached the message limit." }]);
-      voiceModeRef.current = false;
-      setVoiceMode(false);
-    }
-  }, [recordAndSendAudio]);
-
-  const toggleVoiceMode = useCallback(() => {
-    if (voiceModeRef.current) {
-      voiceModeRef.current = false;
-      setVoiceMode(false);
-      window.speechSynthesis.cancel();
-      stopVoiceRecording();
-      if (voiceResolveRef.current) {
-        voiceResolveRef.current(null);
-        voiceResolveRef.current = null;
-      }
-    } else {
-      voiceModeRef.current = true;
-      setVoiceMode(true);
-      voiceMessagesRef.current = messages;
-      voiceMsgCountRef.current = msgCount;
-      voiceConversationLoop();
-    }
-  }, [stopVoiceRecording, voiceConversationLoop, messages, msgCount]);
-
-  useEffect(() => {
-    return () => { voiceModeRef.current = false; };
+  const toggleVoiceSession = useCallback(() => {
+    setVoiceSessionActive(prev => !prev);
   }, []);
 
   const primaryColor = chatbot?.primary_color || '#0a84ff';
@@ -730,9 +606,9 @@ const WidgetPage = () => {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder={voiceMode ? 'Listening...' : isOffline ? 'No internet connection' : msgCount >= MAX_MESSAGES_PER_SESSION ? 'Message limit reached' : 'Message...'}
+              placeholder={voiceSessionActive ? 'Voice session active' : isOffline ? 'No internet connection' : msgCount >= MAX_MESSAGES_PER_SESSION ? 'Message limit reached' : 'Message...'}
               maxLength={2000}
-              disabled={voiceMode || msgCount >= MAX_MESSAGES_PER_SESSION || isOffline}
+              disabled={voiceSessionActive || msgCount >= MAX_MESSAGES_PER_SESSION || isOffline}
               className="flex-1 rounded-full px-4 py-2 text-[15px] outline-none disabled:opacity-40 transition-shadow"
               style={{
                 background: t.inputBg,
@@ -743,29 +619,23 @@ const WidgetPage = () => {
               onBlur={(e) => { e.currentTarget.style.boxShadow = 'none'; e.currentTarget.style.borderColor = t.botBubbleBorder; }}
               autoComplete="off"
             />
-            {voiceMode && (
-              <div className="flex items-center gap-1 shrink-0 px-2" style={{ color: primaryColor }}>
-                <span className="inline-block h-2 w-2 rounded-full animate-pulse" style={{ background: primaryColor }} />
-                <span className="text-[10px] font-medium whitespace-nowrap">Voice</span>
-              </div>
-            )}
             {voiceEnabled && (
               <button
-                onClick={toggleVoiceMode}
+                onClick={toggleVoiceSession}
                 disabled={loading}
-                className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-all active:scale-90 disabled:opacity-25 ${isRecording ? 'animate-pulse shadow-lg' : voiceMode ? 'shadow-md' : ''}`}
+                className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-all active:scale-90 disabled:opacity-25 ${voiceSessionActive ? 'shadow-md' : ''}`}
                 style={{
-                  background: isRecording ? '#EF4444' : voiceMode ? primaryColor + '30' : 'transparent',
-                  color: isRecording ? '#fff' : voiceMode ? primaryColor : t.textMuted,
+                  background: voiceSessionActive ? primaryColor + '20' : 'transparent',
+                  color: voiceSessionActive ? primaryColor : t.textMuted,
                 }}
-                aria-label={isRecording ? 'Stop recording' : voiceMode ? 'Exit voice mode' : 'Start voice conversation'}
+                aria-label={voiceSessionActive ? 'End voice conversation' : 'Start voice conversation'}
               >
-                {isRecording ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+                <Mic className="h-4 w-4" />
               </button>
             )}
             <button
               onClick={sendMessage}
-              disabled={loading || (!input.trim() && !imagePreview) || msgCount >= MAX_MESSAGES_PER_SESSION || isOffline || voiceMode}
+              disabled={loading || (!input.trim() && !imagePreview) || msgCount >= MAX_MESSAGES_PER_SESSION || isOffline || voiceSessionActive}
               className="flex h-8 w-8 items-center justify-center rounded-full text-white transition-all active:scale-90 disabled:opacity-25"
               style={{ background: t.sendBtn }}
               aria-label="Send message"
@@ -780,6 +650,14 @@ const WidgetPage = () => {
           </p>
         </div>
       </div>
+      {voiceSessionActive && chatbot && (
+        <VoiceSession
+          chatbotId={chatbot.id}
+          systemPrompt={chatbot.system_prompt || undefined}
+          accentColor={primaryColor}
+          onSessionEnd={handleVoiceSessionEnd}
+        />
+      )}
     </ErrorBoundary>
   );
 };
