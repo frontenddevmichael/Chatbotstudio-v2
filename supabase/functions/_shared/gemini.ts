@@ -53,6 +53,10 @@ function convertTools(tools: Array<Record<string, unknown>>) {
   return [{ functionDeclarations }];
 }
 
+function normalizeModel(model: string): string {
+  return model.replace(/^google\//, "").replace(/^openrouter\//, "");
+}
+
 export async function generateContent(
   model: string,
   apiKey: string,
@@ -60,6 +64,7 @@ export async function generateContent(
   messages: Array<{ role: string; content: string | Array<Record<string, unknown>> }>,
   temperature?: number,
 ): Promise<string> {
+  model = normalizeModel(model);
   const body: Record<string, unknown> = {
     contents: convertMessages(messages),
   };
@@ -94,6 +99,7 @@ export async function generateContentWithTools(
   tools: Array<Record<string, unknown>>,
   toolChoice?: { type: string; function?: { name: string } },
 ): Promise<{ content?: string; toolCall?: { name: string; args: string } }> {
+  model = normalizeModel(model);
   const body: Record<string, unknown> = {
     contents: convertMessages(messages),
   };
