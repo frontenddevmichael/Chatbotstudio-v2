@@ -370,6 +370,13 @@ const WidgetPage = () => {
     setVoiceSessionActive(prev => !prev);
   }, []);
 
+  const speakMessage = useCallback((text: string) => {
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+      window.speechSynthesis.speak(new SpeechSynthesisUtterance(text));
+    }
+  }, []);
+
   const primaryColor = chatbot?.primary_color || '#0a84ff';
   const botAvatar = chatbot?.avatar_emoji || 'bot';
   const botName = chatbot?.name || 'Bot';
