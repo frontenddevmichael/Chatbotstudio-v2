@@ -133,8 +133,10 @@ const WidgetPage = () => {
   });
   const [msgCount, setMsgCount] = useState(0);
   const [isRecording, setIsRecording] = useState(false);
-  const recognitionRef = useRef<SpeechRecognition | null>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
   const [voiceEnabled, setVoiceEnabled] = useState(() => import.meta.env.VITE_ENABLE_VOICE !== 'false');
+  const [audioPreview, setAudioPreview] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const [initialLoad, setInitialLoad] = useState(true);
@@ -201,7 +203,9 @@ const WidgetPage = () => {
 
   useEffect(() => {
     return () => {
-      recognitionRef.current?.abort();
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+        mediaRecorderRef.current.stop();
+      }
     };
   }, []);
 
@@ -314,30 +318,34 @@ const WidgetPage = () => {
 
   const sendMessage = async () => {
     const text = sanitizeText(input);
-    if ((!text && !imagePreview) || loading || !chatbot) return;
+    if ((!text && !imagePreview && !audioPreview) || loading || !chatbot) return;
     if (msgCount >= MAX_MESSAGES_PER_SESSION) {
       setMessages(prev => [...prev, { role: 'assistant', content: "You've reached the message limit for this session. Please refresh to start a new conversation." }]);
       setInput(''); return;
     }
-    const userContent = imagePreview ? `${text || 'See attached image'}\n<image>` : text;
+    const hasMultimodal = !!(imagePreview || audioPreview);
+    const userContent = hasMultimodal ? `${text || (audioPreview ? 'Voice message' : 'See attached image')}\n<image>` : text;
     const userMsg: Message = { role: 'user', content: userContent };
     const newMessages = [...messages, userMsg];
     setMessages(newMessages); setInput(''); setLoading(true); setMsgCount(prev => prev + 1);
-    const body: Record<string, unknown> = { chatbot_id: chatbot.id, session_id: sessionId, visitor_id: visitorId, messages: newMessages, new_message: text || 'See attached image' };
+    const body: Record<string, unknown> = { chatbot_id: chatbot.id, session_id: sessionId, visitor_id: visitorId, messages: newMessages, new_message: text || (audioPreview ? 'Voice message' : 'See attached image') };
     if (variant) body.variant_id = variant.id;
     if (imagePreview) body.image = imagePreview;
+    if (audioPreview) body.audio = audioPreview;
     if (pageContextRef.current) body.page_context = pageContextRef.current;
     body.visitor_lang = visitorLang;
     try {
       const data = await invokeWithRetry(body);
       removeImage();
+      cancelAudio();
       const reply = data?.error === 'rate_limit'
         ? "You've sent too many messages. Please wait a moment."
         : data?.response || "Sorry, I'm having trouble responding. Please try again.";
       setMessages([...newMessages, { role: 'assistant', content: reply }]);
-      // Send unread notification to parent if widget is embedded
       postToParent({ type: 'cbs:unread' });
+      if (voiceEnabled) speakMessage(reply);
     } catch (err) {
+      cancelAudio();
       const msg = (err as Error)?.message === 'offline' || (typeof navigator !== 'undefined' && !navigator.onLine)
         ? "You appear to be offline. Please check your internet connection and try again."
         : "Sorry, I'm having trouble responding. Please try again.";
@@ -359,27 +367,42 @@ const WidgetPage = () => {
 
   const toggleRecording = useCallback(() => {
     if (isRecording) {
-      recognitionRef.current?.abort();
-      recognitionRef.current = null;
-      setIsRecording(false);
+      mediaRecorderRef.current?.stop();
       return;
     }
-    const SpeechRecognitionCtor = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SpeechRecognitionCtor) return;
-    const recognition = new SpeechRecognitionCtor();
-    recognition.lang = 'en-US';
-    recognition.interimResults = false;
-    recognition.continuous = false;
-    recognition.onresult = (event) => {
-      setInput(event.results[0][0].transcript);
-      setIsRecording(false);
-    };
-    recognition.onerror = () => setIsRecording(false);
-    recognition.onend = () => setIsRecording(false);
-    recognition.start();
-    recognitionRef.current = recognition;
-    setIsRecording(true);
+    (async () => {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus') ? 'audio/webm;codecs=opus' : MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : 'audio/mp4';
+        const recorder = new MediaRecorder(stream, { mimeType });
+        audioChunksRef.current = [];
+        recorder.ondataavailable = (e) => {
+          if (e.data.size > 0) audioChunksRef.current.push(e.data);
+        };
+        recorder.onstop = () => {
+          stream.getTracks().forEach(t => t.stop());
+          const blob = new Blob(audioChunksRef.current, { type: recorder.mimeType });
+          if (blob.size < 1000) { setIsRecording(false); return; }
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            setIsRecording(false);
+            const dataUrl = reader.result as string;
+            setInput('Voice message');
+            setAudioPreview(dataUrl);
+          };
+          reader.readAsDataURL(blob);
+        };
+        recorder.onerror = () => { stream.getTracks().forEach(t => t.stop()); setIsRecording(false); };
+        recorder.start();
+        mediaRecorderRef.current = recorder;
+        setIsRecording(true);
+      } catch {
+        setIsRecording(false);
+      }
+    })();
   }, [isRecording]);
+
+  const cancelAudio = () => { setAudioPreview(null); };
 
   const primaryColor = chatbot?.primary_color || '#0a84ff';
   const botAvatar = chatbot?.avatar_emoji || 'bot';
@@ -633,8 +656,8 @@ const WidgetPage = () => {
             {voiceEnabled && (
               <button
                 onClick={toggleRecording}
-                disabled={loading}
-                className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-all active:scale-90 disabled:opacity-25 ${isRecording ? 'animate-pulse' : ''}`}
+                disabled={loading || !!audioPreview}
+                className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-all active:scale-90 disabled:opacity-25 ${isRecording ? 'animate-pulse shadow-lg' : ''}`}
                 style={{
                   background: isRecording ? '#EF4444' : 'transparent',
                   color: isRecording ? '#fff' : t.textMuted,
@@ -646,7 +669,7 @@ const WidgetPage = () => {
             )}
             <button
               onClick={sendMessage}
-              disabled={loading || (!input.trim() && !imagePreview) || msgCount >= MAX_MESSAGES_PER_SESSION || isOffline}
+              disabled={loading || (!input.trim() && !imagePreview && !audioPreview) || msgCount >= MAX_MESSAGES_PER_SESSION || isOffline}
               className="flex h-8 w-8 items-center justify-center rounded-full text-white transition-all active:scale-90 disabled:opacity-25"
               style={{ background: t.sendBtn }}
               aria-label="Send message"

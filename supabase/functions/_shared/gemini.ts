@@ -8,6 +8,23 @@ function geminiEmbedUrl(apiKey: string): string {
   return `${GEMINI_BASE}/models/text-embedding-004:embedContent?key=${apiKey}`;
 }
 
+function isDataUrl(value: string): boolean {
+  return value.startsWith("data:");
+}
+
+function parseDataUrl(url: string): { mimeType: string; data: string } | null {
+  try {
+    const comma = url.indexOf(",");
+    if (comma === -1) return null;
+    const header = url.substring(5, comma);
+    const mimeType = header.split(";")[0];
+    const data = url.substring(comma + 1);
+    return { mimeType, data };
+  } catch {
+    return null;
+  }
+}
+
 function convertMessages(messages: Array<{ role: string; content: string | Array<Record<string, unknown>> }>) {
   const contents: Array<{ role: string; parts: Array<{ text?: string; inlineData?: { mimeType: string; data: string } }> }> = [];
   for (const msg of messages) {
@@ -23,11 +40,15 @@ function convertMessages(messages: Array<{ role: string; content: string | Array
           parts.push({ text: String(p.text) });
         } else if (p.type === "image_url") {
           const url = String((p.image_url as Record<string, unknown>)?.url || "");
-          if (url.startsWith("data:image/")) {
-            const comma = url.indexOf(",");
-            const mimeType = url.substring(5, comma).split(";")[0];
-            const data = url.substring(comma + 1);
-            parts.push({ inlineData: { mimeType, data } });
+          const parsed = parseDataUrl(url);
+          if (parsed && parsed.mimeType.startsWith("image/")) {
+            parts.push({ inlineData: { mimeType: parsed.mimeType, data: parsed.data } });
+          }
+        } else if (p.type === "audio_url") {
+          const url = String((p.audio_url as Record<string, unknown>)?.url || "");
+          const parsed = parseDataUrl(url);
+          if (parsed && parsed.mimeType.startsWith("audio/")) {
+            parts.push({ inlineData: { mimeType: parsed.mimeType, data: parsed.data } });
           }
         }
       }

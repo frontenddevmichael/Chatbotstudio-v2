@@ -26,7 +26,7 @@ serve(async (req) => {
     if (!body || typeof body !== "object") {
       return jsonResponse({ error: "invalid_body" }, 400);
     }
-    const { chatbot_id, session_id, messages, new_message, visitor_id, image, page_context, visitor_lang, variant_id } = body as Record<string, unknown>;
+    const { chatbot_id, session_id, messages, new_message, visitor_id, image, audio, page_context, visitor_lang, variant_id } = body as Record<string, unknown>;
 
     // Validate field types
     if (typeof chatbot_id !== "string" || !/^[0-9a-f-]{36}$/i.test(chatbot_id)) {
@@ -58,6 +58,18 @@ serve(async (req) => {
         return jsonResponse({ error: "invalid_image_format" }, 400);
       }
       imageDataUrl = image;
+    }
+
+    // Validate optional audio (base64 data URL, max 4MB)
+    let audioDataUrl: string | null = null;
+    if (typeof audio === "string" && audio.length > 0) {
+      if (audio.length > 4_000_000) {
+        return jsonResponse({ error: "audio_too_large" }, 400);
+      }
+      if (!audio.startsWith("data:audio/")) {
+        return jsonResponse({ error: "invalid_audio_format" }, 400);
+      }
+      audioDataUrl = audio;
     }
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -199,15 +211,16 @@ Rules: Answer from knowledge first. Be concise. Match tone. Never mention AI pro
           .map((m) => ({ role: m.role, content: String(m.content).slice(0, 500) }))
       : [];
 
-    // If image provided, use multimodal content for the latest user message
-    if (imageDataUrl) {
-      conversationMessages.push({
-        role: "user",
-        content: [
-          { type: "text", text: sanitizedMessage },
-          { type: "image_url", image_url: { url: imageDataUrl } },
-        ],
-      });
+    // Build multimodal content for the latest user message
+    if (imageDataUrl || audioDataUrl) {
+      const contentParts: Array<Record<string, unknown>> = [{ type: "text", text: sanitizedMessage }];
+      if (imageDataUrl) {
+        contentParts.push({ type: "image_url", image_url: { url: imageDataUrl } });
+      }
+      if (audioDataUrl) {
+        contentParts.push({ type: "audio_url", audio_url: { url: audioDataUrl } });
+      }
+      conversationMessages.push({ role: "user", content: contentParts });
     } else {
       conversationMessages.push({ role: "user", content: sanitizedMessage });
     }
