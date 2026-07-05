@@ -136,7 +136,11 @@ const WidgetPage = () => {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const [voiceEnabled, setVoiceEnabled] = useState(() => import.meta.env.VITE_ENABLE_VOICE !== 'false');
-  const [audioPreview, setAudioPreview] = useState<string | null>(null);
+  const [voiceMode, setVoiceMode] = useState(false);
+  const voiceModeRef = useRef(false);
+  const voiceMsgCountRef = useRef(0);
+  const voiceMessagesRef = useRef<Message[]>([]);
+  const voiceResolveRef = useRef<((blob: Blob | null) => void) | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const [initialLoad, setInitialLoad] = useState(true);
@@ -318,34 +322,29 @@ const WidgetPage = () => {
 
   const sendMessage = async () => {
     const text = sanitizeText(input);
-    if ((!text && !imagePreview && !audioPreview) || loading || !chatbot) return;
+    if ((!text && !imagePreview) || loading || !chatbot) return;
     if (msgCount >= MAX_MESSAGES_PER_SESSION) {
       setMessages(prev => [...prev, { role: 'assistant', content: "You've reached the message limit for this session. Please refresh to start a new conversation." }]);
       setInput(''); return;
     }
-    const hasMultimodal = !!(imagePreview || audioPreview);
-    const userContent = hasMultimodal ? `${text || (audioPreview ? 'Voice message' : 'See attached image')}\n<image>` : text;
+    const userContent = imagePreview ? `${text || 'See attached image'}\n<image>` : text;
     const userMsg: Message = { role: 'user', content: userContent };
     const newMessages = [...messages, userMsg];
     setMessages(newMessages); setInput(''); setLoading(true); setMsgCount(prev => prev + 1);
-    const body: Record<string, unknown> = { chatbot_id: chatbot.id, session_id: sessionId, visitor_id: visitorId, messages: newMessages, new_message: text || (audioPreview ? 'Voice message' : 'See attached image') };
+    const body: Record<string, unknown> = { chatbot_id: chatbot.id, session_id: sessionId, visitor_id: visitorId, messages: newMessages, new_message: text || 'See attached image' };
     if (variant) body.variant_id = variant.id;
     if (imagePreview) body.image = imagePreview;
-    if (audioPreview) body.audio = audioPreview;
     if (pageContextRef.current) body.page_context = pageContextRef.current;
     body.visitor_lang = visitorLang;
     try {
       const data = await invokeWithRetry(body);
       removeImage();
-      cancelAudio();
       const reply = data?.error === 'rate_limit'
         ? "You've sent too many messages. Please wait a moment."
         : data?.response || "Sorry, I'm having trouble responding. Please try again.";
       setMessages([...newMessages, { role: 'assistant', content: reply }]);
       postToParent({ type: 'cbs:unread' });
-      if (voiceEnabled) speakMessage(reply);
     } catch (err) {
-      cancelAudio();
       const msg = (err as Error)?.message === 'offline' || (typeof navigator !== 'undefined' && !navigator.onLine)
         ? "You appear to be offline. Please check your internet connection and try again."
         : "Sorry, I'm having trouble responding. Please try again.";
@@ -358,51 +357,142 @@ const WidgetPage = () => {
   };
 
   const speakMessage = useCallback((text: string) => {
-    if ('speechSynthesis' in window) {
-      window.speechSynthesis.cancel();
-      const utterance = new SpeechSynthesisUtterance(text);
-      window.speechSynthesis.speak(utterance);
+    if (!('speechSynthesis' in window)) return;
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.onend = () => {
+      if (voiceModeRef.current && !loading) {
+        startVoiceRecording();
+      }
+    };
+    window.speechSynthesis.speak(utterance);
+  }, [loading]);
+
+  const startVoiceRecording = useCallback(async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+        ? 'audio/webm;codecs=opus'
+        : MediaRecorder.isTypeSupported('audio/webm')
+          ? 'audio/webm'
+          : MediaRecorder.isTypeSupported('audio/ogg;codecs=opus')
+            ? 'audio/ogg;codecs=opus'
+            : 'audio/mp4';
+      const recorder = new MediaRecorder(stream, { mimeType });
+      audioChunksRef.current = [];
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) audioChunksRef.current.push(e.data);
+      };
+      recorder.onstop = () => {
+        stream.getTracks().forEach(t => t.stop());
+        setIsRecording(false);
+        const blob = new Blob(audioChunksRef.current, { type: recorder.mimeType });
+        if (blob.size >= 1000 && voiceResolveRef.current) {
+          voiceResolveRef.current(blob);
+          voiceResolveRef.current = null;
+        }
+      };
+      recorder.onerror = () => {
+        stream.getTracks().forEach(t => t.stop());
+        setIsRecording(false);
+      };
+      recorder.start();
+      mediaRecorderRef.current = recorder;
+      setIsRecording(true);
+    } catch {
+      setIsRecording(false);
     }
   }, []);
 
-  const toggleRecording = useCallback(() => {
-    if (isRecording) {
-      mediaRecorderRef.current?.stop();
-      return;
+  const stopVoiceRecording = useCallback(() => {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      mediaRecorderRef.current.stop();
     }
-    (async () => {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus') ? 'audio/webm;codecs=opus' : MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : 'audio/mp4';
-        const recorder = new MediaRecorder(stream, { mimeType });
-        audioChunksRef.current = [];
-        recorder.ondataavailable = (e) => {
-          if (e.data.size > 0) audioChunksRef.current.push(e.data);
-        };
-        recorder.onstop = () => {
-          stream.getTracks().forEach(t => t.stop());
-          const blob = new Blob(audioChunksRef.current, { type: recorder.mimeType });
-          if (blob.size < 1000) { setIsRecording(false); return; }
-          const reader = new FileReader();
-          reader.onloadend = () => {
-            setIsRecording(false);
-            const dataUrl = reader.result as string;
-            setInput('Voice message');
-            setAudioPreview(dataUrl);
-          };
-          reader.readAsDataURL(blob);
-        };
-        recorder.onerror = () => { stream.getTracks().forEach(t => t.stop()); setIsRecording(false); };
-        recorder.start();
-        mediaRecorderRef.current = recorder;
-        setIsRecording(true);
-      } catch {
-        setIsRecording(false);
-      }
-    })();
-  }, [isRecording]);
+  }, []);
 
-  const cancelAudio = () => { setAudioPreview(null); };
+  const recordAndSendAudio = useCallback(async () => {
+    const blob = await new Promise<Blob | null>((resolve) => {
+      voiceResolveRef.current = resolve;
+      startVoiceRecording();
+    });
+    if (!blob || !voiceModeRef.current) return;
+    if (voiceMsgCountRef.current >= MAX_MESSAGES_PER_SESSION) { voiceModeRef.current = false; setVoiceMode(false); return; }
+    const reader = new FileReader();
+    const dataUrl = await new Promise<string>((resolve) => {
+      reader.onloadend = () => resolve(reader.result as string);
+      reader.readAsDataURL(blob);
+    });
+    if (!voiceModeRef.current) return;
+    const text = 'Voice message';
+    const userMsg = { role: 'user', content: text } as Message;
+    voiceMessagesRef.current = [...voiceMessagesRef.current, userMsg];
+    const body: Record<string, unknown> = {
+      chatbot_id: chatbot.id, session_id: sessionId, visitor_id: visitorId,
+      messages: voiceMessagesRef.current,
+      new_message: text,
+      audio: dataUrl,
+    };
+    if (variant) body.variant_id = variant.id;
+    if (pageContextRef.current) body.page_context = pageContextRef.current;
+    body.visitor_lang = visitorLang;
+    try {
+      setLoading(true);
+      setMessages(voiceMessagesRef.current);
+      voiceMsgCountRef.current++;
+      const data = await invokeWithRetry(body);
+      const reply = data?.error === 'rate_limit'
+        ? "You've sent too many messages. Please wait a moment."
+        : data?.response || "Sorry, I'm having trouble responding. Please try again.";
+      const assistantMsg = { role: 'assistant', content: reply } as Message;
+      voiceMessagesRef.current = [...voiceMessagesRef.current, assistantMsg];
+      setMessages(voiceMessagesRef.current);
+      postToParent({ type: 'cbs:unread' });
+      if (voiceModeRef.current) speakMessage(reply);
+    } catch (err) {
+      const msg = (err as Error)?.message === 'offline' || (typeof navigator !== 'undefined' && !navigator.onLine)
+        ? "You appear to be offline. Please check your internet connection and try again."
+        : "Sorry, I'm having trouble responding. Please try again.";
+      const errorMsg = { role: 'assistant', content: msg } as Message;
+      voiceMessagesRef.current = [...voiceMessagesRef.current, errorMsg];
+      setMessages(voiceMessagesRef.current);
+    } finally {
+      setLoading(false);
+    }
+  }, [chatbot, sessionId, visitorId, variant, visitorLang, speakMessage, startVoiceRecording]);
+
+  const voiceConversationLoop = useCallback(async () => {
+    while (voiceModeRef.current && voiceMsgCountRef.current < MAX_MESSAGES_PER_SESSION) {
+      await recordAndSendAudio();
+    }
+    if (voiceModeRef.current) {
+      setMessages(prev => [...prev, { role: 'assistant', content: "Voice conversation ended. You've reached the message limit." }]);
+      voiceModeRef.current = false;
+      setVoiceMode(false);
+    }
+  }, [recordAndSendAudio]);
+
+  const toggleVoiceMode = useCallback(() => {
+    if (voiceModeRef.current) {
+      voiceModeRef.current = false;
+      setVoiceMode(false);
+      window.speechSynthesis.cancel();
+      stopVoiceRecording();
+      if (voiceResolveRef.current) {
+        voiceResolveRef.current(null);
+        voiceResolveRef.current = null;
+      }
+    } else {
+      voiceModeRef.current = true;
+      setVoiceMode(true);
+      voiceMessagesRef.current = messages;
+      voiceMsgCountRef.current = msgCount;
+      voiceConversationLoop();
+    }
+  }, [stopVoiceRecording, voiceConversationLoop, messages, msgCount]);
+
+  useEffect(() => {
+    return () => { voiceModeRef.current = false; };
+  }, []);
 
   const primaryColor = chatbot?.primary_color || '#0a84ff';
   const botAvatar = chatbot?.avatar_emoji || 'bot';
@@ -640,9 +730,9 @@ const WidgetPage = () => {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder={isOffline ? 'No internet connection' : msgCount >= MAX_MESSAGES_PER_SESSION ? 'Message limit reached' : 'Message...'}
+              placeholder={voiceMode ? 'Listening...' : isOffline ? 'No internet connection' : msgCount >= MAX_MESSAGES_PER_SESSION ? 'Message limit reached' : 'Message...'}
               maxLength={2000}
-              disabled={msgCount >= MAX_MESSAGES_PER_SESSION || isOffline}
+              disabled={voiceMode || msgCount >= MAX_MESSAGES_PER_SESSION || isOffline}
               className="flex-1 rounded-full px-4 py-2 text-[15px] outline-none disabled:opacity-40 transition-shadow"
               style={{
                 background: t.inputBg,
@@ -653,23 +743,29 @@ const WidgetPage = () => {
               onBlur={(e) => { e.currentTarget.style.boxShadow = 'none'; e.currentTarget.style.borderColor = t.botBubbleBorder; }}
               autoComplete="off"
             />
+            {voiceMode && (
+              <div className="flex items-center gap-1 shrink-0 px-2" style={{ color: primaryColor }}>
+                <span className="inline-block h-2 w-2 rounded-full animate-pulse" style={{ background: primaryColor }} />
+                <span className="text-[10px] font-medium whitespace-nowrap">Voice</span>
+              </div>
+            )}
             {voiceEnabled && (
               <button
-                onClick={toggleRecording}
-                disabled={loading || !!audioPreview}
-                className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-all active:scale-90 disabled:opacity-25 ${isRecording ? 'animate-pulse shadow-lg' : ''}`}
+                onClick={toggleVoiceMode}
+                disabled={loading}
+                className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-all active:scale-90 disabled:opacity-25 ${isRecording ? 'animate-pulse shadow-lg' : voiceMode ? 'shadow-md' : ''}`}
                 style={{
-                  background: isRecording ? '#EF4444' : 'transparent',
-                  color: isRecording ? '#fff' : t.textMuted,
+                  background: isRecording ? '#EF4444' : voiceMode ? primaryColor + '30' : 'transparent',
+                  color: isRecording ? '#fff' : voiceMode ? primaryColor : t.textMuted,
                 }}
-                aria-label={isRecording ? 'Stop recording' : 'Start voice input'}
+                aria-label={isRecording ? 'Stop recording' : voiceMode ? 'Exit voice mode' : 'Start voice conversation'}
               >
                 {isRecording ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
               </button>
             )}
             <button
               onClick={sendMessage}
-              disabled={loading || (!input.trim() && !imagePreview && !audioPreview) || msgCount >= MAX_MESSAGES_PER_SESSION || isOffline}
+              disabled={loading || (!input.trim() && !imagePreview) || msgCount >= MAX_MESSAGES_PER_SESSION || isOffline || voiceMode}
               className="flex h-8 w-8 items-center justify-center rounded-full text-white transition-all active:scale-90 disabled:opacity-25"
               style={{ background: t.sendBtn }}
               aria-label="Send message"
