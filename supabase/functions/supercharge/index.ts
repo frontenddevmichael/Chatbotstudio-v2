@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { generateContent, GeminiError } from "../_shared/gemini.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -20,8 +21,7 @@ serve(async (req) => {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const aiKey = Deno.env.get("AI_API_KEY");
-    const aiBaseUrl = (Deno.env.get("AI_BASE_URL") || "https://openrouter.ai/api").replace(/\/+$/, "");
-    const aiModel = Deno.env.get("AI_MODEL") || "google/gemini-2.5-flash";
+    const aiModel = Deno.env.get("AI_MODEL") || "gemini-2.5-flash";
     const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
     if (!anonKey) {
       return new Response(JSON.stringify({ error: "server_not_configured" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -90,49 +90,30 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: "api_key_missing" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    const aiHeaders: Record<string, string> = {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${aiKey}`,
-    };
-    if (aiBaseUrl.includes("openrouter")) {
-      aiHeaders["HTTP-Referer"] = "https://chatbotstudio.dev";
-      aiHeaders["X-Title"] = "ChatBot Studio";
-    }
-
-    const aiResponse = await fetch(`${aiBaseUrl}/v1/chat/completions`, {
-      method: "POST",
-      headers: aiHeaders,
-      body: JSON.stringify({
-        model: aiModel,
-        messages: [{
-          role: "user",
-          content: `Given this FAQ — Question: '${faq.question}', Answer: '${faq.answer}'.
+    let text: string;
+    try {
+      text = await generateContent(aiModel, aiKey, null, [{
+        role: "user",
+        content: `Given this FAQ — Question: '${faq.question}', Answer: '${faq.answer}'.
 Generate 8 natural language variations of the question that real users might type in a chatbot. Think about different phrasings, levels of formality, and levels of detail.
 Return ONLY a valid JSON array of 8 strings. No explanation, no markdown, no code blocks. Just the raw JSON array.`,
-        }],
-      }),
-    });
-
-    if (!aiResponse.ok) {
-      if (aiResponse.status === 429) {
-        return new Response(
-          JSON.stringify({ error: "rate_limit", message: "AI rate limit exceeded." }),
-          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+      }]);
+    } catch (err) {
+      if (err instanceof GeminiError) {
+        if (err.status === 429) {
+          return new Response(
+            JSON.stringify({ error: "rate_limit", message: "AI rate limit exceeded." }),
+            { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+        console.error("AI error:", err.status, err.message);
+      } else {
+        console.error("AI error:", err);
       }
-      if (aiResponse.status === 402) {
-        return new Response(
-          JSON.stringify({ error: "payment_required", message: "AI credits exhausted." }),
-          { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-      const errText = await aiResponse.text();
-      console.error("AI gateway error:", aiResponse.status, errText);
       return new Response(JSON.stringify({ error: "ai_error" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    const aiData = await aiResponse.json();
-    const text = aiData.choices?.[0]?.message?.content || "[]";
+    if (!text) text = "[]";
 
     // Safely parse JSON response
     let variations: string[];

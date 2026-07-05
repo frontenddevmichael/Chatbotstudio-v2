@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { generateContent, GeminiError } from "../_shared/gemini.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -62,8 +63,7 @@ serve(async (req) => {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const aiKey = Deno.env.get("AI_API_KEY");
-    const aiBaseUrl = (Deno.env.get("AI_BASE_URL") || "https://openrouter.ai/api").replace(/\/+$/, "");
-    const defaultAiModel = Deno.env.get("AI_MODEL") || "google/gemini-2.5-flash";
+    const defaultAiModel = Deno.env.get("AI_MODEL") || "gemini-2.5-flash";
     const supabase = createClient(supabaseUrl, serviceKey);
 
     // Fetch chatbot
@@ -97,18 +97,8 @@ serve(async (req) => {
     const fallbackModel = chatbot.fallback_model || null;
     const routingStrategy = chatbot.routing_strategy || "single";
 
-    async function callModel(model: string): Promise<Response> {
-      return await fetch(`${aiBaseUrl}/v1/chat/completions`, {
-        method: "POST",
-        headers: aiHeaders,
-        body: JSON.stringify({
-          model,
-          messages: [
-            { role: "system", content: systemPrompt },
-            ...conversationMessages,
-          ],
-        }),
-      });
+    async function callModel(model: string): Promise<string> {
+      return await generateContent(model, aiKey!, systemPrompt, conversationMessages);
     }
 
     function isComplexQuery(): boolean {
@@ -138,51 +128,14 @@ serve(async (req) => {
       return jsonResponse({ error: "rate_limit", message: "Too many messages. Please wait and try again." }, 429);
     }
 
-    // Semantic FAQ retrieval via pgvector, fallback to full list
+    // Fetch FAQs for context
     let faqContext = "";
-    let matchedFaqs: Array<{ question: string; answer: string; variations?: string[]; similarity: number }> | null = null;
-    try {
-      const embedRes = await fetch("https://openrouter.ai/api/v1/embeddings", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${aiKey}`,
-        },
-        body: JSON.stringify({
-          model: "text-embedding-ada-002",
-          input: sanitizedMessage.slice(0, 8000),
-        }),
-      });
-      if (embedRes.ok) {
-        const embedData = await embedRes.json();
-        const embedding = embedData?.data?.[0]?.embedding;
-        if (embedding && Array.isArray(embedding) && embedding.length === 1536) {
-          const { data: matched } = await supabase.rpc("match_faqs", {
-            query_embedding: embedding,
-            match_threshold: 0.7,
-            match_count: 5,
-            p_chatbot_id: chatbot_id,
-          });
-          if (matched && matched.length > 0) {
-            matchedFaqs = matched as Array<{ question: string; answer: string; variations?: string[]; similarity: number }>;
-            faqContext = matchedFaqs
-              .map(f => `Topic: ${f.question}\nAnswer: ${f.answer}${f.variations?.length ? `\nAlso asked as: ${f.variations.join(", ")}` : ""} (relevance: ${Math.round(f.similarity * 100)}%)`)
-              .join("\n\n");
-          }
-        }
-      }
-    } catch {
-      // Vector search unavailable — fall back to full FAQ list
-    }
-
-    if (!matchedFaqs || matchedFaqs.length === 0) {
-      const { data: faqs } = await supabase.from("faqs").select("*").eq("chatbot_id", chatbot_id);
-      faqContext = (faqs || []).map((f: { question: string; answer: string; variations?: string[] }) => {
-        let entry = `Topic: ${f.question}\nAnswer: ${f.answer}`;
-        if (f.variations?.length) entry += `\nAlso asked as: ${f.variations.join(", ")}`;
-        return entry;
-      }).join("\n\n");
-    }
+    const { data: faqs } = await supabase.from("faqs").select("*").eq("chatbot_id", chatbot_id);
+    faqContext = (faqs || []).map((f: { question: string; answer: string; variations?: string[] }) => {
+      let entry = `Topic: ${f.question}\nAnswer: ${f.answer}`;
+      if (f.variations?.length) entry += `\nAlso asked as: ${f.variations.join(", ")}`;
+      return entry;
+    }).join("\n\n");
 
     // Visitor persona detection from conversation messages
     function detectPersona(msgs: Array<{ role: string; content: string }>): string {
@@ -286,49 +239,44 @@ BEHAVIOR RULES:
       return jsonResponse({ response: "I'm currently unable to process your request. Please try again later.", session_id });
     }
 
-    const aiHeaders: Record<string, string> = {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${aiKey}`,
-    };
-    if (aiBaseUrl.includes("openrouter")) {
-      aiHeaders["HTTP-Referer"] = "https://chatbotstudio.dev";
-      aiHeaders["X-Title"] = "ChatBot Studio";
-    }
-
     let selectedModel = aiModel;
-    let aiResponse: Response;
+    let responseText: string;
 
-    if (routingStrategy === "fallback" && fallbackModel) {
-      aiResponse = await callModel(aiModel);
-      if (!aiResponse.ok && [402, 429].includes(aiResponse.status) || aiResponse.status >= 500) {
-        selectedModel = fallbackModel;
-        aiResponse = await callModel(fallbackModel);
-      }
-    } else if (routingStrategy === "complexity" && fallbackModel) {
-      if (isComplexQuery()) {
-        aiResponse = await callModel(aiModel);
+    try {
+      if (routingStrategy === "complexity" && fallbackModel) {
+        if (isComplexQuery()) {
+          responseText = await callModel(aiModel);
+        } else {
+          selectedModel = fallbackModel;
+          responseText = await callModel(fallbackModel);
+        }
       } else {
-        selectedModel = fallbackModel;
-        aiResponse = await callModel(fallbackModel);
+        try {
+          responseText = await callModel(aiModel);
+        } catch (err) {
+          if (fallbackModel && err instanceof GeminiError && [429, 402, 500, 503].includes(err.status)) {
+            selectedModel = fallbackModel;
+            responseText = await callModel(fallbackModel);
+          } else {
+            throw err;
+          }
+        }
       }
-    } else {
-      aiResponse = await callModel(aiModel);
-    }
-
-    if (!aiResponse.ok) {
-      if (aiResponse.status === 429) {
-        return jsonResponse({ error: "rate_limit", message: "AI rate limit exceeded. Please try again later." }, 429);
+    } catch (err) {
+      if (err instanceof GeminiError) {
+        if (err.status === 429) {
+          return jsonResponse({ error: "rate_limit", message: "AI rate limit exceeded. Please try again later." }, 429);
+        }
+        console.error("AI error:", err.status, err.message);
+      } else {
+        console.error("AI error:", err);
       }
-      if (aiResponse.status === 402) {
-        return jsonResponse({ error: "payment_required", message: "AI credits exhausted." }, 402);
-      }
-      const errText = await aiResponse.text();
-      console.error("AI gateway error:", aiResponse.status, errText);
       return jsonResponse({ error: "ai_error" }, 500);
     }
 
-    const aiData = await aiResponse.json();
-    const responseText = aiData.choices?.[0]?.message?.content || "Sorry, I couldn't generate a response.";
+    if (!responseText) {
+      responseText = "Sorry, I couldn't generate a response.";
+    }
     const sanitizedResponse = responseText.replace(/<script[^>]*>.*?<\/script>/gi, "").replace(/<\/script>/gi, "");
 
     // Atomic increment of owner's monthly_message_count (fire and forget)

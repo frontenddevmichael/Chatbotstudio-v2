@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { generateContent, GeminiError } from "../_shared/gemini.ts";
 
 interface FAQ {
   question: string;
@@ -37,8 +38,7 @@ serve(async (req) => {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const aiKey = Deno.env.get("AI_API_KEY");
-    const aiModel = Deno.env.get("AI_MODEL") || "google/gemini-2.5-flash";
-    const aiBaseUrl = (Deno.env.get("AI_BASE_URL") || "https://openrouter.ai/api").replace(/\/+$/, "");
+    const aiModel = Deno.env.get("AI_MODEL") || "gemini-2.5-flash";
     const supabase = createClient(supabaseUrl, serviceKey);
 
     // Verify authentication
@@ -133,44 +133,17 @@ Return ONLY a JSON array of objects with "question" and "answer" keys. Example:
 [{"question": "What are your hours?", "answer": "We're open 9-5 Monday to Friday."}]
 If no new FAQs needed, return an empty array [].`;
 
-    const aiHeaders: Record<string, string> = {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${aiKey}`,
-    };
-    if (aiBaseUrl.includes("openrouter")) {
-      aiHeaders["HTTP-Referer"] = "https://chatbotstudio.dev";
-      aiHeaders["X-Title"] = "ChatBot Studio";
-    }
-
-    const aiResponse = await fetch(`${aiBaseUrl}/v1/chat/completions`, {
-      method: "POST",
-      headers: aiHeaders,
-      body: JSON.stringify({
-        model: aiModel,
-        messages: [
-          { role: "system", content: "You are a FAQ analysis assistant. Only return valid JSON arrays." },
-          { role: "user", content: prompt },
-        ],
-        temperature: 0.3,
-      }),
-    });
-
-    if (!aiResponse.ok) {
-      const errText = await aiResponse.text();
-      console.error("AI error:", aiResponse.status, errText);
-      return jsonResponse({ error: "ai_error" }, 500);
-    }
-
-    const aiData = await aiResponse.json();
     let newFaqs: FAQ[] = [];
 
     try {
-      const content = aiData.choices?.[0]?.message?.content || "[]";
+      const content = await generateContent(aiModel, aiKey, "You are a FAQ analysis assistant. Only return valid JSON arrays.", [
+        { role: "user", content: prompt },
+      ], 0.3);
       const cleaned = content.replace(/```json|```/g, "").trim();
       newFaqs = JSON.parse(cleaned);
-    } catch {
-      console.error("Failed to parse AI response");
-      return jsonResponse({ error: "parse_error" }, 500);
+    } catch (err) {
+      console.error("AI error:", err);
+      return jsonResponse({ error: "ai_error" }, 500);
     }
 
     if (!Array.isArray(newFaqs) || newFaqs.length === 0) {

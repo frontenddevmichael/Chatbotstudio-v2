@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { generateEmbedding } from "../_shared/gemini.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -62,29 +63,18 @@ serve(async (req) => {
       }
     }
 
-    // Try OpenRouter embeddings first, fall back to inline placeholder
+    // Try Gemini embeddings (768-dim), pad to match DB schema (1536-dim)
     const apiKey = Deno.env.get("AI_API_KEY");
     let embedding: number[] | null = null;
 
     if (apiKey) {
       try {
-        const embedRes = await fetch("https://openrouter.ai/api/v1/embeddings", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${apiKey}`,
-          },
-          body: JSON.stringify({
-            model: "text-embedding-ada-002",
-            input: input.trim().slice(0, 8000),
-          }),
-        });
-
-        if (embedRes.ok) {
-          const embedData = await embedRes.json();
-          embedding = embedData?.data?.[0]?.embedding || null;
+        const result = await generateEmbedding(apiKey, input.trim());
+        if (result.length > 0) {
+          // Gemini returns 768-dim embeddings; DB expects 1536-dim. Pad with zeros.
+          embedding = [...result, ...new Array(1536 - result.length).fill(0)];
         } else {
-          console.warn("Embedding API error:", embedRes.status);
+          console.warn("Embedding API returned empty result");
         }
       } catch (err) {
         console.warn("Embedding API call failed:", err);
